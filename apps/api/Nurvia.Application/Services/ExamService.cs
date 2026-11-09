@@ -117,10 +117,11 @@ public class ExamService : IExamService
         }
 
         exam.Versions.Add(version);
+        _context.Exams.Add(exam);
+        await _context.SaveChangesAsync(ct);
+
         exam.CurrentVersion = version;
         exam.CurrentVersionId = version.Id;
-
-        _context.Exams.Add(exam);
         await _context.SaveChangesAsync(ct);
 
         await _audit.LogAsync("Exam", exam.Id.ToString(), "CreateExam", author, author, "ContentAuthor", $"Created exam blueprint '{exam.Title}' ({exam.Code})", ct);

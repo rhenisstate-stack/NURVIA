@@ -27,7 +27,7 @@ public class QuestionValidationTests
 
     [Theory]
     [InlineData("")]
-    [InlineData("Short rationale")]
+    [InlineData("Short rat")]
     public void Validate_RationaleUnderFifteenChars_ReturnsValidationError(string shortRationale)
     {
         var version = new QuestionVersion(Guid.NewGuid(), 1, "A patient presents with signs of acute chest discomfort.", QuestionType.MultipleChoice, "Author")

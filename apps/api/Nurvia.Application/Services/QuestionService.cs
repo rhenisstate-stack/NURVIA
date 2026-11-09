@@ -126,10 +126,11 @@ public class QuestionService : IQuestionService
         }
 
         question.Versions.Add(version);
+        _context.Questions.Add(question);
+        await _context.SaveChangesAsync(ct);
+
         question.CurrentVersion = version;
         question.CurrentVersionId = version.Id;
-
-        _context.Questions.Add(question);
         await _context.SaveChangesAsync(ct);
 
         await _audit.LogAsync("Question", question.Id.ToString(), "CreateDraft", author, author, "ContentAuthor", $"Created draft question '{question.Code}'", ct);

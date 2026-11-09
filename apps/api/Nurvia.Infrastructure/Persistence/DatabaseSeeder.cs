@@ -42,8 +42,6 @@ public static class DatabaseSeeder
         q1v1.Options.Add(new QuestionOption(4, "Check the client's most recent sodium laboratory value", false, "Potassium (hypokalemia), not sodium, potentiates digoxin toxicity.", 4));
 
         q1.Versions.Add(q1v1);
-        q1.CurrentVersion = q1v1;
-        q1.CurrentVersionId = q1v1.Id;
 
         // ==========================================
         // Question 2: ATI Pharmacology - Lithium (SATA)
@@ -71,8 +69,6 @@ public static class DatabaseSeeder
         q2v1.Options.Add(new QuestionOption(5, "Hypertensive crisis and cardiac arrest", false, "Hypertensive crisis is characteristic of MAOI interactions, not early lithium toxicity.", 5));
 
         q2.Versions.Add(q2v1);
-        q2.CurrentVersion = q2v1;
-        q2.CurrentVersionId = q2v1.Id;
 
         // ==========================================
         // Question 3: HESI Med-Surg - NGN Unfolding Case Study (Heart Failure)
@@ -108,8 +104,6 @@ public static class DatabaseSeeder
         q3v1.Options.Add(new QuestionOption(4, "Schedule a routine echocardiogram for tomorrow morning", false, "Diagnostic testing is secondary to immediate stabilization.", 4));
 
         q3.Versions.Add(q3v1);
-        q3.CurrentVersion = q3v1;
-        q3.CurrentVersionId = q3v1.Id;
 
         // ==========================================
         // Question 4: RN Exit - PE vs Atelectasis
@@ -136,8 +130,6 @@ public static class DatabaseSeeder
         q4v1.Options.Add(new QuestionOption(4, "Decreased urine output with clear bilateral lung sounds", false, "Indicates hypovolemia or renal cues, not differentiating PE from atelectasis.", 4));
 
         q4.Versions.Add(q4v1);
-        q4.CurrentVersion = q4v1;
-        q4.CurrentVersionId = q4v1.Id;
 
         // ==========================================
         // Question 5: LPN Exit - Pediatric Dosage Calculations
@@ -164,11 +156,18 @@ public static class DatabaseSeeder
         q5v1.Options.Add(new QuestionOption(4, "15 mL", false, "Overdose calculation error.", 4));
 
         q5.Versions.Add(q5v1);
-        q5.CurrentVersion = q5v1;
-        q5.CurrentVersionId = q5v1.Id;
 
-        // Add questions to DB
+        // Add questions to DB (Phase 1: Without CurrentVersionId to prevent cycle)
         await context.Questions.AddRangeAsync(q1, q2, q3, q4, q5);
+        await context.SaveChangesAsync();
+
+        // Phase 2: Set CurrentVersionId
+        q1.CurrentVersionId = q1v1.Id;
+        q2.CurrentVersionId = q2v1.Id;
+        q3.CurrentVersionId = q3v1.Id;
+        q4.CurrentVersionId = q4v1.Id;
+        q5.CurrentVersionId = q5v1.Id;
+        await context.SaveChangesAsync();
 
         // ==========================================
         // Seed Pre-Configured Exams
@@ -198,10 +197,7 @@ public static class DatabaseSeeder
 
         exam1v1.ExamQuestions.Add(new ExamQuestion(exam1v1.Id, q1.Id, q1v1.Id, 1, 1));
         exam1v1.ExamQuestions.Add(new ExamQuestion(exam1v1.Id, q2.Id, q2v1.Id, 2, 1));
-
         exam1.Versions.Add(exam1v1);
-        exam1.CurrentVersion = exam1v1;
-        exam1.CurrentVersionId = exam1v1.Id;
 
         var exam2 = new Exam("RN-EXIT-COMP-01", "RN Comprehensive Predictor Exit Examination", "Comprehensive multi-specialty exit exam measuring readiness for NCLEX-RN licensure.", NursingPathway.RN_Exit, ExamCategory.ExitPredictor, author)
         {
@@ -229,12 +225,14 @@ public static class DatabaseSeeder
         exam2v1.ExamQuestions.Add(new ExamQuestion(exam2v1.Id, q1.Id, q1v1.Id, 1, 1));
         exam2v1.ExamQuestions.Add(new ExamQuestion(exam2v1.Id, q3.Id, q3v1.Id, 2, 1));
         exam2v1.ExamQuestions.Add(new ExamQuestion(exam2v1.Id, q4.Id, q4v1.Id, 3, 1));
-
         exam2.Versions.Add(exam2v1);
-        exam2.CurrentVersion = exam2v1;
-        exam2.CurrentVersionId = exam2v1.Id;
 
         await context.Exams.AddRangeAsync(exam1, exam2);
+        await context.SaveChangesAsync();
+
+        exam1.CurrentVersionId = exam1v1.Id;
+        exam2.CurrentVersionId = exam2v1.Id;
+        await context.SaveChangesAsync();
 
         // Audit Logs
         context.AuditLogs.Add(new AuditLog("Question", q1.Id.ToString(), "SeedQuestion", "system", "System Seeder", "System", "Seeded foundational question Q-RN-ATI-PHARM-001"));
