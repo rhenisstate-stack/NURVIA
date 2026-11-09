@@ -213,10 +213,10 @@ public class QuestionsController : ControllerBase
         {
             return BadRequest(ApiResponse<QuestionDto>.Error(ex.Message));
         }
+    }
 
-        private bool CanManageContent()
-        {
-            return HttpContext.HasRole("Author", "Reviewer", "Publisher", "Administrator", "Superadmin");
-        }
+    private bool CanManageContent()
+    {
+        return HttpContext.HasRole("Author", "Reviewer", "Publisher", "Administrator", "Superadmin");
     }
 }
