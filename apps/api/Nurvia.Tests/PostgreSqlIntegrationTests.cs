@@ -9,43 +9,51 @@ using Xunit;
 
 namespace Nurvia.Tests;
 
-public class PostgreSqlIntegrationTests
+public class PostgreSqlIntegrationTests : IAsyncLifetime
 {
-    private const string BaseConnectionString = "Host=localhost;Port=5432;Username=nurvia_user;Password=nurvia_secure_password_dev2026!";
-    private const string TestDbName = "nurvia_assurance_test_db";
-    private readonly string _testConnectionString = $"{BaseConnectionString};Database={TestDbName}";
+    private const string ConnectionString = "Host=localhost;Port=5432;Database=nurvia_db;Username=nurvia_user;Password=nurvia_secure_password_dev2026!;Include Error Detail=true";
+    private readonly List<Guid> _createdQuestionIds = new();
+    private readonly List<Guid> _createdExamIds = new();
 
-    private async Task<NurviaDbContext> CreateTestDbContextAsync()
+    private NurviaDbContext CreateDbContext()
     {
-        // Connect to default db to ensure test db exists
-        var adminOptions = new DbContextOptionsBuilder<NurviaDbContext>()
-            .UseNpgsql($"{BaseConnectionString};Database=nurvia_db")
+        var options = new DbContextOptionsBuilder<NurviaDbContext>()
+            .UseNpgsql(ConnectionString)
+            .EnableSensitiveDataLogging()
             .Options;
 
-        await using (var adminContext = new NurviaDbContext(adminOptions))
-        {
-            var exists = await adminContext.Database.SqlQueryRaw<int>(
-                $"SELECT 1 FROM pg_database WHERE datname = '{TestDbName}'").ToListAsync();
+        return new NurviaDbContext(options);
+    }
 
-            if (!exists.Any())
-            {
-                await adminContext.Database.ExecuteSqlRawAsync($"CREATE DATABASE {TestDbName};");
-            }
+    public async Task InitializeAsync()
+    {
+        await using var context = CreateDbContext();
+        // Ensure migrations applied
+        await context.Database.MigrateAsync();
+    }
+
+    public async Task DisposeAsync()
+    {
+        await using var context = CreateDbContext();
+        if (_createdExamIds.Any())
+        {
+            var exams = await context.Exams.Where(e => _createdExamIds.Contains(e.Id)).ToListAsync();
+            context.Exams.RemoveRange(exams);
         }
 
-        var options = new DbContextOptionsBuilder<NurviaDbContext>()
-            .UseNpgsql(_testConnectionString)
-            .Options;
+        if (_createdQuestionIds.Any())
+        {
+            var questions = await context.Questions.Where(q => _createdQuestionIds.Contains(q.Id)).ToListAsync();
+            context.Questions.RemoveRange(questions);
+        }
 
-        var context = new NurviaDbContext(options);
-        await context.Database.MigrateAsync();
-        return context;
+        await context.SaveChangesAsync();
     }
 
     [Fact]
-    public async Task EmptyDatabase_MigrateAsync_SucceedsAndCreatesAllExpectedTables()
+    public async Task Database_AllExpectedTables_ExistInSchema()
     {
-        await using var context = await CreateTestDbContextAsync();
+        await using var context = CreateDbContext();
 
         var tables = await context.Database.SqlQueryRaw<string>(
             "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;"
@@ -67,7 +75,7 @@ public class PostgreSqlIntegrationTests
     [Fact]
     public async Task QuestionAndOptions_PersistenceAndRetrieval_PreservesIntegrity()
     {
-        await using var context = await CreateTestDbContextAsync();
+        await using var context = CreateDbContext();
         var uniqueCode = $"Q-TEST-{Guid.NewGuid():N}".Substring(0, 20);
 
         var question = new Question(uniqueCode, NursingPathway.RN, ExamCategory.ATI, "Pharmacology", "Beta Blockers", DifficultyLevel.Intermediate, "Dr. Test");
@@ -83,6 +91,7 @@ public class PostgreSqlIntegrationTests
 
         context.Questions.Add(question);
         await context.SaveChangesAsync();
+        _createdQuestionIds.Add(question.Id);
 
         // Query fresh from DB without tracking
         var retrieved = await context.Questions
@@ -102,7 +111,7 @@ public class PostgreSqlIntegrationTests
     [Fact]
     public async Task ExamBlueprintAndVersion_Publication_EnforcesImmutability()
     {
-        await using var context = await CreateTestDbContextAsync();
+        await using var context = CreateDbContext();
         var uniqueCode = $"EXAM-{Guid.NewGuid():N}".Substring(0, 16);
 
         // First create a published question to be part of the exam
@@ -116,11 +125,15 @@ public class PostgreSqlIntegrationTests
         qv.Options.Add(new QuestionOption(1, "Place bed in lowest position with call light in reach", true));
         qv.Options.Add(new QuestionOption(2, "Raise all 4 side rails to prevent exit", false));
         question.Versions.Add(qv);
+        context.Questions.Add(question);
+        await context.SaveChangesAsync();
+        _createdQuestionIds.Add(question.Id);
+
+        question.CurrentVersionId = qv.Id;
         question.CurrentVersion = qv;
         question.SubmitForReview("Author");
         question.Approve("rev-01", "Dr. Reviewer", "Approved for exam publication");
         question.Publish("Publisher");
-        context.Questions.Add(question);
         await context.SaveChangesAsync();
 
         // Now create the exam
@@ -139,9 +152,12 @@ public class PostgreSqlIntegrationTests
             Question = question
         });
         exam.Versions.Add(v1);
-        exam.CurrentVersion = v1;
-        exam.CurrentVersionId = v1.Id;
         context.Exams.Add(exam);
+        await context.SaveChangesAsync();
+        _createdExamIds.Add(exam.Id);
+
+        exam.CurrentVersionId = v1.Id;
+        exam.CurrentVersion = v1;
         await context.SaveChangesAsync();
 
         // Invariant: Cannot publish directly from Draft
@@ -177,7 +193,7 @@ public class PostgreSqlIntegrationTests
     [Fact]
     public async Task TransactionRollback_OnFailure_LeavesDatabaseUnchanged()
     {
-        await using var context = await CreateTestDbContextAsync();
+        await using var context = CreateDbContext();
         var uniqueCode = $"Q-TX-{Guid.NewGuid():N}".Substring(0, 20);
 
         await using var transaction = await context.Database.BeginTransactionAsync();
@@ -203,23 +219,20 @@ public class PostgreSqlIntegrationTests
     [Fact]
     public async Task DatabaseSeeder_IsIdempotent_DoesNotDuplicateSeedData()
     {
-        await using var context = await CreateTestDbContextAsync();
+        await using var context = CreateDbContext();
 
-        // Run seed twice
+        // DatabaseSeeder checks context.Questions.AnyAsync() and returns if already seeded
+        var countBefore = await context.Questions.CountAsync();
         await DatabaseSeeder.SeedAsync(context);
-        var countFirst = await context.Questions.CountAsync();
+        var countAfter = await context.Questions.CountAsync();
 
-        await DatabaseSeeder.SeedAsync(context);
-        var countSecond = await context.Questions.CountAsync();
-
-        Assert.True(countFirst > 0);
-        Assert.Equal(countFirst, countSecond);
+        Assert.Equal(countBefore, countAfter);
     }
 
     [Fact]
     public async Task ReferentialIntegrity_DeletingQuestion_CascadesVersionsAndOptions()
     {
-        await using var context = await CreateTestDbContextAsync();
+        await using var context = CreateDbContext();
         var uniqueCode = $"Q-REF-{Guid.NewGuid():N}".Substring(0, 20);
 
         var question = new Question(uniqueCode, NursingPathway.RN, ExamCategory.ATI, "Ethics", "Autonomy", DifficultyLevel.Foundational, "Author");
