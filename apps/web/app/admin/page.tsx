@@ -85,12 +85,21 @@ export default function AdminDashboardPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button size="sm" className="gap-1.5">
-              <Plus className="w-4 h-4" /> New Question
-            </Button>
-            <Button variant="outline" size="sm" className="gap-1.5">
-              <Plus className="w-4 h-4" /> Create Exam
-            </Button>
+            <Link href="/admin/questions/new">
+              <Button size="sm" className="gap-1.5 bg-brand-teal hover:bg-brand-teal/90 text-white">
+                <Plus className="w-4 h-4" /> New Question
+              </Button>
+            </Link>
+            <Link href="/admin/exams">
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <BookCheck className="w-4 h-4" /> Exam Studio
+              </Button>
+            </Link>
+            <Link href="/admin/reviews">
+              <Button variant="secondary" size="sm" className="gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Review Queue
+              </Button>
+            </Link>
           </div>
         </div>
 
@@ -175,9 +184,11 @@ export default function AdminDashboardPage() {
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="text-xs h-8 gap-1">
-                <Filter className="w-3.5 h-3.5" /> Filter
-              </Button>
+              <Link href="/admin/questions">
+                <Button variant="outline" size="sm" className="text-xs h-8 gap-1 text-brand-teal border-brand-teal/40">
+                  <FileQuestion className="w-3.5 h-3.5" /> Full Question Bank
+                </Button>
+              </Link>
             </div>
           </CardHeader>
           <CardContent className="p-0 overflow-x-auto">

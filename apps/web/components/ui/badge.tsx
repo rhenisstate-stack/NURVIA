@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?:
     | "default"
+    | "secondary"
     | "outline"
     | "success"
     | "warning"
@@ -20,6 +21,8 @@ export function Badge({
   const variantStyles = {
     default:
       "bg-surface-muted text-foreground border-border/80 border font-medium",
+    secondary:
+      "bg-surface-muted text-foreground-secondary border-border/70 border font-medium",
     teal: "bg-teal-500/10 text-teal-700 border-teal-500/20 border dark:text-teal-300 dark:bg-teal-500/15 font-semibold",
     outline: "border border-border text-foreground bg-transparent font-medium",
     success:
