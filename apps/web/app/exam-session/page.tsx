@@ -1,11 +1,14 @@
 "use client";
 
 import * as React from "react";
+import { Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { ExamShell } from "@/components/layout/exam-shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { initialStudySets } from "@/lib/study-sets-data";
 import {
   CheckCircle2,
   XCircle,
@@ -23,11 +26,21 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export default function ExamSessionPage() {
+function ExamSessionContent() {
+  const searchParams = useSearchParams();
+  const paramMode = searchParams?.get("mode");
+  const paramSetId = searchParams?.get("setId");
+
+  const initialMode: "Review" | "Exam" | "Tutor" =
+    paramMode === "Exam" || paramMode === "Tutor" ? paramMode : "Review";
+
+  const matchedSet = initialStudySets.find((s) => s.id === paramSetId || s.slug === paramSetId);
+  const examTitle = matchedSet ? matchedSet.title : "ATI RN Adult Medical-Surgical Comprehensive Practice";
+
   const [selectedOption, setSelectedOption] = React.useState<number | null>(null);
   const [isSubmitted, setIsSubmitted] = React.useState<boolean>(false);
   const [activeTab, setActiveTab] = React.useState<"notes" | "vitals" | "labs" | "orders">("notes");
-  const [currentMode, setCurrentMode] = React.useState<"Review" | "Exam" | "Tutor">("Review");
+  const [currentMode, setCurrentMode] = React.useState<"Review" | "Exam" | "Tutor">(initialMode);
   const [isFlagged, setIsFlagged] = React.useState<boolean>(false);
   const [showTutorHint, setShowTutorHint] = React.useState<boolean>(false);
 
@@ -70,8 +83,8 @@ export default function ExamSessionPage() {
 
   return (
     <ExamShell
-      examTitle="ATI RN Adult Medical-Surgical Comprehensive Practice"
-      totalQuestions={60}
+      examTitle={examTitle}
+      totalQuestions={matchedSet ? matchedSet.questionCount : 60}
       currentQuestion={14}
       mode={currentMode}
       onModeChange={setCurrentMode}
@@ -79,10 +92,10 @@ export default function ExamSessionPage() {
       onToggleFlag={() => setIsFlagged(!isFlagged)}
     >
       <div className="space-y-6">
-        {/* Mode Switcher Tabs for demonstration */}
+        {/* Mode Switcher Tabs */}
         <div className="flex items-center justify-between border-b border-border pb-3">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-foreground-secondary">Switch Exam Engine Mode:</span>
+            <span className="text-xs font-semibold text-foreground-secondary">Delivery Mode:</span>
             <div className="inline-flex rounded-lg border border-border p-1 bg-surface">
               {(["Review", "Exam", "Tutor"] as const).map((m) => (
                 <button
@@ -144,7 +157,7 @@ export default function ExamSessionPage() {
                       : "border-transparent text-foreground-secondary hover:text-foreground"
                   )}
                 >
-                  <Activity className="w-3.5 h-3.5" /> Vitals
+                  <Activity className="w-3.5 h-3.5" /> Vital Signs
                 </button>
                 <button
                   onClick={() => setActiveTab("labs")}
@@ -155,7 +168,7 @@ export default function ExamSessionPage() {
                       : "border-transparent text-foreground-secondary hover:text-foreground"
                   )}
                 >
-                  <FlaskConical className="w-3.5 h-3.5" /> Labs
+                  <FlaskConical className="w-3.5 h-3.5" /> Lab Results
                 </button>
                 <button
                   onClick={() => setActiveTab("orders")}
@@ -170,183 +183,160 @@ export default function ExamSessionPage() {
                 </button>
               </div>
 
-              {/* Exhibit Content Pane */}
-              <div className="p-4 text-xs font-mono leading-relaxed bg-surface-muted/30 min-h-[170px]">
-                {activeTab === "notes" && <p>{questionData.exhibits.notes}</p>}
-                {activeTab === "vitals" && <p>{questionData.exhibits.vitals}</p>}
-                {activeTab === "labs" && (
-                  <div className="space-y-1">
-                    <p className="text-rose-600 dark:text-rose-400 font-bold">
-                      ⚠ Potassium: 3.1 mEq/L [CRITICAL LOW]
-                    </p>
-                    <p>Sodium: 138 mEq/L</p>
-                    <p>BUN: 22 mg/dL</p>
-                    <p>Creatinine: 1.1 mg/dL</p>
-                    <p>BNP: 410 pg/mL</p>
-                  </div>
-                )}
-                {activeTab === "orders" && (
-                  <pre className="font-mono text-xs whitespace-pre-wrap">{questionData.exhibits.orders}</pre>
-                )}
+              {/* Exhibit Body Content */}
+              <div className="p-4 text-xs font-mono leading-relaxed bg-background/50 min-h-[180px] whitespace-pre-line text-foreground-secondary">
+                {questionData.exhibits[activeTab]}
               </div>
             </div>
 
-            {/* Tutor Mode Concept Coach */}
-            {currentMode === "Tutor" ? (
-              <div className="rounded-xl border border-teal-500/30 bg-teal-500/5 p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-brand-teal flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4" /> AI Tutor Guidance
+            {/* Cognitive Skills Guidance Chip */}
+            <div className="p-3.5 rounded-xl border border-border bg-surface text-xs space-y-1">
+              <div className="font-bold text-brand-teal text-[11px] uppercase tracking-wider flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5" /> {questionData.rationales.cognitiveSkill}
+              </div>
+              <div className="text-foreground-secondary text-[11px]">
+                Client Need: {questionData.rationales.clientNeed}
+              </div>
+            </div>
+
+            {/* Tutor Mode Hint Accordion */}
+            {currentMode === "Tutor" && (
+              <div className="p-3.5 rounded-xl border border-brand-teal/30 bg-teal-500/5 text-xs space-y-2">
+                <button
+                  onClick={() => setShowTutorHint(!showTutorHint)}
+                  className="w-full flex items-center justify-between text-brand-teal font-semibold text-xs"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Lightbulb className="w-3.5 h-3.5" />
+                    <span>Need a Socratic Hint?</span>
                   </span>
-                  <button
-                    onClick={() => setShowTutorHint(!showTutorHint)}
-                    className="text-xs font-semibold text-brand-teal underline"
-                  >
-                    {showTutorHint ? "Hide Hint" : "Request Socratic Hint"}
-                  </button>
-                </div>
+                  <span>{showTutorHint ? "Hide Hint" : "Show Hint"}</span>
+                </button>
                 {showTutorHint && (
-                  <p className="text-xs text-foreground-secondary leading-relaxed bg-surface p-3 rounded-md border border-border">
-                    💡 <em>Hint:</em> Loop diuretics eliminate water through potassium excretion. Look closely at the electrolyte panel and consider what dysrhythmia risk is present.
+                  <p className="text-foreground-secondary pt-1 leading-relaxed border-t border-brand-teal/20 animate-in fade-in">
+                    Focus on the laboratory panel. Loop diuretics waste potassium in the ascending loop of Henle. What cardiac rhythm disturbances occur when serum potassium dips below 3.5 mEq/L?
                   </p>
                 )}
               </div>
-            ) : null}
+            )}
           </div>
 
-          {/* Right Column: Question Stem & Answer Options (7 cols) */}
-          <div className="lg:col-span-7 space-y-4">
-            <Card>
-              <CardHeader className="p-6 pb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <Badge variant="outline" className="text-xs">
-                    Multiple Choice · Single Response
-                  </Badge>
-                  <span className="text-xs text-foreground-secondary">
-                    Skill: <strong>{questionData.rationales.cognitiveSkill}</strong>
-                  </span>
+          {/* Right Column: Question Stem, Options, and Rationale (7 cols) */}
+          <div className="lg:col-span-7 space-y-5">
+            <Card className="p-6 space-y-5">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs text-foreground-muted">
+                  <span>Single Choice · High Yield Item</span>
+                  <Badge variant="outline">Clinical Judgment Vignette</Badge>
                 </div>
-                <p className="text-sm sm:text-base font-medium text-foreground leading-relaxed">
+                <h2 className="font-brand text-base sm:text-lg font-bold text-foreground leading-relaxed">
                   {questionData.stem}
-                </p>
-              </CardHeader>
+                </h2>
+              </div>
 
-              <CardContent className="p-6 pt-0 space-y-3">
-                {/* Answer Options */}
-                {questionData.options.map((opt) => {
-                  const isSelected = selectedOption === opt.id;
-                  const showCorrectness = isSubmitted && currentMode === "Review";
+              {/* Options */}
+              <div className="space-y-3">
+                {questionData.options.map((opt, idx) => {
+                  const isSelected = selectedOption === idx;
+                  const isSubmittedReview = isSubmitted && currentMode === "Review";
+
+                  let optionClass =
+                    "border-border bg-background hover:bg-surface-muted text-foreground";
+                  if (isSelected) {
+                    optionClass = "border-brand-teal bg-brand-teal/10 text-foreground ring-1 ring-brand-teal";
+                  }
+                  if (isSubmittedReview) {
+                    if (opt.isCorrect) {
+                      optionClass =
+                        "border-emerald-500 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100 ring-1 ring-emerald-500";
+                    } else if (isSelected && !opt.isCorrect) {
+                      optionClass =
+                        "border-rose-500 bg-rose-500/10 text-rose-950 dark:text-rose-100 ring-1 ring-rose-500";
+                    }
+                  }
 
                   return (
                     <button
                       key={opt.id}
-                      onClick={() => handleSelect(opt.id)}
+                      onClick={() => handleSelect(idx)}
                       className={cn(
-                        "w-full text-left p-3.5 rounded-xl border text-xs sm:text-sm transition-all flex items-start gap-3",
-                        isSelected
-                          ? "border-brand-teal bg-teal-500/10 font-semibold"
-                          : "border-border bg-surface hover:bg-surface-muted",
-                        showCorrectness && opt.isCorrect && "border-emerald-500 bg-emerald-500/15 text-emerald-900 dark:text-emerald-100",
-                        showCorrectness && isSelected && !opt.isCorrect && "border-rose-500 bg-rose-500/15 text-rose-900 dark:text-rose-100"
+                        "w-full text-left p-4 rounded-xl border text-xs sm:text-sm font-medium transition-all flex items-start gap-3",
+                        optionClass
                       )}
                     >
-                      <span
-                        className={cn(
-                          "w-6 h-6 rounded-full border flex items-center justify-center shrink-0 font-bold text-xs mt-0.5",
-                          isSelected ? "border-brand-teal bg-brand-teal text-white" : "border-border text-foreground-secondary",
-                          showCorrectness && opt.isCorrect && "border-emerald-500 bg-emerald-500 text-white",
-                          showCorrectness && isSelected && !opt.isCorrect && "border-rose-500 bg-rose-500 text-white"
-                        )}
-                      >
-                        {String.fromCharCode(65 + opt.id)}
+                      <span className="w-6 h-6 rounded-full border border-border bg-surface text-xs font-bold flex items-center justify-center shrink-0">
+                        {String.fromCharCode(65 + idx)}
                       </span>
-                      <span className="flex-1">{opt.text}</span>
-                      {showCorrectness && opt.isCorrect && (
-                        <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                      )}
-                      {showCorrectness && isSelected && !opt.isCorrect && (
-                        <XCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" />
+                      <span className="flex-1 leading-snug pt-0.5">{opt.text}</span>
+                      {isSubmittedReview && (
+                        <span className="shrink-0 pt-0.5">
+                          {opt.isCorrect ? (
+                            <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                          ) : isSelected ? (
+                            <XCircle className="w-5 h-5 text-rose-500" />
+                          ) : null}
+                        </span>
                       )}
                     </button>
                   );
                 })}
+              </div>
 
-                {/* Exam Mode manual submission button */}
-                {currentMode === "Exam" && (
-                  <div className="pt-3 flex justify-end">
-                    <Button
-                      size="sm"
-                      disabled={selectedOption === null}
-                      onClick={() => setIsSubmitted(true)}
-                    >
-                      Confirm Response
-                    </Button>
+              {/* Actions in Exam Mode */}
+              {currentMode === "Exam" && (
+                <div className="pt-3 border-t border-border flex items-center justify-between">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={selectedOption === null}
+                    onClick={() => setIsSubmitted(true)}
+                  >
+                    Confirm Answer Selection
+                  </Button>
+                  <span className="text-xs text-foreground-muted">Rationales shown upon exam completion</span>
+                </div>
+              )}
+
+              {/* Rationale Display in Review & Tutor Modes */}
+              {isSubmitted && (currentMode === "Review" || currentMode === "Tutor") && (
+                <div className="p-4 rounded-xl bg-teal-500/10 border border-teal-500/30 text-xs leading-relaxed space-y-3 animate-in fade-in">
+                  <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-brand-teal">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>Evidence-Based Clinical Rationale</span>
                   </div>
-                )}
-              </CardContent>
+                  <p className="text-foreground">{questionData.rationales.correctRationale}</p>
+
+                  <div className="pt-2 border-t border-teal-500/20 space-y-1">
+                    <span className="font-semibold text-foreground block">Distractor Explanations:</span>
+                    {questionData.rationales.distractorRationales.map((d, i) => (
+                      <p key={i} className="text-foreground-secondary text-[11px]">{d}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
             </Card>
 
-            {/* Review Mode: Detailed Educational Rationale */}
-            {isSubmitted && currentMode === "Review" && (
-              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5 space-y-4 shadow-sm animate-in fade-in duration-300">
-                <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-bold text-sm">
-                  {selectedOption === 0 ? (
-                    <>
-                      <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                      <span>Correct Answer! Clinical Judgment Verified</span>
-                    </>
-                  ) : (
-                    <>
-                      <AlertCircle className="w-5 h-5 text-rose-600" />
-                      <span className="text-rose-700 dark:text-rose-400">Incorrect Choice — Study Rationale Below</span>
-                    </>
-                  )}
-                </div>
-
-                <div className="space-y-3 text-xs leading-relaxed text-foreground">
-                  <div>
-                    <h4 className="font-bold text-xs uppercase tracking-wider text-brand-teal mb-1">
-                      Educational Rationale
-                    </h4>
-                    <p className="bg-surface p-3 rounded-lg border border-border">
-                      {questionData.rationales.correctRationale}
-                    </p>
-                  </div>
-
-                  <div>
-                    <h4 className="font-bold text-xs uppercase tracking-wider text-foreground-secondary mb-1">
-                      Distractor Rationales
-                    </h4>
-                    <ul className="space-y-1.5 list-disc pl-4 text-foreground-secondary">
-                      {questionData.rationales.distractorRationales.map((d, i) => (
-                        <li key={i}>{d}</li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div className="pt-2 border-t border-border/80 flex flex-wrap items-center justify-between text-[11px] text-foreground-muted">
-                    <span>Client Need: <strong>{questionData.rationales.clientNeed}</strong></span>
-                    <span>Next Review Cycle: <strong>Spaced (3 Days)</strong></span>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Bottom Question Stepper Footer */}
+            <div className="flex items-center justify-between text-xs pt-2">
+              <Button variant="ghost" size="sm" className="text-xs gap-1">
+                <ChevronLeft className="w-4 h-4" /> Previous Item
+              </Button>
+              <span className="text-foreground-muted font-medium">Question 14 of 60</span>
+              <Button size="sm" className="text-xs gap-1 bg-brand-navy hover:bg-brand-navyDeep text-white dark:bg-brand-teal">
+                Next Item <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
-        </div>
-
-        {/* Bottom Navigation Control Bar */}
-        <div className="flex items-center justify-between border-t border-border pt-4">
-          <Button variant="outline" size="sm" className="gap-1.5">
-            <ChevronLeft className="w-4 h-4" /> Previous Question
-          </Button>
-          <div className="text-xs text-foreground-secondary font-medium">
-            14 of 60 answered
-          </div>
-          <Button variant="primary" size="sm" className="gap-1.5">
-            Next Question <ChevronRight className="w-4 h-4" />
-          </Button>
         </div>
       </div>
     </ExamShell>
+  );
+}
+
+export default function ExamSessionPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-xs text-foreground-muted">Loading exam session...</div>}>
+      <ExamSessionContent />
+    </Suspense>
   );
 }

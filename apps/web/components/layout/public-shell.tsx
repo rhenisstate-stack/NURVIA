@@ -18,12 +18,11 @@ export function PublicShell({ children }: PublicShellProps) {
   const pathname = usePathname();
 
   const navLinks = [
+    { name: "Home", href: "/" },
     { name: "Exam Library", href: "/exams" },
-    { name: "ATI & HESI", href: "/tracks/ati-hesi" },
-    { name: "NCLEX Prep", href: "/tracks/nclex" },
-    { name: "Study Hub", href: "/resources" },
-    { name: "Pricing", href: "/pricing" },
-    { name: "Design System", href: "/design-system" },
+    { name: "ATI & HESI", href: "/exams?category=ATI" },
+    { name: "NCLEX Prep", href: "/exams?category=NCLEX" },
+    { name: "Study Hub", href: "/learner/hub" },
   ];
 
   return (
@@ -31,22 +30,23 @@ export function PublicShell({ children }: PublicShellProps) {
       {/* Top Banner */}
       <div className="bg-brand-navy dark:bg-brand-navyDeep text-white text-xs py-2 px-4 text-center font-medium flex items-center justify-center gap-2">
         <span className="inline-flex items-center gap-1 bg-brand-teal/20 text-teal-300 px-2 py-0.5 rounded-full text-[11px] font-semibold">
-          <Sparkles className="w-3 h-3" /> Phase 1 Preview
+          <Sparkles className="w-3 h-3" /> Phase 1 Architecture
         </span>
-        <span>Independent nursing education platform architecture & design system.</span>
+        <span className="hidden sm:inline">NURVIA — Your Path to Nursing Confidence. Next-Gen NCLEX, ATI & HESI preparation.</span>
+        <span className="sm:hidden">NURVIA — Nursing Confidence</span>
         <Link href="/learner" className="underline hover:text-teal-300 font-semibold ml-1">
-          Explore Learner Dashboard →
+          Enter Learner Dashboard →
         </Link>
       </div>
 
-      {/* Main Public Header */}
+      {/* Main Public Header matching screenshot */}
       <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-surface/90 backdrop-blur-md transition-colors">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           {/* Brand Logo */}
           <Logo size="md" variant="full" />
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-7">
+          <nav className="hidden lg:flex items-center gap-6 xl:gap-8">
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
               return (
@@ -70,14 +70,14 @@ export function PublicShell({ children }: PublicShellProps) {
           <div className="hidden md:flex items-center gap-3">
             <ThemeToggle />
             <Link href="/learner">
-              <Button variant="ghost" size="sm">
-                Sign In
+              <Button variant="ghost" size="sm" className="text-xs font-semibold">
+                Sign in / Sign up
               </Button>
             </Link>
             <Link href="/learner">
-              <Button variant="primary" size="sm">
-                Get Started
-                <ArrowRight className="w-4 h-4 ml-1" />
+              <Button size="sm" className="text-xs font-semibold bg-brand-navy hover:bg-brand-navyDeep text-white dark:bg-brand-teal dark:hover:bg-brand-tealDark shadow-sm">
+                Start Studying
+                <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
               </Button>
             </Link>
           </div>
@@ -89,7 +89,7 @@ export function PublicShell({ children }: PublicShellProps) {
               variant="ghost"
               size="icon"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label="Toggle menu"
+              aria-label="Toggle navigation menu"
             >
               {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </Button>
@@ -98,14 +98,14 @@ export function PublicShell({ children }: PublicShellProps) {
 
         {/* Mobile Navigation Drawer */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-b border-border bg-surface px-4 pt-2 pb-6 space-y-3">
-            <nav className="flex flex-col space-y-2">
+          <div className="md:hidden border-b border-border bg-surface px-4 pt-3 pb-6 space-y-4 shadow-lg animate-in slide-in-from-top-2">
+            <nav className="flex flex-col space-y-1">
               {navLinks.map((link) => (
                 <Link
                   key={link.name}
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="px-3 py-2 rounded-md text-sm font-medium hover:bg-surface-muted"
+                  className="px-3 py-2 rounded-lg text-sm font-medium hover:bg-surface-muted transition-colors"
                 >
                   {link.name}
                 </Link>
@@ -113,13 +113,13 @@ export function PublicShell({ children }: PublicShellProps) {
             </nav>
             <div className="pt-4 border-t border-border flex flex-col gap-2">
               <Link href="/learner" onClick={() => setMobileMenuOpen(false)}>
-                <Button variant="secondary" className="w-full justify-center">
-                  Sign In
+                <Button variant="outline" className="w-full justify-center text-xs">
+                  Sign in / Sign up
                 </Button>
               </Link>
               <Link href="/learner" onClick={() => setMobileMenuOpen(false)}>
-                <Button variant="primary" className="w-full justify-center">
-                  Get Started
+                <Button className="w-full justify-center text-xs bg-brand-navy text-white dark:bg-brand-teal">
+                  Start Studying
                 </Button>
               </Link>
             </div>
@@ -154,11 +154,11 @@ export function PublicShell({ children }: PublicShellProps) {
                 Exam Tracks
               </h4>
               <ul className="space-y-2 text-sm text-foreground-secondary">
-                <li><Link href="/exams" className="hover:text-primary">RN Examinations</Link></li>
-                <li><Link href="/exams" className="hover:text-primary">LPN / PN Tracks</Link></li>
-                <li><Link href="/exams" className="hover:text-primary">ATI Subject Sets</Link></li>
-                <li><Link href="/exams" className="hover:text-primary">HESI Specialties</Link></li>
-                <li><Link href="/exams" className="hover:text-primary">Exit Predictor Exams</Link></li>
+                <li><Link href="/exams?track=RN" className="hover:text-primary">RN Examinations</Link></li>
+                <li><Link href="/exams?track=PN_LPN" className="hover:text-primary">LPN / PN Tracks</Link></li>
+                <li><Link href="/exams?category=ATI" className="hover:text-primary">ATI Subject Sets</Link></li>
+                <li><Link href="/exams?category=HESI" className="hover:text-primary">HESI Specialties</Link></li>
+                <li><Link href="/exams?category=ExitPredictor" className="hover:text-primary">Exit Predictor Exams</Link></li>
               </ul>
             </div>
 
@@ -168,11 +168,11 @@ export function PublicShell({ children }: PublicShellProps) {
                 Learning Tools
               </h4>
               <ul className="space-y-2 text-sm text-foreground-secondary">
-                <li><Link href="/learner" className="hover:text-primary">Study Guides & Notes</Link></li>
-                <li><Link href="/learner" className="hover:text-primary">Clinical Care Plans</Link></li>
-                <li><Link href="/learner" className="hover:text-primary">Spaced Flashcards</Link></li>
-                <li><Link href="/learner" className="hover:text-primary">Dosage Calculators</Link></li>
-                <li><Link href="/learner" className="hover:text-primary">AI Clinical Tutor</Link></li>
+                <li><Link href="/learner/guides" className="hover:text-primary">Study Guides & Notes</Link></li>
+                <li><Link href="/learner/care-plans" className="hover:text-primary">Clinical Care Plans</Link></li>
+                <li><Link href="/learner/flashcards" className="hover:text-primary">Spaced Flashcards</Link></li>
+                <li><Link href="/learner/calculators" className="hover:text-primary">Dosage Calculators</Link></li>
+                <li><Link href="/learner/ai-tutor" className="hover:text-primary">AI Clinical Tutor</Link></li>
               </ul>
             </div>
 
@@ -183,10 +183,10 @@ export function PublicShell({ children }: PublicShellProps) {
               </h4>
               <ul className="space-y-2 text-sm text-foreground-secondary">
                 <li><Link href="/learner" className="hover:text-primary">Learner Dashboard</Link></li>
+                <li><Link href="/learner/library" className="hover:text-primary">Study Library</Link></li>
                 <li><Link href="/exam-session" className="hover:text-primary">Exam Experience Shell</Link></li>
                 <li><Link href="/admin" className="hover:text-primary">Admin Studio Shell</Link></li>
-                <li><Link href="/design-system" className="hover:text-primary">Component Showcase</Link></li>
-                <li><Link href="/pricing" className="hover:text-primary">Subscription Plans</Link></li>
+                <li><Link href="/design-system" className="hover:text-primary">Design System Showcase</Link></li>
               </ul>
             </div>
           </div>
