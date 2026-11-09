@@ -1,20 +1,5 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Inter } from "next/font/google";
 import "./globals.css";
-
-const jakarta = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
-  variable: "--font-brand",
-  display: "swap",
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-ui",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "NURVIA — Your Path to Nursing Confidence",
@@ -31,7 +16,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${jakarta.variable} ${inter.variable}`} suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body className="antialiased selection:bg-brand-teal selection:text-white">
         {children}
       </body>

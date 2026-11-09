@@ -192,7 +192,7 @@ export default function ExamSessionPage() {
             </div>
 
             {/* Tutor Mode Concept Coach */}
-            {currentMode === "TutorMode" || currentMode === "Tutor" ? (
+            {currentMode === "Tutor" ? (
               <div className="rounded-xl border border-teal-500/30 bg-teal-500/5 p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-brand-teal flex items-center gap-1.5">
