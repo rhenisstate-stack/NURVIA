@@ -37,3 +37,7 @@ Thumbs.db
 !.vscode/launch.json
 !.vscode/extensions.json
 .idea/
+
+#pg-data
+pg-data/
+.pgdata/
