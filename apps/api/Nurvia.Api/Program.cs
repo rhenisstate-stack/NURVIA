@@ -3,7 +3,6 @@ using System.Security.Cryptography;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.OpenApi.Models;
-using Microsoft.AspNetCore.Mvc.ViewFeatures.Filters;
 using Nurvia.Api.Security;
 using Nurvia.Application.Security;
 using Nurvia.Infrastructure;
@@ -49,7 +48,6 @@ builder.Services.AddControllersWithViews(options =>
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
         options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
     });
-builder.Services.AddScoped<AutoValidateAntiforgeryTokenAuthorizationFilter>();
 
 // Configure Swagger with API Information and Bearer Authentication
 builder.Services.AddEndpointsApiExplorer();
