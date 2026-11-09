@@ -63,9 +63,9 @@ public class SecurityAuthorizationTests
         var principal = _jwtService.ValidateToken(token);
         Assert.NotNull(principal);
         Assert.True(principal.Identity?.IsAuthenticated);
-        Assert.Equal("usr-author-77", principal.FindFirstValue(ClaimTypes.NameIdentifier));
-        Assert.Equal("Author", principal.FindFirstValue(ClaimTypes.Role));
-        Assert.Equal("author@nurvia.internal", principal.FindFirstValue(ClaimTypes.Email));
+        Assert.Equal("usr-author-77", principal.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+        Assert.Equal("Author", principal.FindFirst(ClaimTypes.Role)?.Value);
+        Assert.Equal("author@nurvia.internal", principal.FindFirst(ClaimTypes.Email)?.Value);
     }
 
     [Fact]
