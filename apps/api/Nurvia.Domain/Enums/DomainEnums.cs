@@ -23,16 +23,31 @@ public enum ExamStatus
 
 public enum QuestionType
 {
-    MultipleChoice = 1,      // Single answer
-    MultipleResponse = 2,    // Select All That Apply (SATA)
-    TrueFalse = 3,
-    FillInTheBlank = 4,
-    NumericResponse = 5,
-    OrderedResponse = 6,     // Drag and drop sequencing
-    Matching = 7,
-    MatrixGrid = 8,          // NGN Matrix
-    ClinicalCaseStudy = 9,   // NGN 6-item unfolding case
-    BowTie = 10              // NGN Bow-tie item
+    // Canonical 1-18 Question Types for Nursing Examinations
+    MultipleChoice = 1,          // 1. Single Choice MCQ (Single correct answer among distractors)
+    MultipleResponse = 2,        // 2. Multiple Choice / SATA
+    SelectAllThatApply = 2,      // 3. SATA (Select All That Apply)
+    TrueFalse = 3,               // 15. True / False
+    FillInTheBlank = 4,          // 12. Cloze / Fill in the blank
+    Cloze = 4,                   // Alias for 12. Cloze
+    NumericResponse = 5,         // 14. Numeric Calculation
+    NumericCalculation = 5,      // Alias for 14. Numeric Calculation
+    OrderedResponse = 6,         // 8. Ordered Response (Priority / Sequential steps)
+    Matching = 7,                // 11. Matching (Premise to response pairs)
+    MatrixGrid = 8,              // 13. Matrix / Grid (Rows vs columns)
+    ClinicalCaseStudy = 9,       // 9. Unfolding Case Study (NGN multi-step scenario)
+    UnfoldingCaseStudy = 9,      // Alias for 9. Unfolding Case Study
+    BowTie = 10,                 // 18. Dynamic Lab / Bow-Tie (Actions, condition, parameters)
+    DynamicLabBowTie = 10,       // Alias for 18. Dynamic Lab / Bow-Tie
+
+    MultipleTrueFalse = 11,      // 4. Multiple True/False Checkbox (Matrix of T/F evaluations)
+    ImageBased = 12,             // 5. Image-Based (Visual clinical exhibit / anatomical hotspot)
+    MultipleImageSelection = 13, // 6. Multiple-Image Selection (Choose among visual medical panels)
+    DragAndDrop = 14,            // 7. Drag-and-Drop (Interactive classification into buckets)
+    ExtendedResponse = 15,       // 10. Extended Response / Essay (Clinical rationale explanation)
+    TabularResponse = 16,        // 16. Tabular Response (Data table with trended clinical cues)
+    ShortAnswer = 17,            // 17. Short Answer (Concise medical terminology / calculation)
+    SingleChoice = 18            // 1. Explicit Canonical Single Choice MCQ
 }
 
 public enum NursingPathway
@@ -99,5 +114,8 @@ public enum ExhibitType
     VitalSigns = 2,
     LabResults = 3,
     ProviderOrders = 4,
-    RadiologyReport = 5
+    RadiologyReport = 5,
+    Image = 6,
+    Diagram = 7,
+    Chart = 8
 }
