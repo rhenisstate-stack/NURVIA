@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.OpenApi.Models;
 using Nurvia.Api.Security;
+using Nurvia.Application.Security;
 using Nurvia.Infrastructure;
 using Nurvia.Infrastructure.Persistence;
 

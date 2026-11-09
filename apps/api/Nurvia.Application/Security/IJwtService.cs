@@ -1,6 +1,6 @@
 using System.Security.Claims;
 
-namespace Nurvia.Api.Security;
+namespace Nurvia.Application.Security;
 
 public class JwtSettings
 {

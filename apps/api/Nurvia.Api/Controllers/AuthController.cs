@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Nurvia.Api.Common;
-using Nurvia.Api.Security;
 using Nurvia.Application.Common;
+using Nurvia.Application.Security;
 
 namespace Nurvia.Api.Controllers;
 

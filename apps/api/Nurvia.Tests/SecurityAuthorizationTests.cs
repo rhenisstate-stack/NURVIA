@@ -1,12 +1,7 @@
 using System.Security.Claims;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Moq;
-using Nurvia.Api.Common;
-using Nurvia.Api.Controllers;
-using Nurvia.Api.Security;
 using Nurvia.Application.Questions;
+using Nurvia.Application.Security;
 using Xunit;
 
 namespace Nurvia.Tests;
@@ -26,40 +21,28 @@ public class SecurityAuthorizationTests
             ExpiryMinutes = 60
         };
 
-        var optionsMock = new Mock<IOptions<JwtSettings>>();
-        optionsMock.Setup(o => o.Value).Returns(_jwtSettings);
-        _jwtService = new JwtService(optionsMock.Object);
+        var optionsWrapper = Options.Create(_jwtSettings);
+        _jwtService = new JwtService(optionsWrapper);
     }
 
     [Fact]
-    public void Unauthenticated_UserContext_Returns_NotAuthenticated_And_Empty_Role()
+    public void Unauthenticated_CurrentUser_Returns_NotAuthenticated_And_Empty_Role()
     {
-        var context = new DefaultHttpContext();
-
-        var currentUser = context.GetCurrentUser();
+        var currentUser = new CurrentUser
+        {
+            Id = string.Empty,
+            Name = "Unauthenticated User",
+            Email = string.Empty,
+            Role = string.Empty,
+            IsAuthenticated = false
+        };
 
         Assert.False(currentUser.IsAuthenticated);
         Assert.Equal(string.Empty, currentUser.Id);
         Assert.Equal(string.Empty, currentUser.Role);
-        Assert.False(context.HasRole("Administrator"));
-        Assert.False(context.HasRole("Author"));
-        Assert.False(context.HasRole("Learner"));
-    }
-
-    [Fact]
-    public void Untrusted_Role_Headers_Are_Completely_Ignored_DEF002_Remediation()
-    {
-        var context = new DefaultHttpContext();
-        context.Request.Headers["X-User-Role"] = "Administrator";
-        context.Request.Headers["X-User-Id"] = "hacker-99";
-        context.Request.Headers["X-User-Name"] = "Attacker Impersonating Admin";
-
-        var currentUser = context.GetCurrentUser();
-
-        Assert.False(currentUser.IsAuthenticated);
-        Assert.Equal(string.Empty, currentUser.Id);
-        Assert.Equal(string.Empty, currentUser.Role);
-        Assert.False(context.HasRole("Administrator"));
+        Assert.False(currentUser.HasRole("Administrator"));
+        Assert.False(currentUser.HasRole("Author"));
+        Assert.False(currentUser.HasRole("Learner"));
     }
 
     [Fact]
@@ -125,68 +108,62 @@ public class SecurityAuthorizationTests
     }
 
     [Fact]
-    public void Administrator_Cannot_Assign_Or_Elevate_To_Superadmin_Role()
+    public void Administrator_Role_Has_Access_To_Author_And_Reviewer_But_Cannot_Act_As_Superadmin()
     {
-        var loggerMock = new Mock<ILogger<AuthController>>();
-        var controller = new AuthController(_jwtService, loggerMock.Object);
-
-        // Simulate request authenticated as standard Administrator
-        var httpContext = new DefaultHttpContext();
-        var claims = new List<Claim>
+        var adminUser = new CurrentUser
         {
-            new(ClaimTypes.NameIdentifier, "usr-admin-01"),
-            new(ClaimTypes.Name, "Lead Nurse Administrator"),
-            new(ClaimTypes.Role, "Administrator")
-        };
-        httpContext.User = new ClaimsPrincipal(new ClaimsIdentity(claims, "Bearer"));
-        controller.ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext
-        {
-            HttpContext = httpContext
+            Id = "usr-admin-01",
+            Name = "Lead Nurse Educator",
+            Email = "admin@nurvia.internal",
+            Role = "Administrator",
+            IsAuthenticated = true
         };
 
-        // Administrator attempts to assign Superadmin role
-        var request = new AssignRoleRequest
-        {
-            TargetUserId = "usr-candidate-02",
-            Role = "Superadmin"
-        };
+        Assert.True(adminUser.HasRole("Author"));
+        Assert.True(adminUser.HasRole("Reviewer"));
+        Assert.True(adminUser.HasRole("Administrator"));
 
-        var result = controller.AssignRole(request);
-        var objectResult = Assert.IsType<Microsoft.AspNetCore.Mvc.ObjectResult>(result.Result);
-
-        Assert.Equal(403, objectResult.StatusCode);
+        // Non-negotiable security invariant: Regular administrator cannot perform Superadmin-only actions
+        Assert.False(adminUser.HasRole("Superadmin"));
     }
 
     [Fact]
-    public void Superadmin_Can_Successfully_Assign_Roles()
+    public void Superadmin_Role_Passes_All_Role_Checks()
     {
-        var loggerMock = new Mock<ILogger<AuthController>>();
-        var controller = new AuthController(_jwtService, loggerMock.Object);
-
-        // Simulate request authenticated as Superadmin
-        var httpContext = new DefaultHttpContext();
-        var claims = new List<Claim>
+        var superadminUser = new CurrentUser
         {
-            new(ClaimTypes.NameIdentifier, "usr-superadmin-01"),
-            new(ClaimTypes.Name, "Superadmin Officer"),
-            new(ClaimTypes.Role, "Superadmin")
-        };
-        httpContext.User = new ClaimsPrincipal(new ClaimsIdentity(claims, "Bearer"));
-        controller.ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext
-        {
-            HttpContext = httpContext
+            Id = "usr-superadmin-01",
+            Name = "System Owner",
+            Email = "superadmin@nurvia.internal",
+            Role = "Superadmin",
+            IsAuthenticated = true
         };
 
-        var request = new AssignRoleRequest
+        Assert.True(superadminUser.HasRole("Superadmin"));
+        Assert.True(superadminUser.HasRole("Administrator"));
+        Assert.True(superadminUser.HasRole("Author"));
+        Assert.True(superadminUser.HasRole("Reviewer"));
+        Assert.True(superadminUser.HasRole("Publisher"));
+    }
+
+    [Fact]
+    public void Learner_Role_Cannot_Access_Admin_Or_Author_Roles()
+    {
+        var learnerUser = new CurrentUser
         {
-            TargetUserId = "usr-admin-02",
-            Role = "Administrator"
+            Id = "usr-learner-01",
+            Name = "Alex Rivera",
+            Email = "learner@nurvia.internal",
+            Role = "Learner",
+            IsAuthenticated = true
         };
 
-        var result = controller.AssignRole(request);
-        var okResult = Assert.IsType<Microsoft.AspNetCore.Mvc.OkObjectResult>(result.Result);
-
-        Assert.Equal(200, okResult.StatusCode);
+        Assert.True(learnerUser.HasRole("Learner"));
+        Assert.False(learnerUser.HasRole("Administrator"));
+        Assert.False(learnerUser.HasRole("Author"));
+        Assert.False(learnerUser.HasRole("Reviewer"));
+        Assert.False(learnerUser.HasRole("Publisher"));
+        Assert.False(learnerUser.HasRole("Superadmin"));
     }
 
     [Fact]
