@@ -110,11 +110,6 @@ export function StudentTestimonialCarousel({
     setCurrentIndex((prev) => (prev >= maxIndex ? 0 : prev + 1));
   };
 
-  const handleDotClick = (index: number) => {
-    registerManualInteraction();
-    setCurrentIndex(Math.min(index, maxIndex));
-  };
-
   // Touch handlers
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.targetTouches[0].clientX;
@@ -148,9 +143,6 @@ export function StudentTestimonialCarousel({
       </div>
     );
   }
-
-  // Calculate pages for pagination indicators
-  const pageCount = maxIndex + 1;
 
   return (
     <section
@@ -188,29 +180,17 @@ export function StudentTestimonialCarousel({
             </div>
           </div>
 
-          {/* Carousel Navigation Controls */}
+          {/* Automatic Rotation Status Indicator */}
           <div className="flex items-center gap-2 self-end sm:self-auto">
-            <span className="text-xs text-foreground-muted font-medium mr-2 hidden sm:inline">
-              {currentIndex + 1} of {totalItems}
+            <span className="text-xs text-foreground-muted font-medium flex items-center gap-1.5">
+              <span className={cn(
+                "w-2 h-2 rounded-full",
+                isHovered || isFocused ? "bg-amber-500" : "bg-brand-teal animate-pulse"
+              )} />
+              <span>{isHovered || isFocused ? "Paused on Hover" : "Auto Rotating"}</span>
+              <span className="text-border mx-1">•</span>
+              <span>{currentIndex + 1} of {totalItems}</span>
             </span>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handlePrev}
-              aria-label="Previous testimonial"
-              className="h-8 w-8 rounded-full border-border bg-background hover:bg-surface-muted shadow-2xs"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleNext}
-              aria-label="Next testimonial"
-              className="h-8 w-8 rounded-full border-border bg-background hover:bg-surface-muted shadow-2xs"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
           </div>
         </div>
 
@@ -307,26 +287,6 @@ export function StudentTestimonialCarousel({
             })}
           </div>
         </div>
-
-        {/* Pagination Dots */}
-        {pageCount > 1 && (
-          <div className="mt-5 flex items-center justify-center gap-1.5">
-            {Array.from({ length: pageCount }).map((_, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => handleDotClick(idx)}
-                aria-label={`Go to slide ${idx + 1}`}
-                className={cn(
-                  "h-1.5 rounded-full transition-all duration-300",
-                  currentIndex === idx
-                    ? "w-6 bg-brand-teal dark:bg-teal-400"
-                    : "w-1.5 bg-border hover:bg-foreground-muted"
-                )}
-              />
-            ))}
-          </div>
-        )}
       </div>
     </section>
   );

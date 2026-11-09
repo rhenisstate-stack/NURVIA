@@ -145,7 +145,6 @@ export const learnerNavigation: NavSection[] = [
   {
     title: "ACCOUNT",
     items: [
-      { name: "Content Studio", href: "/admin", icon: ShieldAlert, badge: "Studio" },
       { name: "My Account", href: "/learner/account", icon: User },
       { name: "Settings", href: "/learner/settings", icon: Settings },
       { name: "Subscription", href: "/learner/subscription", icon: CreditCard },

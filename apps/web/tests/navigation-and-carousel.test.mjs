@@ -74,7 +74,7 @@ test('3. Testimonial data structure and validation contracts', async () => {
 });
 
 // 4. Testimonial Carousel Architecture & Accessibility
-test('4. Carousel component implements pause-on-hover, pause-on-focus, swipe, and reduced-motion', async () => {
+test('4. Carousel component implements automatic rotation, pause-on-hover, pause-on-focus, swipe, reduced-motion, and no manual buttons or dots', async () => {
   const carouselFile = fs.readFileSync(path.join(webRoot, 'components', 'home', 'student-testimonial-carousel.tsx'), 'utf8');
   assert(carouselFile.includes('role="region"'), 'Carousel region role missing');
   assert(carouselFile.includes('aria-roledescription="carousel"'), 'Carousel roledescription missing');
@@ -84,7 +84,9 @@ test('4. Carousel component implements pause-on-hover, pause-on-focus, swipe, an
   assert(carouselFile.includes('onBlur'), 'Blur listener missing');
   assert(carouselFile.includes('onTouchStart'), 'Touch start listener missing');
   assert(carouselFile.includes('prefers-reduced-motion'), 'Reduced motion query missing');
-  assert(carouselFile.includes('Pagination Dots'), 'Pagination controls missing');
+  assert(!carouselFile.includes('Pagination Dots'), 'Pagination dots must not be rendered in continuous automatic rotation');
+  assert(!carouselFile.includes('aria-label="Previous slide"'), 'Manual previous button must not be rendered');
+  assert(!carouselFile.includes('aria-label="Next slide"'), 'Manual next button must not be rendered');
 });
 
 // 5. Verification of All 47 App Page Files On Disk
@@ -145,7 +147,7 @@ test('5. Verify all 47 routes have concrete page.tsx files on disk', () => {
 });
 
 // 6. Learner Shell Navigation Structure
-test('6. Learner shell navigation retains all four exam pathways and resource modules', () => {
+test('6. Learner shell navigation retains all four exam pathways and resource modules without leaking admin paths', () => {
   const learnerShellFile = fs.readFileSync(path.join(webRoot, 'components', 'layout', 'learner-shell.tsx'), 'utf8');
   assert(learnerShellFile.includes('RN Exams'), 'RN Exams missing');
   assert(learnerShellFile.includes('LPN / PN Exams'), 'LPN / PN Exams missing');
@@ -153,7 +155,7 @@ test('6. Learner shell navigation retains all four exam pathways and resource mo
   assert(learnerShellFile.includes('LPN Exit'), 'LPN Exit missing');
   assert(learnerShellFile.includes('Study Library'), 'Study Library missing');
   assert(learnerShellFile.includes('AI Tutor'), 'AI Tutor missing');
-  assert(learnerShellFile.includes('Content Studio'), 'Content Studio missing');
+  assert(!learnerShellFile.includes('Content Studio'), 'Content Studio must not be exposed to learners');
 });
 
 // 7. Dynamic Route Parameter Safety

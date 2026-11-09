@@ -91,27 +91,27 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         />
       )}
 
-      {/* Admin Sidebar (High Density) */}
+      {/* Admin Sidebar (High Density, Theme-Semantic) */}
       <aside
         className={cn(
-          "fixed top-0 bottom-0 left-0 z-50 flex flex-col border-r border-border bg-brand-navyDeep text-slate-100 transition-all duration-300 ease-in-out",
+          "fixed top-0 bottom-0 left-0 z-50 flex flex-col border-r border-border bg-surface text-foreground transition-all duration-300 ease-in-out shadow-xs",
           collapsed ? "w-[72px]" : "w-[260px]",
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
         {/* Header */}
-        <div className="flex h-16 items-center justify-between px-4 border-b border-slate-800">
+        <div className="flex h-16 items-center justify-between px-4 border-b border-border">
           <div className="flex items-center gap-2">
             <Logo size="sm" variant={collapsed ? "symbol" : "compact"} href="/admin" />
             {!collapsed && (
-              <span className="text-[10px] font-bold uppercase tracking-wider bg-teal-500/20 text-teal-300 px-1.5 py-0.5 rounded">
+              <span className="text-[10px] font-bold uppercase tracking-wider bg-brand-teal/15 text-brand-teal px-1.5 py-0.5 rounded border border-brand-teal/20">
                 Admin
               </span>
             )}
           </div>
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="hidden lg:flex h-6 w-6 items-center justify-center rounded border border-slate-700 text-slate-400 hover:text-white"
+            className="hidden lg:flex h-6 w-6 items-center justify-center rounded border border-border text-foreground-secondary hover:text-foreground hover:bg-surface-muted transition-colors"
           >
             {collapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
           </button>
@@ -122,7 +122,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           {adminNavigation.map((group) => (
             <div key={group.title} className="space-y-1">
               {!collapsed && (
-                <div className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                <div className="px-3 text-[10px] font-bold uppercase tracking-wider text-foreground-muted">
                   {group.title}
                 </div>
               )}
@@ -137,16 +137,19 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                     className={cn(
                       "group flex items-center gap-2.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
                       isActive
-                        ? "bg-teal-600 text-white font-semibold"
-                        : "text-slate-300 hover:bg-slate-800/80 hover:text-white",
+                        ? "bg-brand-teal text-white font-semibold shadow-xs"
+                        : "text-foreground-secondary hover:bg-surface-muted hover:text-foreground",
                       collapsed && "justify-center px-1"
                     )}
                     title={collapsed ? item.name : undefined}
                   >
-                    <Icon className="w-4 h-4 shrink-0 text-slate-400 group-hover:text-teal-300" />
+                    <Icon className={cn("w-4 h-4 shrink-0 transition-colors", isActive ? "text-white" : "text-foreground-muted group-hover:text-brand-teal")} />
                     {!collapsed && <span className="flex-1 truncate">{item.name}</span>}
                     {!collapsed && item.badge && (
-                      <span className="text-[10px] bg-slate-800 text-slate-300 px-1.5 py-0.2 rounded font-mono">
+                      <span className={cn(
+                        "text-[10px] px-1.5 py-0.2 rounded font-mono",
+                        isActive ? "bg-white/20 text-white" : "bg-surface-muted text-foreground-secondary"
+                      )}>
                         {item.badge}
                       </span>
                     )}
@@ -158,9 +161,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Switch to Learner App */}
-        <div className="p-3 border-t border-slate-800 bg-slate-900/60">
+        <div className="p-3 border-t border-border bg-surface-muted/50">
           <Link href="/learner">
-            <Button variant="secondary" size="sm" className="w-full text-xs h-8 justify-center gap-1.5 bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700">
+            <Button variant="outline" size="sm" className="w-full text-xs h-8 justify-center gap-1.5">
               <ExternalLink className="w-3.5 h-3.5" />
               {!collapsed && <span>Learner App</span>}
             </Button>

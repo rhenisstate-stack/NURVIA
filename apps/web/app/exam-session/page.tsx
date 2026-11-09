@@ -173,9 +173,24 @@ function ExamSessionContent() {
     async function loadAttempt() {
       if (attemptIdParam) {
         setIsLoading(true);
+        if (modeParam === "Review") {
+          const reviewRes = await nurviaApi.getAttemptReview(attemptIdParam);
+          if (reviewRes.success && reviewRes.data) {
+            hydrateFromReview(reviewRes.data);
+            setIsLoading(false);
+            return;
+          }
+        }
+
         const res = await nurviaApi.getActiveAttempt(attemptIdParam);
         if (res.success && res.data) {
           hydrateFromAttempt(res.data);
+        } else {
+          // Attempt may already be submitted, try loading completed review
+          const reviewRes = await nurviaApi.getAttemptReview(attemptIdParam);
+          if (reviewRes.success && reviewRes.data) {
+            hydrateFromReview(reviewRes.data);
+          }
         }
         setIsLoading(false);
       } else if (examIdParam) {
@@ -190,7 +205,46 @@ function ExamSessionContent() {
     }
 
     loadAttempt();
-  }, [attemptIdParam, examIdParam]);
+  }, [attemptIdParam, examIdParam, modeParam]);
+
+  const hydrateFromReview = (data: SubmittedExamResultDto) => {
+    setAttemptId(data.attemptId);
+    setExamTitle(data.examTitle);
+    setIsSubmitted(true);
+    setSubmittedResult(data);
+    setDeliveryMode("Review");
+
+    if (data.reviewQuestions && data.reviewQuestions.length > 0) {
+      const mapped: RendererQuestion[] = data.reviewQuestions.map((q) => ({
+        id: q.questionId,
+        orderIndex: q.orderIndex,
+        stem: q.stem,
+        questionType: q.questionType,
+        cognitiveSkill: q.cognitiveSkill,
+        clientNeedCategory: q.clientNeedCategory,
+        generalRationale: q.generalRationale,
+        options: q.options.map((o) => ({
+          id: o.id,
+          optionIndex: o.optionIndex,
+          optionText: o.optionText,
+          isCorrect: o.isCorrect,
+          specificRationale: o.specificRationale,
+          wasSelected: o.wasSelected,
+          displayOrder: o.optionIndex,
+        })),
+        exhibits: q.exhibits,
+      }));
+      setQuestions(mapped);
+
+      const initialAnswers: Record<string, string> = {};
+      data.reviewQuestions.forEach((q) => {
+        if (q.learnerResponse) {
+          initialAnswers[q.questionId] = q.learnerResponse;
+        }
+      });
+      setAnswers(initialAnswers);
+    }
+  };
 
   const hydrateFromAttempt = (data: StartAttemptResultDto) => {
     setAttemptId(data.attemptId);
