@@ -80,7 +80,7 @@ export default function NewQuestionAuthoringPage() {
   const validationErrors = React.useMemo(() => {
     const errors: string[] = [];
     if (!stem || stem.trim().length < 10) {
-      errors.Add ? null : errors.push("Question stem must contain at least 10 characters.");
+      errors.push("Question stem must contain at least 10 characters.");
     }
     if (!generalRationale || generalRationale.trim().length < 15) {
       errors.push("Clinical rationale must contain at least 15 characters explaining why choices are correct.");
