@@ -100,6 +100,25 @@ public sealed class AuthService : IAuthService
         return true;
     }
 
+    public async Task<bool> BootstrapSuperadminAsync(
+        string name, string email, string password, CancellationToken cancellationToken)
+    {
+        var normalizedEmail = NormalizeEmail(email);
+        if (await _context.UserAccounts.AnyAsync(
+                user => user.Role == "Superadmin", cancellationToken) ||
+            await _context.UserAccounts.AnyAsync(
+                user => user.NormalizedEmail == normalizedEmail, cancellationToken))
+        {
+            return false;
+        }
+
+        var account = new UserAccount(name.Trim(), email.Trim(), _passwordHasher.Hash(password));
+        account.ChangeRole("Superadmin", "bootstrap");
+        _context.UserAccounts.Add(account);
+        await _context.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
     private static string NormalizeEmail(string email) => email.Trim().ToUpperInvariant();
 
     private static AuthUserDto Map(UserAccount account) => new()

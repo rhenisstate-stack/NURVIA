@@ -27,4 +27,5 @@ public interface IAuthService
     Task<AuthUserDto?> GetUserAsync(string id, CancellationToken cancellationToken);
     Task<AuthUserDto?> UpdateProfileAsync(string id, string name, CancellationToken cancellationToken);
     Task<bool> AssignRoleAsync(string targetUserId, string role, string updatedBy, CancellationToken cancellationToken);
+    Task<bool> BootstrapSuperadminAsync(string name, string email, string password, CancellationToken cancellationToken);
 }

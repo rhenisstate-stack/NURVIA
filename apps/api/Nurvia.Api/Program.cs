@@ -154,6 +154,22 @@ app.MapGet("/api/catalogue/summary", () => Results.Ok(new
 .WithOpenApi();
 
 // Automatically seed initial clinical content if database is empty
+var bootstrapName = builder.Configuration["BootstrapAdmin:Name"];
+var bootstrapEmail = builder.Configuration["BootstrapAdmin:Email"];
+var bootstrapPassword = builder.Configuration["BootstrapAdmin:Password"];
+var bootstrapConfigured = !string.IsNullOrWhiteSpace(bootstrapName) ||
+                         !string.IsNullOrWhiteSpace(bootstrapEmail) ||
+                         !string.IsNullOrWhiteSpace(bootstrapPassword);
+if (bootstrapConfigured &&
+    (string.IsNullOrWhiteSpace(bootstrapName) ||
+     string.IsNullOrWhiteSpace(bootstrapEmail) ||
+     string.IsNullOrWhiteSpace(bootstrapPassword) ||
+     bootstrapPassword.Length < 12))
+{
+    throw new InvalidOperationException(
+        "BootstrapAdmin:Name, BootstrapAdmin:Email, and a password of at least 12 characters must be configured together.");
+}
+
 try
 {
     using var scope = app.Services.CreateScope();
@@ -163,6 +179,16 @@ try
 catch (Exception ex)
 {
     app.Logger.LogWarning(ex, "Database seeding skipped or encountered non-fatal connection issue.");
+}
+
+if (bootstrapConfigured)
+{
+    using var scope = app.Services.CreateScope();
+    var authService = scope.ServiceProvider.GetRequiredService<IAuthService>();
+    var created = await authService.BootstrapSuperadminAsync(
+        bootstrapName!, bootstrapEmail!, bootstrapPassword!, CancellationToken.None);
+    if (!created)
+        app.Logger.LogWarning("Bootstrap Superadmin was not created because an account or Superadmin already exists.");
 }
 
 app.Run();

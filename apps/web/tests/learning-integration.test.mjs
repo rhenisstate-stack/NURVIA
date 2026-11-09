@@ -25,12 +25,12 @@ function test(name, fn) {
 }
 
 // 1. Study Library View & Catalog Wiring
-test('1. Study Library View integrates published exams and generates bidirectional query links', () => {
+test('1. Study Library View lists only persisted published exams and starts by persisted exam id', () => {
   const libraryFile = fs.readFileSync(path.join(webRoot, 'components', 'study', 'study-library-view.tsx'), 'utf8');
-  assert(libraryFile.includes('nurviaApi.getExams({ status: 5 })'), 'Published exam status query missing');
+  assert(libraryFile.includes('status: "Published"'), 'Published exam status query missing');
   assert(libraryFile.includes('examId='), 'Live examId query parameter missing');
-  assert(libraryFile.includes('setId='), 'Fallback setId query parameter missing');
-  assert(libraryFile.includes('setStudySets'), 'Dynamic study set state setter missing');
+  assert(!libraryFile.includes('initialStudySets'), 'Static study-set fallback must not be presented as live exams');
+  assert(libraryFile.includes('setExams'), 'Published exam response is not rendered');
 });
 
 // 2. Exam Session Lifecycle & Review Mode
@@ -56,12 +56,12 @@ test('3. Learner History page queries getAttemptHistory and links to review/resu
 });
 
 // 4. Custom Practice Engine Configuration
-test('4. Custom Practice page supports pathways, question volume slider, and delivery modes', () => {
+test('4. Quick Practice starts only persisted published exams', () => {
   const customFile = fs.readFileSync(path.join(webRoot, 'app', 'learner', 'custom-practice', 'page.tsx'), 'utf8');
-  assert(customFile.includes('selectedTrack'), 'Track state missing');
-  assert(customFile.includes('selectedMode'), 'Mode state missing');
-  assert(customFile.includes('questionCount'), 'Question count state missing');
-  assert(customFile.includes('/exam-session?track='), 'Exam session launch link missing');
+  assert(customFile.includes('nurviaApi.getExams'), 'Published exam query missing');
+  assert(customFile.includes('status: "Published"'), 'Only published exams should be selectable');
+  assert(customFile.includes('examId='), 'Exam session must be started by persisted exam ID');
+  assert(!customFile.includes('questionCount'), 'Unsupported custom question counts must not be advertised');
 });
 
 // 5. Learner Exam Tracks & Pathways

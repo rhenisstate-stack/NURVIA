@@ -3,27 +3,14 @@
 import * as React from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { initialStudySets, StudySetItem } from "@/lib/study-sets-data";
+import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Search,
-  BookOpen,
-  Clock,
-  Sparkles,
-  Star,
-  MoreVertical,
-  Play,
-  Eye,
-  Bot,
-  Bookmark,
-  Share2,
-  CheckCircle2,
-  Copy,
-  SlidersHorizontal,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Card } from "@/components/ui/card";
 import { nurviaApi } from "@/lib/api-client";
+import type { ExamDto } from "@/lib/api-types";
+
+const pathways = ["All", "RN", "PN_LPN", "RN_Exit", "PN_Exit"] as const;
+const categories = ["All", "ATI", "HESI", "RegularCourse", "Certification", "ExitPredictor"] as const;
 
 interface StudyLibraryViewProps {
   isPublic?: boolean;
@@ -34,347 +21,145 @@ interface StudyLibraryViewProps {
 export function StudyLibraryView({
   isPublic = false,
   initialTrack,
-  initialCategory: propCategory,
+  initialCategory,
 }: StudyLibraryViewProps) {
   const searchParams = useSearchParams();
-  const paramTrack = initialTrack || searchParams?.get("track") || "";
-  const paramCategory = propCategory || searchParams?.get("category") || "";
-
-  // Compute default filter chip based on track
-  const defaultFilter = React.useMemo(() => {
-    if (paramTrack === "PN_LPN" || paramTrack === "PN_Exit") return "LPN Exams";
-    if (paramTrack === "RN" || paramTrack === "RN_Exit") return "RN Exams";
-    if (paramCategory === "NCLEX") return "NCLEX";
-    return "All";
-  }, [paramTrack, paramCategory]);
-
-  const [searchQuery, setSearchQuery] = React.useState(searchParams?.get("q") || "");
-  const [activeFilter, setActiveFilter] = React.useState(defaultFilter);
-  const [activeMenuId, setActiveMenuId] = React.useState<string | null>(null);
-  const [savedSets, setSavedSets] = React.useState<Record<string, boolean>>({});
-  const [copiedId, setCopiedId] = React.useState<string | null>(null);
-  const [studySets, setStudySets] = React.useState<StudySetItem[]>(initialStudySets);
+  const queryTrack = initialTrack || searchParams?.get("track") || "All";
+  const queryCategory = initialCategory || searchParams?.get("category") || "All";
+  const [pathway, setPathway] = React.useState<string>(queryTrack);
+  const [category, setCategory] = React.useState<string>(queryCategory);
+  const [search, setSearch] = React.useState(searchParams?.get("q") || "");
+  const [exams, setExams] = React.useState<ExamDto[]>([]);
+  const [totalCount, setTotalCount] = React.useState(0);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [retryCount, setRetryCount] = React.useState(0);
 
   React.useEffect(() => {
-    setActiveFilter(defaultFilter);
-  }, [defaultFilter]);
-
-  React.useEffect(() => {
-    async function fetchPublishedExams() {
-      try {
-        const res = await nurviaApi.getExams({ status: 5 }); // 5 = ExamStatus.Published
-        if (res.success && res.data && res.data.items && res.data.items.length > 0) {
-          const apiSets: StudySetItem[] = res.data.items.map((exam) => ({
-            id: exam.id,
-            title: exam.title,
-            slug: exam.code ? exam.code.toLowerCase().replace(/[^a-z0-9]+/g, "-") : `exam-${exam.id.slice(0, 8)}`,
-            category: "EXIT EXAM" as const,
-            badge: "Proctored" as const,
-            viewsCount: "1.2k",
-            hasRationales: true,
-            hasNgnFormat: true,
-            questionCount: exam.totalQuestions || 50,
-            rating: 4.9,
-            reviewsCount: 128,
-            description: exam.description || "",
-            examTrack: exam.category === "ExitPredictor" ? "NCLEX" : "ATI",
-            pathway: exam.pathway || "RN",
-            studentQuote: exam.currentVersion?.instructions || exam.description || "Official board-aligned examination module.",
-          }));
-          setStudySets([...apiSets, ...initialStudySets.filter((s) => !apiSets.some((a) => a.id === s.id))]);
-        }
-      } catch {
-        // Fallback maintained
+    let active = true;
+    setLoading(true);
+    setError(null);
+    void nurviaApi.getExams({
+      status: "Published",
+      pathway: pathway === "All" ? undefined : pathway,
+      category: category === "All" ? undefined : category,
+      searchTerm: search.trim() || undefined,
+      pageSize: 100,
+    }).then((response) => {
+      if (!active) return;
+      if (!response.success || !response.data) {
+        setError(response.message || "Unable to load published exams.");
+      } else {
+        setExams(response.data.items);
+        setTotalCount(response.data.totalCount);
       }
-    }
-
-    fetchPublishedExams();
-  }, []);
-
-  const filterChips = [
-    { label: "All", value: "All" },
-    { label: "RN Exams", value: "RN Exams" },
-    { label: "LPN Exams", value: "LPN Exams" },
-    { label: "NCLEX", value: "NCLEX" },
-    { label: "Dosage Calculations", value: "Dosage Calculations" },
-  ];
-
-  // Filter study sets
-  const filteredSets = React.useMemo(() => {
-    return studySets.filter((set) => {
-      // Search matching
-      const q = searchQuery.toLowerCase().trim();
-      const matchesSearch =
-        !q ||
-        set.title.toLowerCase().includes(q) ||
-        set.description.toLowerCase().includes(q) ||
-        set.category.toLowerCase().includes(q) ||
-        set.examTrack.toLowerCase().includes(q);
-
-      // Specific track/category matching when provided via URL params
-      if (paramCategory) {
-        const cat = paramCategory.toLowerCase();
-        const matchesSpecificCat =
-          set.examTrack.toLowerCase().includes(cat) ||
-          set.category.toLowerCase().includes(cat) ||
-          (cat === "exitpredictor" && (set.category === "EXIT EXAM" || set.title.toLowerCase().includes("predictor")));
-        if (!matchesSpecificCat) return false;
-      }
-
-      // Filter chip matching
-      let matchesFilter = true;
-      if (activeFilter === "RN Exams") {
-        matchesFilter = set.pathway === "RN" || set.pathway === "RN_Exit";
-      } else if (activeFilter === "LPN Exams") {
-        matchesFilter = set.pathway === "PN_LPN" || set.pathway === "PN_Exit";
-      } else if (activeFilter === "NCLEX") {
-        matchesFilter = set.examTrack === "NCLEX" || set.category === "EXIT EXAM" || set.category === "NCLEX RN";
-      } else if (activeFilter === "Dosage Calculations") {
-        matchesFilter = set.category === "NURSING MATH" || set.title.toLowerCase().includes("dosage");
-      }
-
-      return matchesSearch && matchesFilter;
+      setLoading(false);
     });
-  }, [searchQuery, activeFilter, paramCategory]);
+    return () => { active = false; };
+  }, [pathway, category, search, retryCount]);
 
-  const toggleSave = (id: string) => {
-    setSavedSets((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
-    setActiveMenuId(null);
-  };
-
-  const copySetLink = (id: string) => {
-    navigator.clipboard?.writeText(window.location.origin + `/exam-session?setId=${id}`);
-    setCopiedId(id);
-    setTimeout(() => {
-      setCopiedId(null);
-      setActiveMenuId(null);
-    }, 1500);
-  };
+  React.useEffect(() => {
+    setPathway(queryTrack);
+    setCategory(queryCategory);
+  }, [queryTrack, queryCategory]);
 
   return (
     <div className="space-y-6">
-      {/* Page Title & Stats Header matching screenshot */}
-      <div className="space-y-1">
-        <h1 className="font-brand text-2xl sm:text-3xl font-extrabold text-foreground">
-          Study Library
+      <header className="space-y-1">
+        <h1 className="font-brand text-2xl font-extrabold text-foreground sm:text-3xl">
+          {isPublic ? "Explore published exams" : "Exam library"}
         </h1>
-        <p className="text-xs sm:text-sm text-foreground-secondary font-medium">
-          <strong className="text-foreground">1,209 study sets</strong> •{" "}
-          <strong className="text-foreground">73,366 questions</strong> available with evidence-based rationales
+        <p className="text-sm text-foreground-secondary">
+          Browse available assessments by nursing pathway and exam category.
         </p>
-      </div>
+      </header>
 
-      {/* Full-width Search Input */}
       <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground-muted" />
+        <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-muted" aria-hidden="true" />
+        <label htmlFor="exam-search" className="sr-only">Search published exams</label>
         <input
+          id="exam-search"
           type="search"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search study sets, topics, or keywords..."
-          className="w-full pl-11 pr-4 py-2.5 rounded-xl border border-border bg-surface text-sm placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-brand-teal shadow-xs"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search exam titles or descriptions"
+          className="h-11 w-full rounded-xl border border-border bg-surface pl-11 pr-4 text-sm text-foreground placeholder:text-foreground-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
         />
       </div>
 
-      {/* Filter Chips matching screenshot */}
-      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 text-xs font-semibold">
-        {filterChips.map((chip) => {
-          const isActive = activeFilter === chip.value;
-          return (
-            <button
-              key={chip.value}
+      <fieldset className="space-y-2">
+        <legend className="text-xs font-semibold uppercase tracking-wide text-foreground-secondary">Nursing pathway</legend>
+        <div className="flex flex-wrap gap-2">
+          {pathways.map((item) => (
+            <Button
+              key={item}
               type="button"
-              onClick={() => setActiveFilter(chip.value)}
-              className={cn(
-                "px-4 py-1.5 rounded-full border transition-all whitespace-nowrap",
-                isActive
-                  ? "bg-brand-navy text-white border-brand-navy dark:bg-brand-teal dark:border-brand-teal shadow-xs"
-                  : "bg-surface text-foreground-secondary border-border hover:border-brand-teal/50 hover:text-foreground"
-              )}
+              size="sm"
+              variant={pathway === item ? "primary" : "outline"}
+              aria-pressed={pathway === item}
+              onClick={() => setPathway(item)}
             >
-              {chip.label}
-            </button>
-          );
-        })}
-      </div>
+              {item.replace("_", " ")}
+            </Button>
+          ))}
+        </div>
+      </fieldset>
 
-      {/* Results Count Line */}
-      <div className="flex items-center justify-between text-xs text-foreground-muted pt-1">
-        <span>
-          Showing <strong className="text-foreground">{filteredSets.length}</strong> of{" "}
-          <strong className="text-foreground">656</strong> active study sets
-        </span>
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery("")}
-            className="text-brand-teal hover:underline text-xs font-medium"
-          >
-            Clear search
-          </button>
-        )}
-      </div>
-
-      {/* 3-Column Grid of Study Sets matching media_1794209744175_4438dfcc.jpg */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {filteredSets.map((set) => {
-          const isMenuOpen = activeMenuId === set.id;
-          const isSaved = savedSets[set.id];
-
-          return (
-            <div
-              key={set.id}
-              className="relative rounded-2xl border border-border/80 bg-surface p-5 sm:p-6 flex flex-col justify-between space-y-4 hover:border-brand-teal/50 hover:shadow-md transition-all"
+      <fieldset className="space-y-2">
+        <legend className="text-xs font-semibold uppercase tracking-wide text-foreground-secondary">Exam category</legend>
+        <div className="flex flex-wrap gap-2">
+          {categories.map((item) => (
+            <Button
+              key={item}
+              type="button"
+              size="sm"
+              variant={category === item ? "primary" : "outline"}
+              aria-pressed={category === item}
+              onClick={() => setCategory(item)}
             >
-              <div className="space-y-3">
-                {/* Header: Tag pill and Overflow Menu button */}
-                <div className="flex items-center justify-between">
-                  <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/20">
-                    {set.category}
-                  </span>
+              {item.replace(/([a-z])([A-Z])/g, "$1 $2")}
+            </Button>
+          ))}
+        </div>
+      </fieldset>
 
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setActiveMenuId(isMenuOpen ? null : set.id)}
-                      className="p-1 rounded-lg hover:bg-surface-muted text-foreground-muted hover:text-foreground transition-colors"
-                      aria-label="More options"
-                    >
-                      <MoreVertical className="w-4 h-4" />
-                    </button>
-
-                    {/* Overflow dropdown menu */}
-                    {isMenuOpen && (
-                      <div
-                        className="absolute right-0 top-7 z-20 w-44 rounded-xl border border-border bg-surface text-foreground shadow-xl p-1 space-y-0.5 text-xs animate-in fade-in"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => toggleSave(set.id)}
-                          className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-surface-muted flex items-center gap-2"
-                        >
-                          <Bookmark className={cn("w-3.5 h-3.5", isSaved && "fill-brand-teal text-brand-teal")} />
-                          <span>{isSaved ? "Remove from Library" : "Save to My Library"}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => copySetLink(set.id)}
-                          className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-surface-muted flex items-center gap-2"
-                        >
-                          <Copy className="w-3.5 h-3.5" />
-                          <span>{copiedId === set.id ? "Link Copied!" : "Copy Study Link"}</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Study-Set Title */}
-                <h3 className="font-brand text-base sm:text-lg font-bold text-foreground leading-snug">
-                  {set.title}
-                </h3>
-
-                {/* Question count */}
-                <div className="flex items-center gap-1.5 text-xs text-foreground-muted font-medium">
-                  <BookOpen className="w-3.5 h-3.5 text-brand-teal" />
-                  <span>{set.questionCount} questions</span>
-                </div>
-
-                {/* Rating and review count */}
-                <div className="flex items-center gap-1.5 text-xs text-foreground-muted">
-                  <div className="flex items-center text-amber-500">
-                    <Star className="w-3.5 h-3.5 fill-amber-500" />
-                  </div>
-                  <span className="font-bold text-foreground">{set.rating}</span>
-                  <span>({set.reviewsCount.toLocaleString()} reviews)</span>
-                </div>
-
-                {/* Student Quote snippet */}
-                {set.studentQuote && (
-                  <p className="text-xs text-foreground-secondary italic bg-surface-muted/50 p-2.5 rounded-xl border border-border/50">
-                    &ldquo;{set.studentQuote}&rdquo;
-                  </p>
-                )}
+      {!loading && !error && (
+        <p className="text-xs text-foreground-muted" aria-live="polite">
+          Showing {exams.length} of {totalCount} published exam{totalCount === 1 ? "" : "s"}.
+        </p>
+      )}
+      {loading && <p className="py-8 text-center text-sm text-foreground-secondary" aria-live="polite">Loading published exams…</p>}
+      {error && (
+        <div role="alert" className="space-y-3 rounded-xl border border-rose-300 bg-rose-50 p-4 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200">
+          <p>{error}</p>
+          <Button type="button" variant="outline" size="sm" onClick={() => setRetryCount((count) => count + 1)}>Retry</Button>
+        </div>
+      )}
+      {!loading && !error && exams.length === 0 && (
+        <Card className="p-6">
+          <p className="font-semibold text-foreground">No published exams match these filters.</p>
+          <p className="mt-1 text-sm text-foreground-secondary">Try another pathway or category, or check back when more assessments are published.</p>
+        </Card>
+      )}
+      {!loading && !error && exams.length > 0 && (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {exams.map((exam) => (
+            <Card key={exam.id} className="flex flex-col justify-between gap-5 p-5">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-brand-teal">
+                  {exam.pathway.replace("_", " ")} · {exam.category.replace(/([a-z])([A-Z])/g, "$1 $2")}
+                </p>
+                <h2 className="mt-2 font-brand text-lg font-bold text-foreground">{exam.title}</h2>
+                <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-foreground-secondary">{exam.description}</p>
+                <p className="mt-3 text-xs text-foreground-muted">
+                  {exam.totalQuestions} questions · {exam.timeLimitMinutes} minutes
+                </p>
               </div>
-
-              {/* 3 Action Buttons matching screenshot */}
-              {(() => {
-                const isRealExam = set.id.length > 20 && set.id.includes("-");
-                const queryParam = isRealExam ? `examId=${set.id}` : `setId=${set.id}`;
-
-                return (
-                  <div className="grid grid-cols-3 gap-2 pt-3 border-t border-border/60">
-                    {/* 1. Exam action */}
-                    <Link
-                      href={`/exam-session?${queryParam}&mode=Exam`}
-                      className="w-full"
-                    >
-                      <Button
-                        size="sm"
-                        className="w-full text-xs h-8 px-2 font-semibold bg-brand-navy hover:bg-brand-navyDeep text-white dark:bg-brand-teal dark:hover:bg-brand-tealDark gap-1 justify-center shadow-2xs"
-                      >
-                        <Play className="w-3 h-3 fill-white" />
-                        <span>Exam</span>
-                      </Button>
-                    </Link>
-
-                    {/* 2. Review action */}
-                    <Link
-                      href={`/exam-session?${queryParam}&mode=Review`}
-                      className="w-full"
-                    >
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full text-xs h-8 px-2 font-semibold gap-1 justify-center hover:bg-surface-muted"
-                      >
-                        <Eye className="w-3 h-3 text-foreground-muted" />
-                        <span>Review</span>
-                      </Button>
-                    </Link>
-
-                    {/* 3. Tutor action */}
-                    <Link
-                      href={`/exam-session?${queryParam}&mode=Tutor`}
-                      className="w-full"
-                    >
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full text-xs h-8 px-2 font-semibold gap-1 justify-center hover:bg-surface-muted"
-                      >
-                        <Bot className="w-3 h-3 text-foreground-muted" />
-                        <span>Tutor</span>
-                      </Button>
-                    </Link>
-                  </div>
-                );
-              })()}
-            </div>
-          );
-        })}
-      </div>
-
-      {filteredSets.length === 0 && (
-        <div className="text-center py-12 space-y-3 bg-surface rounded-2xl border border-border">
-          <BookOpen className="w-10 h-10 text-foreground-muted mx-auto" />
-          <div className="font-semibold text-foreground">No study sets found</div>
-          <p className="text-xs text-foreground-secondary max-w-sm mx-auto">
-            Try choosing &quot;All&quot; or clearing your search term to see the complete curriculum.
-          </p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setSearchQuery("");
-              setActiveFilter("All");
-            }}
-          >
-            Show All Sets
-          </Button>
+              <Link href={`/exam-session?examId=${encodeURIComponent(exam.id)}`}>
+                <Button className="w-full">Start this exam</Button>
+              </Link>
+            </Card>
+          ))}
         </div>
       )}
     </div>

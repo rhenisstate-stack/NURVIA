@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { StudentTestimonialCarousel } from "@/components/home/student-testimonial-carousel";
-import { StudySetPreviewModal } from "@/components/home/study-set-preview-modal";
 import { FloatingStudyChat } from "@/components/home/floating-study-chat";
 import {
   initialStudySets,
@@ -37,13 +36,24 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth/auth-provider";
 
+function getExamBrowseHref(set: StudySetItem) {
+  const params = new URLSearchParams();
+  if (set.pathway !== "All") params.set("track", set.pathway);
+  const category = set.examTrack === "Regular"
+    ? "RegularCourse"
+    : set.examTrack === "NCLEX"
+      ? "ExitPredictor"
+      : set.examTrack;
+  params.set("category", category);
+  return `/exams?${params.toString()}`;
+}
+
 export default function HomePage() {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [selectedCategory, setSelectedCategory] = React.useState<string>("All");
-  const [previewingSet, setPreviewingSet] = React.useState<StudySetItem | null>(null);
   const { status, user } = useAuth();
   const practiceHref = status === "authenticated" && user?.role === "Learner"
-    ? "/learner/exams"
+    ? "/learner/custom-practice"
     : status === "authenticated"
       ? "/access-denied"
     : "/sign-in?returnTo=%2Flearner%2Fcustom-practice";
@@ -401,27 +411,22 @@ export default function HomePage() {
 
                 {/* 2 Buttons matching screenshot */}
                 <div className="space-y-2 pt-2 border-t border-border/50">
-                  {/* Top Button: Preview the set */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPreviewingSet(set)}
-                    className="w-full text-xs h-9 font-semibold gap-1.5 bg-rose-50/60 dark:bg-rose-950/20 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-900/50 hover:bg-rose-100/70 dark:hover:bg-rose-950/40"
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>Preview the set</span>
-                  </Button>
+                  <Link href={getExamBrowseHref(set)} className="block">
+                    <Button variant="outline" size="sm" className="w-full text-xs h-9 font-semibold gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Browse matching exams</span>
+                    </Button>
+                  </Link>
 
-                  {/* Bottom Button: Open [Exam Name] */}
                   <Link
-                    href={`/exam-session?track=${set.pathway}&category=${set.examTrack}`}
+                    href={getExamBrowseHref(set)}
                     className="w-full block"
                   >
                     <Button
                       size="sm"
                       className="w-full text-xs h-9 font-semibold bg-brand-navy hover:bg-brand-navyDeep text-white dark:bg-brand-teal dark:hover:bg-brand-tealDark justify-center gap-1"
                     >
-                      <span className="truncate">Open {set.title}</span>
+                      <span className="truncate">Find an exam</span>
                       <ArrowRight className="w-3.5 h-3.5 shrink-0" />
                     </Button>
                   </Link>
@@ -564,9 +569,9 @@ export default function HomePage() {
             Experience our independent learning ecosystem, built from the ground up for nursing clarity, academic excellence, and clinical confidence.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
-            <Link href="/learner">
+            <Link href={startHref}>
               <Button size="lg" className="h-12 px-8 text-sm font-semibold bg-brand-navy hover:bg-brand-navyDeep text-white dark:bg-brand-teal dark:hover:bg-brand-tealDark">
-                Enter Learner Dashboard
+                Start Practicing
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
@@ -578,12 +583,6 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* Preview Modal for Study Sets */}
-      <StudySetPreviewModal
-        studySet={previewingSet}
-        onClose={() => setPreviewingSet(null)}
-      />
 
       {/* Floating Clinical Study Chat Assistant */}
       <FloatingStudyChat />

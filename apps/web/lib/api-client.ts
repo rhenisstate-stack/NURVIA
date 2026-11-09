@@ -15,6 +15,16 @@ import {
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5055';
 let csrfTokenPromise: Promise<string> | null = null;
 
+function buildQuery(params?: Record<string, unknown>) {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params || {})) {
+    if (value !== undefined && value !== null && value !== '') {
+      query.set(key, String(value));
+    }
+  }
+  return query.toString();
+}
+
 async function getCsrfToken(): Promise<string> {
   if (!csrfTokenPromise) {
     csrfTokenPromise = fetch(`${API_BASE}/api/auth/csrf`, {
@@ -104,7 +114,7 @@ export const nurviaApi = {
 
   // Questions
   async getQuestions(params?: Record<string, any>): Promise<ApiResponse<PagedResult<QuestionDto>>> {
-    const query = new URLSearchParams(params || {}).toString();
+    const query = buildQuery(params);
     return request<PagedResult<QuestionDto>>(`/api/questions${query ? `?${query}` : ''}`);
   },
 
@@ -165,7 +175,7 @@ export const nurviaApi = {
 
   // Exams
   async getExams(params?: Record<string, any>): Promise<ApiResponse<PagedResult<ExamDto>>> {
-    const query = new URLSearchParams(params || {}).toString();
+    const query = buildQuery(params);
     return request<PagedResult<ExamDto>>(`/api/exams${query ? `?${query}` : ''}`);
   },
 
@@ -226,7 +236,7 @@ export const nurviaApi = {
 
   // Audit Logs
   async getAuditLogs(params?: Record<string, any>): Promise<ApiResponse<PagedResult<any>>> {
-    const query = new URLSearchParams(params || {}).toString();
+    const query = buildQuery(params);
     return request<PagedResult<any>>(`/api/audit-logs${query ? `?${query}` : ''}`);
   },
 
