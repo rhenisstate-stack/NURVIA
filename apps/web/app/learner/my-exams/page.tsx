@@ -38,7 +38,7 @@ export default function MyExamsPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Badge variant="teal">{set.category}</Badge>
-                  <span className="text-xs text-foreground-muted">{set.questionCount} questions</span>
+                  <span className="text-xs text-foreground-muted">{set.examTrack} · {set.pathway}</span>
                 </div>
                 <CardTitle className="text-base">{set.title}</CardTitle>
                 <CardDescription className="text-xs line-clamp-2">

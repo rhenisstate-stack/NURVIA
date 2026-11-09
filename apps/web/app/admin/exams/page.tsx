@@ -30,12 +30,14 @@ import {
   NursingPathway,
   ExamCategory,
   ExamDeliveryMode,
+  ReviewReleasePolicy,
   QuestionDto,
 } from "@/lib/api-types";
 
 export default function ExamStudioPage() {
   const [exams, setExams] = React.useState<ExamDto[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
   const [searchTerm, setSearchTerm] = React.useState("");
   const [pathwayFilter, setPathwayFilter] = React.useState("");
   const [categoryFilter, setCategoryFilter] = React.useState("");
@@ -50,6 +52,7 @@ export default function ExamStudioPage() {
   const [newTimeLimit, setNewTimeLimit] = React.useState(60);
   const [newPassingScore, setNewPassingScore] = React.useState(75);
   const [newMode, setNewMode] = React.useState<ExamDeliveryMode>("All");
+  const [newReviewReleasePolicy, setNewReviewReleasePolicy] = React.useState<ReviewReleasePolicy>("Immediate");
 
   // Blueprint Editor Drawer / Dialog
   const [selectedExam, setSelectedExam] = React.useState<ExamDto | null>(null);
@@ -67,42 +70,10 @@ export default function ExamStudioPage() {
     const res = await nurviaApi.getExams(params);
     if (res.success && res.data) {
       setExams(res.data.items);
+      setLoadError(null);
     } else {
-      // Fallback sample exams if API is disconnected
-      setExams([
-        {
-          id: "ex-1",
-          code: "ATI-PHARM-2026",
-          title: "ATI Comprehensive Pharmacology Practice Exam",
-          description: "Official simulated ATI Pharmacology exam covering cardiac, endocrine, and psychotropic therapeutics.",
-          pathway: "RN",
-          category: "ATI",
-          modeAllowed: "All",
-          timeLimitMinutes: 60,
-          passingScorePercentage: 78.0,
-          status: "Published",
-          totalQuestions: 2,
-          concurrencyToken: "tok-ex1",
-          createdAtUtc: new Date().toISOString(),
-          createdBy: "Elena Vance",
-        },
-        {
-          id: "ex-2",
-          code: "RN-EXIT-COMP-01",
-          title: "RN Comprehensive Predictor Exit Examination",
-          description: "Comprehensive multi-specialty exit exam measuring readiness for NCLEX-RN licensure.",
-          pathway: "RN_Exit",
-          category: "ExitPredictor",
-          modeAllowed: "Exam",
-          timeLimitMinutes: 90,
-          passingScorePercentage: 80.0,
-          status: "Published",
-          totalQuestions: 3,
-          concurrencyToken: "tok-ex2",
-          createdAtUtc: new Date().toISOString(),
-          createdBy: "Elena Vance",
-        },
-      ]);
+      setLoadError(res.errors?.join("; ") || res.message || "Unable to load examinations.");
+      setExams([]);
     }
     setLoading(false);
   }, [searchTerm, pathwayFilter, categoryFilter]);
@@ -125,6 +96,7 @@ export default function ExamStudioPage() {
       timeLimitMinutes: Number(newTimeLimit),
       passingScorePercentage: Number(newPassingScore),
       modeAllowed: newMode,
+      reviewReleasePolicy: newReviewReleasePolicy,
       instructions: "Read all questions thoroughly. Calculator and exhibits are accessible during testing.",
     };
 
@@ -175,6 +147,7 @@ export default function ExamStudioPage() {
       modeAllowed: selectedExam.modeAllowed,
       timeLimitMinutes: selectedExam.timeLimitMinutes,
       passingScorePercentage: selectedExam.passingScorePercentage,
+      reviewReleasePolicy: selectedExam.currentVersion?.reviewReleasePolicy || "Immediate",
       targetQuestionCount: assignedQuestionIds.length,
       assignedQuestionIds,
       concurrencyToken: selectedExam.concurrencyToken,
@@ -209,6 +182,16 @@ export default function ExamStudioPage() {
       loadExams();
     } else {
       setActionMessage(`Submission failed: ${res.errors?.join("; ") || res.message}`);
+    }
+  };
+
+  const handleReleaseReview = async (examId: string, examCode: string) => {
+    const res = await nurviaApi.releaseExamReview(examId);
+    if (res.success) {
+      setActionMessage(`Exam ${examCode}: review results released to learners.`);
+      loadExams();
+    } else {
+      setActionMessage(`Release failed: ${res.errors?.join("; ") || res.message}`);
     }
   };
 
@@ -320,8 +303,8 @@ export default function ExamStudioPage() {
               Loading examination catalogue...
             </div>
           ) : exams.length === 0 ? (
-            <div className="col-span-2 p-12 text-center text-sm text-foreground-muted">
-              No exams found matching current filters.
+            <div className="col-span-2 p-12 text-center text-sm text-foreground-muted" role={loadError ? "alert" : undefined}>
+              {loadError ? `Unable to load examinations: ${loadError}` : "No exams found matching current filters."}
             </div>
           ) : (
             exams.map((ex) => (
@@ -348,8 +331,14 @@ export default function ExamStudioPage() {
                     <span className="font-semibold text-foreground">{ex.totalQuestions} items</span>
                   </div>
                   <div>
-                    <span className="text-foreground-muted block text-[10px] uppercase font-bold">Passing</span>
-                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">{ex.passingScorePercentage}%</span>
+                    <span className="text-foreground-muted block text-[10px] uppercase font-bold">Review release</span>
+                    <span className="font-semibold text-foreground">
+                      {ex.currentVersion?.reviewReleasePolicy === "ManualRelease"
+                        ? ex.currentVersion?.reviewReleasedAtUtc
+                          ? "Released"
+                          : "Manual — withheld"
+                        : "Immediate"}
+                    </span>
                   </div>
                 </div>
 
@@ -386,6 +375,17 @@ export default function ExamStudioPage() {
                         className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
                       >
                         Publish
+                      </Button>
+                    ) : null}
+
+                    {ex.status === "Published" && ex.currentVersion?.reviewReleasePolicy === "ManualRelease" && !ex.currentVersion?.reviewReleasedAtUtc ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleReleaseReview(ex.id, ex.code)}
+                        className="h-8 text-xs text-brand-teal border-brand-teal/40"
+                      >
+                        <Eye className="w-3.5 h-3.5" /> Release Review
                       </Button>
                     ) : null}
 
@@ -497,6 +497,18 @@ export default function ExamStudioPage() {
                       <option value="Exam">Exam Mode</option>
                       <option value="Tutor">Tutor Mode</option>
                       <option value="Review">Review Mode</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="font-semibold text-foreground block mb-1">Review Release</label>
+                    <select
+                      value={newReviewReleasePolicy}
+                      onChange={(e) => setNewReviewReleasePolicy(e.target.value as ReviewReleasePolicy)}
+                      className="w-full px-3 py-1.5 rounded-lg border border-border bg-background focus:ring-1 focus:ring-brand-teal"
+                    >
+                      <option value="Immediate">Immediate — release with results</option>
+                      <option value="ManualRelease">Manual — staff release required</option>
                     </select>
                   </div>
                 </div>

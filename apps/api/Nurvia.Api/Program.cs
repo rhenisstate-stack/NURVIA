@@ -2,9 +2,11 @@ using System.Text.Json.Serialization;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Nurvia.Api.Security;
 using Nurvia.Application.Security;
+using Nurvia.Domain.Enums;
 using Nurvia.Infrastructure;
 using Nurvia.Infrastructure.Persistence;
 
@@ -131,25 +133,32 @@ app.MapGet("/api/health", () => Results.Ok(new
 .WithName("HealthCheck")
 .WithOpenApi();
 
-// Phase 1 Sample Catalogue Discovery Endpoint
-app.MapGet("/api/catalogue/summary", () => Results.Ok(new
+// Catalogue Discovery Endpoint — reports real counts from the live database
+app.MapGet("/api/catalogue/summary", async (NurviaDbContext dbContext, CancellationToken ct) =>
 {
-    TotalExams = 142,
-    Programs = new[] { "RN", "PN/LPN", "ADN", "BSN" },
-    Providers = new[] { "ATI", "HESI", "NCLEX", "NURVIA Original" },
-    Categories = new[]
+    var publishedExams = await dbContext.Exams.CountAsync(e => e.Status == ExamStatus.Published, ct);
+    var publishedQuestions = await dbContext.Questions.CountAsync(q => q.Status == ContentStatus.Published, ct);
+
+    var results = Results.Ok(new
     {
-        "Fundamentals of Nursing",
-        "Adult Medical-Surgical",
-        "Pharmacology",
-        "Dosage Calculations",
-        "Maternal Newborn & Obstetrics",
-        "Pediatric Nursing",
-        "Mental Health",
-        "Leadership & Management",
-        "Comprehensive Predictor Exit Exams"
-    }
-}))
+        TotalExams = publishedExams,
+        PublishedQuestions = publishedQuestions,
+        Programs = new[] { "RN", "PN/LPN", "ADN", "BSN" },
+        Categories = new[]
+        {
+            "Fundamentals of Nursing",
+            "Adult Medical-Surgical",
+            "Pharmacology",
+            "Dosage Calculations",
+            "Maternal Newborn & Obstetrics",
+            "Pediatric Nursing",
+            "Mental Health",
+            "Leadership & Management",
+            "Comprehensive Predictor Exit Exams"
+        }
+    });
+    return results;
+})
 .WithName("GetCatalogueSummary")
 .WithOpenApi();
 

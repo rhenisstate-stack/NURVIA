@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  ShieldCheck,
   Award,
   Sparkles,
   Quote,
@@ -274,13 +273,6 @@ export function StudentTestimonialCarousel({
                         )}
                       </div>
                     </div>
-
-                    {item.isVerified && (
-                      <span className="inline-flex items-center gap-1 text-[11px] text-brand-teal font-medium">
-                        <ShieldCheck className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline text-[10px]">Verified Student</span>
-                      </span>
-                    )}
                   </div>
                 </div>
               );

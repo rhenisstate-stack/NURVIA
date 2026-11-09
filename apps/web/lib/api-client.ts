@@ -228,6 +228,12 @@ export const nurviaApi = {
     });
   },
 
+  async releaseExamReview(id: string): Promise<ApiResponse<ExamDto>> {
+    return request<ExamDto>(`/api/exams/${id}/release-review`, {
+      method: 'POST',
+    });
+  },
+
   async createExamVersion(id: string): Promise<ApiResponse<ExamDto>> {
     return request<ExamDto>(`/api/exams/${id}/versions`, {
       method: 'POST',

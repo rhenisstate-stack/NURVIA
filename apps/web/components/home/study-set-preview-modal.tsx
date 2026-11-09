@@ -46,11 +46,9 @@ export function StudySetPreviewModal({ studySet, onClose }: StudySetPreviewModal
           <div className="space-y-1.5 pr-6">
             <div className="flex items-center gap-2">
               <Badge variant="teal">{studySet.category}</Badge>
-              <Badge variant="outline" className="text-amber-600 dark:text-amber-400 border-amber-500/30">
-                <Star className="w-3 h-3 fill-amber-500 mr-1" />
-                {studySet.rating} ({studySet.reviewsCount.toLocaleString()} reviews)
+              <Badge variant="outline">
+                {studySet.examTrack} · {studySet.pathway}
               </Badge>
-              <span className="text-xs text-foreground-muted">{studySet.viewsCount}</span>
             </div>
             <h2 className="font-brand text-xl font-bold text-foreground">
               {studySet.title}
@@ -76,8 +74,8 @@ export function StudySetPreviewModal({ studySet, onClose }: StudySetPreviewModal
           {/* Metadata badges */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
             <div className="p-3 rounded-lg border border-border bg-background">
-              <span className="text-foreground-muted block text-[11px]">Total Practice</span>
-              <strong className="text-foreground">{studySet.questionCount}+ Questions</strong>
+              <span className="text-foreground-muted block text-[11px]">Practice Focus</span>
+              <strong className="text-foreground">{studySet.examTrack} · {studySet.pathway}</strong>
             </div>
             <div className="p-3 rounded-lg border border-border bg-background">
               <span className="text-foreground-muted block text-[11px]">Exam Format</span>
@@ -158,13 +156,6 @@ export function StudySetPreviewModal({ studySet, onClose }: StudySetPreviewModal
           ) : (
             <div className="p-4 rounded-xl border border-border bg-background text-xs text-foreground-secondary">
               <p>Full question bank with rationales available in the exam session.</p>
-            </div>
-          )}
-
-          {studySet.studentQuote && (
-            <div className="p-3.5 rounded-xl bg-surface-muted/60 border border-border/60 text-xs italic text-foreground-secondary flex items-start gap-2">
-              <span className="text-brand-teal font-bold not-italic">Cohort Feedback:</span>
-              <span>&ldquo;{studySet.studentQuote}&rdquo;</span>
             </div>
           )}
         </div>

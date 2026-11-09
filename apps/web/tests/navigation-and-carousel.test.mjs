@@ -67,13 +67,15 @@ test('2. Public shell defines approved 9 navigation items in exact approved orde
 });
 
 // 3. Testimonial Data Contracts
-test('3. Testimonial data structure and validation contracts', async () => {
+test('3. Testimonial data uses approved non-attributed practice spotlights without fabricated claims', async () => {
   const dataFile = fs.readFileSync(path.join(webRoot, 'lib', 'study-sets-data.ts'), 'utf8');
   assert(dataFile.includes('export interface StudentTestimonial'), 'StudentTestimonial interface missing');
   assert(dataFile.includes('sampleStudentTestimonials'), 'sampleStudentTestimonials array missing');
-  assert(dataFile.includes('Octavio O.'), 'Sample testimonial 1 missing');
-  assert(dataFile.includes('Brittany P.'), 'Sample testimonial 2 missing');
-  assert(dataFile.includes('isVerified: true'), 'Verification attribute missing');
+  assert(!dataFile.includes('isVerified'), 'Fabricated verified-student badge must not exist');
+  assert(!dataFile.includes('Octavio O.'), 'Fabricated student name must not exist');
+  assert(!dataFile.includes('Brittany P.'), 'Fabricated student name must not exist');
+  assert(!dataFile.includes('studentPassRecords'), 'Fabricated student pass records must not exist');
+  assert(!/40,000|20,000|142/.test(dataFile), 'Fabricated quantitative claims must not exist');
 });
 
 // 4. Testimonial Carousel Architecture & Accessibility

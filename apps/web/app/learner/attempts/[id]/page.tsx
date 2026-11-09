@@ -34,6 +34,7 @@ export default function AttemptResultPage() {
     return () => { active = false; };
   }, [attemptId]);
 
+  const reviewWithheld = result ? !result.reviewReleased : false;
   const unanswered = result?.reviewQuestions.filter((question) =>
     isUnanswered(question.learnerResponse)).length || 0;
   const correct = result?.correctQuestions || 0;
@@ -90,8 +91,7 @@ export default function AttemptResultPage() {
                 <p className="mt-1 text-sm text-foreground-secondary">
                   {correct} correct, {incorrect} incorrect, and {unanswered} unanswered out of {result.totalQuestions} questions.
                 </p>
-              </div>
-              <div className="space-y-4" aria-label="Question outcome counts">
+              </div>              <div className="space-y-4" aria-label="Question outcome counts">
                 {distribution.map((item) => {
                   const percentage = result.totalQuestions > 0
                     ? (item.value / result.totalQuestions) * 100
@@ -117,12 +117,32 @@ export default function AttemptResultPage() {
 
             <section className="space-y-4">
               <h2 className="font-brand text-xl font-bold text-foreground">Question review</h2>
+              {reviewWithheld && (
+                <p
+                  role="status"
+                  className="rounded-lg border border-brand-teal/30 bg-brand-teal/5 p-4 text-sm text-foreground-secondary"
+                >
+                  The answer key and rationales for this exam are withheld until NURVIA staff release
+                  the results. Your score summary above is final; review feedback will appear here
+                  once results are released.
+                </p>
+              )}
               {result.reviewQuestions.map((question) => (
                 <Card key={question.questionId} className="space-y-4 p-5">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-xs font-semibold uppercase tracking-wide text-foreground-muted">Question {question.orderIndex}</p>
-                    <span className={question.isCorrect ? "text-xs font-semibold text-emerald-700 dark:text-emerald-300" : "text-xs font-semibold text-rose-700 dark:text-rose-300"}>
-                      {isUnanswered(question.learnerResponse) ? "Unanswered" : question.isCorrect ? "Correct" : "Incorrect"}
+                    <span className={reviewWithheld
+                      ? "text-xs font-semibold text-foreground-muted"
+                      : question.isCorrect
+                        ? "text-xs font-semibold text-emerald-700 dark:text-emerald-300"
+                        : "text-xs font-semibold text-rose-700 dark:text-rose-300"}>
+                      {isUnanswered(question.learnerResponse)
+                        ? "Unanswered"
+                        : reviewWithheld
+                          ? "Outcome pending release"
+                          : question.isCorrect
+                            ? "Correct"
+                            : "Incorrect"}
                     </span>
                   </div>
                   <p className="whitespace-pre-wrap text-sm font-medium leading-relaxed text-foreground">{question.stem}</p>
@@ -132,15 +152,15 @@ export default function AttemptResultPage() {
                         <li key={option.id} className="rounded-lg border border-border p-3 text-sm text-foreground-secondary">
                           <span className="font-medium text-foreground">{option.optionText}</span>
                           <span className="ml-2 text-xs">
-                            {option.isCorrect ? "Correct answer" : ""}
+                            {!reviewWithheld && option.isCorrect ? "Correct answer" : ""}
                             {option.wasSelected ? " · Your selection" : ""}
                           </span>
-                          {option.specificRationale && <p className="mt-1 text-xs">{option.specificRationale}</p>}
+                          {!reviewWithheld && option.specificRationale && <p className="mt-1 text-xs">{option.specificRationale}</p>}
                         </li>
                       ))}
                     </ul>
                   )}
-                  {question.generalRationale && (
+                  {!reviewWithheld && question.generalRationale && (
                     <p className="border-t border-border pt-3 text-sm leading-relaxed text-foreground-secondary">{question.generalRationale}</p>
                   )}
                 </Card>

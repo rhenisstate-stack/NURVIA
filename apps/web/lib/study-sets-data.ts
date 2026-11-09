@@ -14,24 +14,13 @@ export interface SampleQuestion {
   clinicalTip: string;
 }
 
-export interface StudentPassRecord {
-  id: string;
-  studentName: string;
-  examCode: string;
-  examName: string;
-  date: string;
-  status: "NCLEX-RN - PASSED" | "NCLEX-PN - PASSED" | "ATI - LEVEL 3" | "HESI - 900+ COMPLETED";
-  badgeVariant: "emerald" | "teal" | "blue";
-}
-
 export interface StudentTestimonial {
   id: string;
   displayName: string;
   examTrack: "NCLEX-RN" | "NCLEX-PN" | "ATI" | "HESI";
-  resultStatus: "Passed" | "Completed";
+  resultStatus: string;
   testimonial: string;
   examDate?: string;
-  isVerified: boolean;
   avatarUrl?: string;
   scoreOrLevel?: string;
 }
@@ -44,14 +33,9 @@ export interface StudySetItem {
   pathway: "RN" | "PN_LPN" | "RN_Exit" | "PN_Exit" | "All";
   examTrack: "ATI" | "HESI" | "NCLEX" | "Regular";
   badge: "Free" | "Included" | "Proctored";
-  rating: number;
-  reviewsCount: number;
-  viewsCount: string;
-  questionCount: number;
   hasRationales: boolean;
   hasNgnFormat: boolean;
   description: string;
-  studentQuote?: string;
   previewQuestion?: {
     stem: string;
     options: string[];
@@ -166,155 +150,47 @@ export const heroPracticeQuestions: SampleQuestion[] = [
   },
 ];
 
-// Student Pass Report Carousel Data
-export const studentPassRecords: StudentPassRecord[] = [
+// Practice spotlights describe platform features without attributing statements to
+// real students. No fabricated student names, results, or verified-student badges.
+export const sampleStudentTestimonials: StudentTestimonial[] = [
   {
-    id: "pass-01",
-    studentName: "Octavio O.",
-    examCode: "NCLEX-PN",
-    examName: "The National Council Licensure Examination for Practical Nurses",
-    date: "22 April 2026",
-    status: "NCLEX-PN - PASSED",
-    badgeVariant: "emerald",
+    id: "spotlight-ngn-case-studies",
+    displayName: "NGN case study practice",
+    examTrack: "NCLEX-RN",
+    resultStatus: "Practice focus",
+    scoreOrLevel: "Unfolding case studies",
+    testimonial:
+      "Work through unfolding NGN case studies built on the clinical judgment model, with rationales that explain every option.",
   },
   {
-    id: "pass-02",
-    studentName: "Brittany P.",
-    examCode: "NCLEX-RN",
-    examName: "The National Council Licensure Examination for Registered Nurses",
-    date: "20 April 2026",
-    status: "NCLEX-RN - PASSED",
-    badgeVariant: "emerald",
+    id: "spotlight-prioritization",
+    displayName: "Prioritization and delegation",
+    examTrack: "NCLEX-PN",
+    resultStatus: "Practice focus",
+    scoreOrLevel: "Decision-first drills",
+    testimonial:
+      "Practice prioritization, delegation, and safety questions that mirror the decision patterns tested on licensure exams.",
   },
   {
-    id: "pass-03",
-    studentName: "Hershe Ann M.",
-    examCode: "NCLEX-PN",
-    examName: "The National Council Licensure Examination for Practical Nurses",
-    date: "24 April 2026",
-    status: "NCLEX-PN - PASSED",
-    badgeVariant: "emerald",
+    id: "spotlight-pharmacology",
+    displayName: "Pharmacology rationale library",
+    examTrack: "ATI",
+    resultStatus: "Practice focus",
+    scoreOrLevel: "Mechanism-based rationales",
+    testimonial:
+      "Study high-risk medication classes with mechanism-based rationales that connect adverse effects to monitoring priorities.",
   },
   {
-    id: "pass-04",
-    studentName: "Isabella T.",
-    examCode: "NCLEX-RN",
-    examName: "The National Council Licensure Examination for Registered Nurses",
-    date: "25 April 2026",
-    status: "NCLEX-RN - PASSED",
-    badgeVariant: "emerald",
-  },
-  {
-    id: "pass-05",
-    studentName: "Marcus D.",
-    examCode: "ATI COMPREHENSIVE",
-    examName: "ATI RN Comprehensive Predictor Examination 2026",
-    date: "27 April 2026",
-    status: "ATI - LEVEL 3",
-    badgeVariant: "teal",
-  },
-  {
-    id: "pass-06",
-    studentName: "Aaliyah K.",
-    examCode: "HESI RN EXIT",
-    examName: "HESI RN Comprehensive Exit Assessment V2",
-    date: "28 April 2026",
-    status: "HESI - 900+ COMPLETED",
-    badgeVariant: "blue",
+    id: "spotlight-dosage",
+    displayName: "Dosage calculation practice",
+    examTrack: "HESI",
+    resultStatus: "Practice focus",
+    scoreOrLevel: "Step-by-step math",
+    testimonial:
+      "Build calculation confidence with step-by-step dosage math practice, from basic conversions to weight-based infusions.",
   },
 ];
 
-// Illustrative Sample Testimonials for the Automatic Carousel (Phase D)
-export const sampleStudentTestimonials: StudentTestimonial[] = [
-  {
-    id: "test-01",
-    displayName: "Octavio O.",
-    examTrack: "NCLEX-PN",
-    resultStatus: "Passed",
-    scoreOrLevel: "First Attempt",
-    examDate: "April 2026",
-    isVerified: true,
-    testimonial:
-      "The NGN case study rationales taught me how to recognize clinical cues instead of second-guessing. The interface felt identical to exam day.",
-  },
-  {
-    id: "test-02",
-    displayName: "Brittany P.",
-    examTrack: "NCLEX-RN",
-    resultStatus: "Passed",
-    scoreOrLevel: "85 Questions",
-    examDate: "April 2026",
-    isVerified: true,
-    testimonial:
-      "NURVIA's prioritization breakdowns in Med-Surg and Pharmacology were the exact difference-maker I needed. Shut off at 85 questions!",
-  },
-  {
-    id: "test-03",
-    displayName: "Hershe Ann M.",
-    examTrack: "NCLEX-PN",
-    resultStatus: "Passed",
-    scoreOrLevel: "Passed with Confidence",
-    examDate: "April 2026",
-    isVerified: true,
-    testimonial:
-      "The Socratic tutor mode forced me to understand why each distractor was clinically unsafe. Walked into testing center calm and prepared.",
-  },
-  {
-    id: "test-04",
-    displayName: "Marcus D.",
-    examTrack: "ATI",
-    resultStatus: "Completed",
-    scoreOrLevel: "Level 3 · 94.6% Predictor",
-    examDate: "April 2026",
-    isVerified: true,
-    testimonial:
-      "Scored Level 3 on my Comprehensive Predictor. The ATI-focused clinical judgment scenarios mirror the exact difficulty of proctored finals.",
-  },
-  {
-    id: "test-05",
-    displayName: "Isabella T.",
-    examTrack: "NCLEX-RN",
-    resultStatus: "Passed",
-    scoreOrLevel: "Passed First Try",
-    examDate: "April 2026",
-    isVerified: true,
-    testimonial:
-      "The dosage calculation modules and fluid/electrolyte guides eliminated my test anxiety. The step-by-step rationales are unmatched.",
-  },
-  {
-    id: "test-06",
-    displayName: "Aaliyah K.",
-    examTrack: "HESI",
-    resultStatus: "Completed",
-    scoreOrLevel: "Score: 982 · Exit Exam",
-    examDate: "April 2026",
-    isVerified: true,
-    testimonial:
-      "Scored 982 on my HESI Exit! The pharmacology rationales break down high-risk mechanisms so you understand the physiological safety net.",
-  },
-  {
-    id: "test-07",
-    displayName: "Daniel R.",
-    examTrack: "NCLEX-RN",
-    resultStatus: "Passed",
-    scoreOrLevel: "85 Questions",
-    examDate: "May 2026",
-    isVerified: true,
-    testimonial:
-      "Passed in 85 questions. The question formats matched the real NGN test screen perfectly. Best investment in nursing school.",
-  },
-  {
-    id: "test-08",
-    displayName: "Maya S.",
-    examTrack: "NCLEX-PN",
-    resultStatus: "Passed",
-    scoreOrLevel: "First Attempt Pass",
-    examDate: "May 2026",
-    isVerified: true,
-    testimonial:
-      "Practicing with timed simulation mode built the stamina and time-management pacing I needed. Could not have done it without NURVIA.",
-  },
-];
 
 // Study-Set Cards for Homepage & Study Library
 export const initialStudySets: StudySetItem[] = [
@@ -326,15 +202,10 @@ export const initialStudySets: StudySetItem[] = [
     pathway: "RN",
     examTrack: "ATI",
     badge: "Free",
-    rating: 4.8,
-    reviewsCount: 3783,
-    viewsCount: "31K views",
-    questionCount: 750,
     hasRationales: true,
     hasNgnFormat: true,
     description:
       "Foundational nursing concepts — patient safety, infection control, vital signs, and the nursing process. Practice with rationale-based questions matching ATI's content outline.",
-    studentQuote: "Mastered asepsis and prioritization before my first clinical rotation!",
     previewQuestion: {
       stem: "A nurse is performing hand hygiene before entering an isolation room. What is the minimum duration for lathering hands with antimicrobial soap under running water?",
       options: ["5 seconds", "10 seconds", "15 to 20 seconds", "45 seconds"],
@@ -350,15 +221,10 @@ export const initialStudySets: StudySetItem[] = [
     pathway: "RN",
     examTrack: "ATI",
     badge: "Free",
-    rating: 4.7,
-    reviewsCount: 2290,
-    viewsCount: "54K views",
-    questionCount: 1200,
     hasRationales: true,
     hasNgnFormat: true,
     description:
       "Care of adult patients across major body systems — cardiovascular, respiratory, renal, endocrine, and GI. One of the most heavily weighted proctored exams.",
-    studentQuote: "Questions were very similar to the actual proctored test!",
     previewQuestion: {
       stem: "A client with acute decompensated heart failure presents with severe dyspnea, bilateral pulmonary crackles, and SpO2 87%. Which nursing action is the immediate priority?",
       options: [
@@ -379,15 +245,10 @@ export const initialStudySets: StudySetItem[] = [
     pathway: "RN",
     examTrack: "ATI",
     badge: "Free",
-    rating: 4.8,
-    reviewsCount: 1857,
-    viewsCount: "51K views",
-    questionCount: 980,
     hasRationales: true,
     hasNgnFormat: true,
     description:
       "Drug classifications, mechanisms of action, side effects, and nursing implications for medication administration. Organized by drug class.",
-    studentQuote: "The rationale breakdowns helped me memorize high-risk black box warnings easily.",
     previewQuestion: {
       stem: "A client newly prescribed furosemide 40 mg daily reports muscle cramps and weakness. Which serum electrolyte imbalance does the nurse anticipate?",
       options: ["Hypercalcemia", "Hypokalemia", "Hypernatremia", "Hypermagnesemia"],
@@ -403,15 +264,10 @@ export const initialStudySets: StudySetItem[] = [
     pathway: "RN",
     examTrack: "ATI",
     badge: "Free",
-    rating: 4.8,
-    reviewsCount: 261,
-    viewsCount: "51K views",
-    questionCount: 450,
     hasRationales: true,
     hasNgnFormat: true,
     description:
       "Medication math — oral and IV dosages, drip rates, unit conversions, and weight-based dosing. Step-by-step worked solutions for every problem.",
-    studentQuote: "Scored 100% on my clinical dosage calculation threshold exam on the first attempt!",
     previewQuestion: {
       stem: "Order: Potassium chloride 20 mEq in 250 mL D5W over 2 hours. What is the hourly infusion rate in mL/hr?",
       options: ["100 mL/hr", "125 mL/hr", "150 mL/hr", "250 mL/hr"],
@@ -427,15 +283,10 @@ export const initialStudySets: StudySetItem[] = [
     pathway: "RN",
     examTrack: "ATI",
     badge: "Free",
-    rating: 4.6,
-    reviewsCount: 1123,
-    viewsCount: "37K views",
-    questionCount: 620,
     hasRationales: true,
     hasNgnFormat: true,
     description:
       "Antepartum, intrapartum, postpartum, and newborn care, including pregnancy and labor complications. Organized by stage of the maternity cycle.",
-    studentQuote: "Clear rationales for fetal heart rate decelerations made VEAL CHOP click instantly.",
     previewQuestion: {
       stem: "A nurse notes late decelerations on the electronic fetal monitoring strip. What is the immediate priority intervention?",
       options: [
@@ -456,15 +307,10 @@ export const initialStudySets: StudySetItem[] = [
     pathway: "RN",
     examTrack: "ATI",
     badge: "Free",
-    rating: 4.7,
-    reviewsCount: 1329,
-    viewsCount: "36K views",
-    questionCount: 590,
     hasRationales: true,
     hasNgnFormat: true,
     description:
       "Nursing Care of Children — growth and development milestones, pediatric illness, and family-centered care by age group.",
-    studentQuote: "Developmental milestone tables and vaccine schedules were spot on.",
     previewQuestion: {
       stem: "A 4-year-old child is hospitalized with suspected acute epiglottitis. Which action is strictly contraindicated?",
       options: [
@@ -485,15 +331,10 @@ export const initialStudySets: StudySetItem[] = [
     pathway: "RN",
     examTrack: "ATI",
     badge: "Free",
-    rating: 4.7,
-    reviewsCount: 1933,
-    viewsCount: "16K views",
-    questionCount: 540,
     hasRationales: true,
     hasNgnFormat: true,
     description:
       "Psychiatric disorders, therapeutic communication, crisis intervention, and legal/ethical issues in psychiatric care.",
-    studentQuote: "Therapeutic communication questions helped me identify non-defensive responses.",
     previewQuestion: {
       stem: "A client diagnosed with major depressive disorder states, 'Nothing matters anymore. Everyone would be better off without me.' What is the nurse's priority response?",
       options: [
@@ -514,15 +355,10 @@ export const initialStudySets: StudySetItem[] = [
     pathway: "RN",
     examTrack: "ATI",
     badge: "Free",
-    rating: 4.9,
-    reviewsCount: 2827,
-    viewsCount: "40K views",
-    questionCount: 480,
     hasRationales: true,
     hasNgnFormat: true,
     description:
       "Population health, epidemiology, health promotion, and care of vulnerable populations outside the hospital.",
-    studentQuote: "Level 3 achieved! Primary vs secondary vs tertiary prevention was crystal clear.",
     previewQuestion: {
       stem: "A public health nurse organizes a blood pressure screening booth at a local senior community center. This intervention represents which level of prevention?",
       options: ["Primary prevention", "Secondary prevention", "Tertiary prevention", "Quaternary prevention"],
@@ -538,15 +374,10 @@ export const initialStudySets: StudySetItem[] = [
     pathway: "RN",
     examTrack: "ATI",
     badge: "Free",
-    rating: 4.8,
-    reviewsCount: 3416,
-    viewsCount: "23K views",
-    questionCount: 510,
     hasRationales: true,
     hasNgnFormat: true,
     description:
       "Delegation, prioritization, and management principles nurses apply in clinical settings.",
-    studentQuote: "The 5 Rights of Delegation practice scenarios are the best in the market.",
     previewQuestion: {
       stem: "Which task is most appropriate for a registered nurse to delegate to an unlicensed assistive personnel (UAP)?",
       options: [
@@ -567,15 +398,10 @@ export const initialStudySets: StudySetItem[] = [
     pathway: "RN",
     examTrack: "ATI",
     badge: "Free",
-    rating: 4.9,
-    reviewsCount: 235,
-    viewsCount: "12K views",
-    questionCount: 420,
     hasRationales: true,
     hasNgnFormat: true,
     description:
       "Therapeutic diets, nutrient deficiencies, enteral/parenteral nutrition, and patient education.",
-    studentQuote: "High-protein renal diets vs cardiac diets questions were exceptionally helpful.",
     previewQuestion: {
       stem: "A client diagnosed with chronic kidney disease (CKD) stage 4 requires dietary counseling. Which food choice should the nurse recommend limiting due to high potassium content?",
       options: ["Applesauce", "Bananas and cantaloupe", "White rice", "Green beans"],
@@ -591,15 +417,10 @@ export const initialStudySets: StudySetItem[] = [
     pathway: "RN_Exit",
     examTrack: "ATI",
     badge: "Free",
-    rating: 4.9,
-    reviewsCount: 4192,
-    viewsCount: "41K views",
-    questionCount: 1500,
     hasRationales: true,
     hasNgnFormat: true,
     description:
       "Cumulative exam covering every content area above — taken near graduation to benchmark NCLEX readiness.",
-    studentQuote: "Scored 99% predicted probability of passing NCLEX on my graduation exit exam!",
     previewQuestion: {
       stem: "A nurse is prioritizing care for 4 admitted clients. Which client should the nurse assess first?",
       options: [
@@ -621,15 +442,10 @@ export const initialStudySets: StudySetItem[] = [
     pathway: "RN",
     examTrack: "NCLEX",
     badge: "Included",
-    rating: 5.0,
-    reviewsCount: 1298,
-    viewsCount: "68K views",
-    questionCount: 150,
     hasRationales: true,
     hasNgnFormat: true,
     description:
       "Full computerized adaptive benchmark simulating NCLEX-RN test plan with Next Generation clinical judgment item types.",
-    studentQuote: "My entire cohort used this and we all passed! 🎉",
   },
   {
     id: "set-hesi-adult-health",
@@ -639,15 +455,10 @@ export const initialStudySets: StudySetItem[] = [
     pathway: "RN",
     examTrack: "HESI",
     badge: "Included",
-    rating: 4.9,
-    reviewsCount: 3214,
-    viewsCount: "58K views",
-    questionCount: 57,
     hasRationales: true,
     hasNgnFormat: true,
     description:
       "Proctored HESI specialty exam for adult medical-surgical nursing including fluid & electrolytes, cardiovascular, and surgical nursing.",
-    studentQuote: "Questions were very similar to the actual test 🎯",
   },
   {
     id: "set-lpn-ati-maternity",
@@ -657,15 +468,10 @@ export const initialStudySets: StudySetItem[] = [
     pathway: "PN_LPN",
     examTrack: "ATI",
     badge: "Included",
-    rating: 5.0,
-    reviewsCount: 1298,
-    viewsCount: "29K views",
-    questionCount: 60,
     hasRationales: true,
     hasNgnFormat: true,
     description:
       "Practical nursing maternity assessment focused on prenatal care, labor monitoring, postpartum assessment, and newborn safety.",
-    studentQuote: "My entire cohort used this and we all passed! 🎉",
   },
   {
     id: "set-rn-comp-pred-v2",
@@ -675,15 +481,10 @@ export const initialStudySets: StudySetItem[] = [
     pathway: "RN_Exit",
     examTrack: "ATI",
     badge: "Proctored",
-    rating: 4.8,
-    reviewsCount: 1932,
-    viewsCount: "62K views",
-    questionCount: 180,
     hasRationales: true,
     hasNgnFormat: true,
     description:
       "Comprehensive multi-specialty benchmark exam with detailed topic analytics and NCLEX probability estimation.",
-    studentQuote: "Comprehensive and well-organized study material ⭐",
   },
   {
     id: "set-bsn-206-foundations",
@@ -693,15 +494,10 @@ export const initialStudySets: StudySetItem[] = [
     pathway: "RN",
     examTrack: "Regular",
     badge: "Included",
-    rating: 4.9,
-    reviewsCount: 3214,
-    viewsCount: "44K views",
-    questionCount: 75,
     hasRationales: true,
     hasNgnFormat: true,
     description:
       "Academic course final preparation for BSN semester 1 foundations covering aseptic technique, vitals, mobility, and ethics.",
-    studentQuote: "The best investment for my nursing education 💪",
   },
   {
     id: "set-microbiology-proctored",
@@ -711,14 +507,9 @@ export const initialStudySets: StudySetItem[] = [
     pathway: "RN",
     examTrack: "Regular",
     badge: "Included",
-    rating: 4.9,
-    reviewsCount: 2641,
-    viewsCount: "38K views",
-    questionCount: 104,
     hasRationales: true,
     hasNgnFormat: true,
     description:
       "Pre-nursing science course exam covering pathogenic bacteria, viruses, antibiotic resistance, immunology, and lab diagnostics.",
-    studentQuote: "Questions were very similar to the actual test ⭐",
   },
 ];

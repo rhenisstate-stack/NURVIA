@@ -227,7 +227,7 @@ export default function HomePage() {
 
                 <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
                   <span className="px-3 py-1 rounded-full bg-surface-muted text-foreground-secondary font-medium">
-                    • 40,000+ questions
+                    • Course-aligned practice
                   </span>
                   <span className="px-3 py-1 rounded-full bg-surface-muted text-foreground-secondary font-medium">
                     • NGN included
@@ -269,7 +269,7 @@ export default function HomePage() {
 
                 <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
                   <span className="px-3 py-1 rounded-full bg-surface-muted text-foreground-secondary font-medium">
-                    • 20,000+ questions
+                    • Specialty practice
                   </span>
                   <span className="px-3 py-1 rounded-full bg-surface-muted text-foreground-secondary font-medium">
                     • Exit exam banks
@@ -378,16 +378,15 @@ export default function HomePage() {
                     {set.title}
                   </h3>
 
-                  {/* Metadata Row 1: Rating, Reviews, Views */}
+                  {/* Metadata Row 1: Track and pathway */}
                   <div className="flex items-center gap-2 text-xs text-foreground-muted font-medium">
-                    <span className="flex items-center gap-1 text-amber-500 font-semibold">
-                      <Star className="w-3.5 h-3.5 fill-amber-500" />
-                      {set.rating} ({set.reviewsCount.toLocaleString()})
+                    <span className="flex items-center gap-1 font-semibold text-foreground-secondary">
+                      {set.examTrack} · {set.pathway}
                     </span>
                     <span>•</span>
                     <span className="flex items-center gap-1">
-                      <Eye className="w-3.5 h-3.5 text-foreground-muted" />
-                      {set.viewsCount}
+                      <BookOpen className="w-3.5 h-3.5 text-brand-teal" />
+                      NGN-ready format
                     </span>
                   </div>
 

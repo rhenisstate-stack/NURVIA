@@ -17,7 +17,7 @@ namespace Nurvia.Infrastructure.Migrations
                 type: "character varying(30)",
                 maxLength: 30,
                 nullable: false,
-                defaultValue: "");
+                defaultValue: "Immediate");
 
             migrationBuilder.AddColumn<DateTime>(
                 name: "ReviewReleasedAtUtc",

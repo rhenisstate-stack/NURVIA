@@ -70,6 +70,8 @@ export type ExhibitType =
 
 export type ExamDeliveryMode = 'Review' | 'Exam' | 'Tutor' | 'All';
 
+export type ReviewReleasePolicy = 'Immediate' | 'ManualRelease';
+
 export interface QuestionOptionDto {
   id?: string;
   optionIndex: number;
@@ -165,6 +167,8 @@ export interface ExamVersionDto {
   passingScorePercentage: number;
   status: ExamStatus;
   validationErrors?: string;
+  reviewReleasePolicy: ReviewReleasePolicy;
+  reviewReleasedAtUtc?: string;
   createdAtUtc: string;
   createdBy: string;
   blueprint?: ExamBlueprintDto;
@@ -308,6 +312,7 @@ export interface SubmittedExamResultDto {
   scorePercentage: number;
   passingScorePercentage: number;
   passed: boolean;
+  reviewReleased: boolean;
   reviewQuestions: ReviewQuestionDto[];
 }
 
