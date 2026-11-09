@@ -253,15 +253,22 @@ public class QuestionService : IQuestionService
         if (request.Decision == ReviewDecision.Approved)
         {
             question.Approve(reviewerId, reviewerName, request.Comments);
-            await _audit.LogAsync("Question", question.Id.ToString(), "Approve", reviewerId, reviewerName, "ContentReviewer", $"Approved question '{question.Code}'", ct);
         }
         else
         {
             question.Reject(reviewerId, reviewerName, request.Comments);
-            await _audit.LogAsync("Question", question.Id.ToString(), "Reject", reviewerId, reviewerName, "ContentReviewer", $"Rejected question '{question.Code}': {request.Comments}", ct);
         }
 
         await _context.SaveChangesAsync(ct);
+
+        if (request.Decision == ReviewDecision.Approved)
+        {
+            await _audit.LogAsync("Question", question.Id.ToString(), "Approve", reviewerId, reviewerName, "ContentReviewer", $"Approved question '{question.Code}'", ct);
+        }
+        else
+        {
+            await _audit.LogAsync("Question", question.Id.ToString(), "Reject", reviewerId, reviewerName, "ContentReviewer", $"Rejected question '{question.Code}': {request.Comments}", ct);
+        }
         return MapToDto(question, true);
     }
 

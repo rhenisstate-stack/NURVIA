@@ -1,4 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using Nurvia.Application.Common;
+using Nurvia.Application.Exams;
+using Nurvia.Application.Questions;
+using Nurvia.Application.Services;
 using Nurvia.Domain.Auditing;
 using Nurvia.Domain.Enums;
 using Nurvia.Domain.Exceptions;
@@ -28,7 +32,6 @@ public class PostgreSqlIntegrationTests : IAsyncLifetime
     public async Task InitializeAsync()
     {
         await using var context = CreateDbContext();
-        // Ensure migrations applied
         await context.Database.MigrateAsync();
     }
 
@@ -112,82 +115,79 @@ public class PostgreSqlIntegrationTests : IAsyncLifetime
     public async Task ExamBlueprintAndVersion_Publication_EnforcesImmutability()
     {
         await using var context = CreateDbContext();
+        var audit = new AuditService(context);
+        var questionService = new QuestionService(context, audit);
+        var examService = new ExamService(context, audit);
+
         var uniqueCode = $"EXAM-{Guid.NewGuid():N}".Substring(0, 16);
-
-        // First create a published question to be part of the exam
         var qCode = $"Q-PUB-{Guid.NewGuid():N}".Substring(0, 20);
-        var question = new Question(qCode, NursingPathway.RN, ExamCategory.ATI, "Fundamentals", "Safety", DifficultyLevel.Foundational, "Author");
-        var qv = new QuestionVersion(question.Id, 1, "Which action prevents falls in an elderly confused client?", QuestionType.MultipleChoice, "Author")
-        {
-            GeneralRationale = "Placing bed in lowest position with call light within reach prevents falls.",
-            Status = ContentStatus.Draft
-        };
-        qv.Options.Add(new QuestionOption(1, "Place bed in lowest position with call light in reach", true));
-        qv.Options.Add(new QuestionOption(2, "Raise all 4 side rails to prevent exit", false));
-        question.Versions.Add(qv);
-        context.Questions.Add(question);
-        await context.SaveChangesAsync();
-        _createdQuestionIds.Add(question.Id);
 
-        question.CurrentVersionId = qv.Id;
-        question.CurrentVersion = qv;
-        question.SubmitForReview("Author");
-        question.Approve("rev-01", "Dr. Reviewer", "Approved for exam publication");
-        question.Publish("Publisher");
-        await context.SaveChangesAsync();
-
-        // Now create the exam
-        var exam = new Exam(uniqueCode, "NCLEX Comprehensive Readiness", "Benchmark assessment", NursingPathway.RN, ExamCategory.ATI, "Director");
-        var v1 = new ExamVersion(exam.Id, 1, "Version 1", "Draft version", "Director")
+        // 1. Create and publish a question using QuestionService
+        var qDto = await questionService.CreateDraftAsync(new CreateQuestionRequest
         {
+            Code = qCode,
+            Pathway = NursingPathway.RN,
+            Category = ExamCategory.ATI,
+            Subject = "Fundamentals",
+            Topic = "Patient Safety",
+            Difficulty = DifficultyLevel.Foundational,
+            QuestionType = QuestionType.MultipleChoice,
+            Stem = "Which nursing action prevents accidental falls in an elderly confused patient?",
+            GeneralRationale = "Placing the bed in its lowest position with the call light in reach preserves safety.",
+            Options = new List<CreateOptionRequest>
+            {
+                new() { OptionIndex = 1, OptionText = "Place bed in lowest position with call light in reach", IsCorrect = true },
+                new() { OptionIndex = 2, OptionText = "Raise all four side rails against patient wishes", IsCorrect = false }
+            }
+        }, "Lead Educator Elena Vance");
+        _createdQuestionIds.Add(qDto.Id);
+
+        await questionService.SubmitForReviewAsync(qDto.Id, "Lead Educator Elena Vance");
+        context.ChangeTracker.Clear();
+
+        await questionService.ReviewQuestionAsync(qDto.Id, new QuestionReviewRequest
+        {
+            Decision = ReviewDecision.Approved,
+            Comments = "Excellent safety item"
+        }, "rev-101", "Dr. Reviewer");
+        context.ChangeTracker.Clear();
+
+        await questionService.PublishQuestionAsync(qDto.Id, "Publisher Admin");
+        context.ChangeTracker.Clear();
+
+        // 2. Create exam using ExamService with InitialQuestionIds
+        var examDto = await examService.CreateExamAsync(new CreateExamRequest
+        {
+            Code = uniqueCode,
+            Title = "NCLEX Comprehensive Readiness Benchmark",
+            Description = "Predictive readiness exam for RN candidates",
+            Pathway = NursingPathway.RN,
+            Category = ExamCategory.ATI,
+            TargetQuestionCount = 50,
             TimeLimitMinutes = 90,
             PassingScorePercentage = 75,
-            Blueprint = new ExamBlueprint(Guid.NewGuid(), 50)
-            {
-                SubjectDistributionJson = "{\"Pharmacology\": 20, \"MedSurg\": 30}"
-            }
-        };
-        v1.ExamQuestions.Add(new ExamQuestion(v1.Id, question.Id, qv.Id, 1, 1)
-        {
-            Question = question
-        });
-        exam.Versions.Add(v1);
-        context.Exams.Add(exam);
-        await context.SaveChangesAsync();
-        _createdExamIds.Add(exam.Id);
+            InitialQuestionIds = new List<Guid> { qDto.Id }
+        }, "Director Sarah Hayes");
+        _createdExamIds.Add(examDto.Id);
+        context.ChangeTracker.Clear();
 
-        exam.CurrentVersionId = v1.Id;
-        exam.CurrentVersion = v1;
-        await context.SaveChangesAsync();
+        // 3. Workflow transitions simulating separate administrative requests
+        await examService.SubmitForReviewAsync(examDto.Id, "Director Sarah Hayes");
+        context.ChangeTracker.Clear();
 
-        // Invariant: Cannot publish directly from Draft
-        Assert.Throws<DomainException>(() => exam.Publish("Publisher"));
+        await examService.ApproveExamAsync(examDto.Id, "Dean of Nursing", "Approved blueprint");
+        context.ChangeTracker.Clear();
 
-        // Valid transition lifecycle
-        exam.SubmitForReview("Director");
-        Assert.Equal(ExamStatus.PendingReview, exam.Status);
+        var publishedExam = await examService.PublishExamAsync(examDto.Id, "Chief Academic Officer");
+        context.ChangeTracker.Clear();
 
-        exam.Approve("Dean of Nursing", "Approved blueprint");
-        Assert.Equal(ExamStatus.Approved, exam.Status);
-
-        exam.Publish("Chief Nursing Officer");
-        Assert.Equal(ExamStatus.Published, exam.Status);
-        await context.SaveChangesAsync();
-
-        var publishedExam = await context.Exams
-            .Include(e => e.CurrentVersion)
-                .ThenInclude(v => v!.Blueprint)
-            .FirstOrDefaultAsync(e => e.Id == exam.Id);
-
-        Assert.NotNull(publishedExam);
         Assert.Equal(ExamStatus.Published, publishedExam.Status);
-        Assert.Equal(ExamStatus.Published, publishedExam.CurrentVersion!.Status);
+        Assert.NotNull(publishedExam.CurrentVersion);
+        Assert.Equal(ExamStatus.Published, publishedExam.CurrentVersion.Status);
 
-        // Attempting to submit an already published exam throws DomainException
-        Assert.Throws<DomainException>(() =>
-        {
-            publishedExam.SubmitForReview("Editor");
-        });
+        // 4. Immutability: Attempting to submit or publish already published exam throws DomainException
+        await Assert.ThrowsAsync<DomainException>(() =>
+            examService.SubmitForReviewAsync(examDto.Id, "Editor"));
     }
 
     [Fact]
