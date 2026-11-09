@@ -41,6 +41,8 @@ public class ExamAttemptService : IExamAttemptService
         var version = exam.CurrentVersion;
         if (version == null)
             throw new DomainException("This examination has not yet been configured with an active version.");
+        if (exam.Status != ExamStatus.Published)
+            throw new DomainException("Only published examinations are available to learners.");
 
         // Check for an ongoing active attempt for this learner
         var existingAttempt = await _context.ExamAttempts

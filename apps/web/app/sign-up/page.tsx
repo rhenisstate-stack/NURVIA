@@ -20,8 +20,22 @@ export default function SignUpPage() {
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState(false);
+  const [signInHref, setSignInHref] = React.useState("/sign-in");
 
   React.useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("returnTo");
+    if (requested?.startsWith("/")) {
+      try {
+        const destination = new URL(requested, window.location.origin);
+        if (destination.origin === window.location.origin &&
+            !["/sign-in", "/sign-up", "/access-denied"].includes(destination.pathname)) {
+          setSignInHref(`/sign-in?returnTo=${encodeURIComponent(`${destination.pathname}${destination.search}${destination.hash}`)}`);
+        }
+      } catch {
+        setSignInHref("/sign-in");
+      }
+    }
+
     if (status === "authenticated" && user) {
       router.replace(user.role === "Learner" ? "/learner" : "/access-denied");
     }
@@ -64,7 +78,7 @@ export default function SignUpPage() {
           {success ? (
             <div role="status" className="space-y-4 rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
               <p>Your registration request is complete. Sign in to continue.</p>
-              <Button type="button" className="w-full" onClick={() => router.push("/sign-in")}>Go to Sign In</Button>
+              <Button type="button" className="w-full" onClick={() => router.push(signInHref)}>Go to Sign In</Button>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-5">
@@ -147,7 +161,7 @@ export default function SignUpPage() {
 
           <p className="mt-6 text-center text-sm text-foreground-secondary">
             Already registered?{" "}
-            <Link href="/sign-in" className="font-semibold text-brand-teal underline-offset-4 hover:underline">Sign In</Link>
+            <Link href={signInHref} className="font-semibold text-brand-teal underline-offset-4 hover:underline">Sign In</Link>
           </p>
         </section>
       </main>

@@ -23,6 +23,16 @@ public class ExamsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<ApiResponse<PagedResult<ExamDto>>>> GetExams([FromQuery] ExamFilterRequest filter, CancellationToken ct)
     {
+        var user = HttpContext.GetCurrentUser();
+        if (!user.IsAuthenticated || user.Role.Equals("Learner", StringComparison.OrdinalIgnoreCase))
+        {
+            filter.Status = Nurvia.Domain.Enums.ExamStatus.Published;
+        }
+        else if (!HttpContext.HasRole("Author", "Reviewer", "Publisher", "Administrator", "Superadmin"))
+        {
+            return Forbid();
+        }
+
         var result = await _examService.GetExamsAsync(filter, ct);
         return Ok(ApiResponse<PagedResult<ExamDto>>.Ok(result));
     }
@@ -30,6 +40,14 @@ public class ExamsController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<ApiResponse<ExamDto>>> GetExamById(Guid id, CancellationToken ct)
     {
+        if (!HttpContext.HasRole("Author", "Reviewer", "Publisher", "Administrator", "Superadmin"))
+        {
+            var user = HttpContext.GetCurrentUser();
+            if (!user.IsAuthenticated)
+                return Unauthorized(ApiResponse<ExamDto>.Error("Authentication is required to view exam configuration."));
+            return Forbid();
+        }
+
         var exam = await _examService.GetExamByIdAsync(id, ct);
         if (exam == null)
             return NotFound(ApiResponse<ExamDto>.Error($"Exam with ID '{id}' was not found."));
@@ -85,6 +103,14 @@ public class ExamsController : ControllerBase
     [HttpPost("{id:guid}/validate")]
     public async Task<ActionResult<ApiResponse<List<string>>>> Validate(Guid id, CancellationToken ct)
     {
+        if (!HttpContext.HasRole("Author", "Reviewer", "Publisher", "Administrator", "Superadmin"))
+        {
+            var user = HttpContext.GetCurrentUser();
+            if (!user.IsAuthenticated)
+                return Unauthorized(ApiResponse<List<string>>.Error("Authentication is required to validate exams."));
+            return Forbid();
+        }
+
         try
         {
             var errors = await _examService.ValidateExamAsync(id, ct);

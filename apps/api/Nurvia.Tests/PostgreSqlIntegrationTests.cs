@@ -3,6 +3,7 @@ using Nurvia.Application.Common;
 using Nurvia.Application.Exams;
 using Nurvia.Application.Questions;
 using Nurvia.Application.Services;
+using Nurvia.Application.Security;
 using Nurvia.Domain.Auditing;
 using Nurvia.Domain.Enums;
 using Nurvia.Domain.Exceptions;
@@ -25,6 +26,7 @@ public class PostgreSqlIntegrationTests : IAsyncLifetime
     private const string ConnectionString = "Host=localhost;Port=5432;Database=nurvia_db;Username=nurvia_user;Password=nurvia_secure_password_dev2026!;Include Error Detail=true";
     private readonly List<Guid> _createdQuestionIds = new();
     private readonly List<Guid> _createdExamIds = new();
+    private readonly List<Guid> _createdUserIds = new();
 
     private NurviaDbContext CreateDbContext()
     {
@@ -58,6 +60,12 @@ public class PostgreSqlIntegrationTests : IAsyncLifetime
             context.Questions.RemoveRange(questions);
         }
 
+        if (_createdUserIds.Any())
+        {
+            var users = await context.UserAccounts.Where(user => _createdUserIds.Contains(user.Id)).ToListAsync();
+            context.UserAccounts.RemoveRange(users);
+        }
+
         await context.SaveChangesAsync();
     }
 
@@ -83,6 +91,46 @@ public class PostgreSqlIntegrationTests : IAsyncLifetime
         Assert.Contains("ExamAttempts", tables);
         Assert.Contains("AttemptResponses", tables);
         Assert.Contains("AuditLogs", tables);
+        Assert.Contains("UserAccounts", tables);
+    }
+
+    [Fact]
+    public async Task LearnerRegistrationAndProfileChanges_PersistThroughPostgreSql()
+    {
+        await using var context = CreateDbContext();
+        var authService = new AuthService(context, new Pbkdf2PasswordHasher());
+        var email = $"learner-{Guid.NewGuid():N}@example.test";
+        const string password = "NursingConfidence-2026!";
+
+        var registered = await authService.RegisterAsync(new RegistrationRequest
+        {
+            Name = "Test Learner",
+            Email = email,
+            Password = password
+        }, CancellationToken.None);
+
+        Assert.True(registered);
+        var user = await authService.AuthenticateAsync(email, password, CancellationToken.None);
+        Assert.NotNull(user);
+        Assert.Equal("Learner", user.Role);
+        _createdUserIds.Add(Guid.Parse(user.Id));
+
+        var persisted = await context.UserAccounts.SingleAsync(account => account.Id == Guid.Parse(user.Id));
+        Assert.NotEqual(password, persisted.PasswordHash);
+        Assert.False(await authService.RegisterAsync(new RegistrationRequest
+        {
+            Name = "Duplicate",
+            Email = email.ToUpperInvariant(),
+            Password = password
+        }, CancellationToken.None));
+
+        var updated = await authService.UpdateProfileAsync(user.Id, "Updated Learner", CancellationToken.None);
+        Assert.NotNull(updated);
+        Assert.Equal("Updated Learner", updated.Name);
+        Assert.Equal("Updated Learner", await context.UserAccounts
+            .Where(account => account.Id == Guid.Parse(user.Id))
+            .Select(account => account.Name)
+            .SingleAsync());
     }
 
     [Fact]

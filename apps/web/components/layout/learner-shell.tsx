@@ -163,9 +163,10 @@ export function LearnerShell({ children }: { children: React.ReactNode }) {
     "LPN Exit": false,
   });
   const [topSearch, setTopSearch] = React.useState("");
+  const [signOutError, setSignOutError] = React.useState<string | null>(null);
   const router = useRouter();
   const pathname = usePathname();
-  const { status, user, error } = useAuth();
+  const { status, user, error, signOut } = useAuth();
 
   React.useEffect(() => {
     if (status === "unauthenticated") {
@@ -193,6 +194,16 @@ export function LearnerShell({ children }: { children: React.ReactNode }) {
       router.push(`/learner/library?q=${encodeURIComponent(topSearch.trim())}`);
     }
   };
+
+  async function handleSignOut() {
+    setSignOutError(null);
+    const response = await signOut();
+    if (!response.success) {
+      setSignOutError(response.message || "Unable to sign out. Please try again.");
+      return;
+    }
+    router.replace("/");
+  }
 
   if (status === "loading" || status === "unauthenticated" ||
       (status === "authenticated" && user?.role !== "Learner")) {
@@ -365,18 +376,9 @@ export function LearnerShell({ children }: { children: React.ReactNode }) {
         <div className="p-3 border-t border-border bg-surface-muted/40">
           {!collapsed ? (
             <div className="rounded-xl border border-border bg-surface p-3 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-foreground">Target Exam</span>
-                <span className="font-bold text-brand-teal">NCLEX-RN Next-Gen</span>
-              </div>
-              <div className="text-[11px] text-foreground-muted">
-                Readiness Benchmark:{" "}
-                <strong className="text-emerald-600 dark:text-emerald-400">82% Verified</strong>
-              </div>
-              <Link href="/exam-session">
-                <Button size="sm" className="w-full text-xs h-7 bg-brand-navy hover:bg-brand-navyDeep text-white dark:bg-brand-teal dark:hover:bg-brand-tealDark">
-                  Launch Practice Exam
-                </Button>
+              <p className="truncate text-xs font-semibold text-foreground">{user?.name}</p>
+              <Link href="/learner/exams">
+                <Button size="sm" className="w-full text-xs h-8">Browse Practice Exams</Button>
               </Link>
             </div>
           ) : (
@@ -421,39 +423,23 @@ export function LearnerShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-semibold">
-              <Flame className="w-3.5 h-3.5 fill-current" />
-              <span>7 Day Streak</span>
-            </div>
-
             <ThemeToggle />
-
-            <Button variant="ghost" size="icon" className="relative text-foreground-muted">
-              <Bell className="h-4 w-4" />
-              <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-brand-teal" />
+            <Button type="button" variant="outline" size="sm" className="text-xs" onClick={handleSignOut}>
+              Sign Out
             </Button>
-
-            <Link href="/admin">
-              <Button
-                variant="outline"
-                size="sm"
-                className="hidden md:flex text-xs border-brand-teal/40 text-brand-teal hover:bg-brand-teal/10"
-              >
-                Authoring Studio
-              </Button>
-            </Link>
 
             <div className="flex items-center gap-2 pl-2 border-l border-border">
               <div className="h-8 w-8 rounded-full bg-brand-navy text-white flex items-center justify-center font-bold text-xs shadow-sm">
-                EV
+                {user?.name.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase()}
               </div>
               <div className="hidden xl:block text-left">
-                <div className="text-xs font-bold leading-none text-foreground">Elena Vance</div>
-                <div className="text-[10px] text-foreground-muted">BSN Candidate · May 2026</div>
+                <div className="max-w-40 truncate text-xs font-bold leading-none text-foreground">{user?.name}</div>
+                <div className="text-[10px] text-foreground-muted">{user?.email}</div>
               </div>
             </div>
           </div>
         </header>
+        {signOutError && <p role="alert" className="px-4 pt-3 text-sm text-rose-700 dark:text-rose-300">{signOutError}</p>}
 
         {/* Page Content Body */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">

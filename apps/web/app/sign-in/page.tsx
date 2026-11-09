@@ -18,9 +18,15 @@ function defaultDestination(role: string) {
 
 function safeReturnTo() {
   const requested = new URLSearchParams(window.location.search).get("returnTo");
-  if (!requested || !requested.startsWith("/") || requested.startsWith("//")) return null;
-  if (["/sign-in", "/sign-up", "/access-denied"].includes(requested)) return null;
-  return requested;
+  if (!requested || !requested.startsWith("/")) return null;
+  try {
+    const destination = new URL(requested, window.location.origin);
+    if (destination.origin !== window.location.origin ||
+        ["/sign-in", "/sign-up", "/access-denied"].includes(destination.pathname)) return null;
+    return `${destination.pathname}${destination.search}${destination.hash}`;
+  } catch {
+    return null;
+  }
 }
 
 export default function SignInPage() {
@@ -31,9 +37,10 @@ export default function SignInPage() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const completedSignIn = React.useRef(false);
 
   React.useEffect(() => {
-    if (status === "authenticated" && user) {
+    if (status === "authenticated" && user && !completedSignIn.current) {
       router.replace(defaultDestination(user.role));
     }
   }, [status, user, router]);
@@ -50,6 +57,7 @@ export default function SignInPage() {
       return;
     }
 
+    completedSignIn.current = true;
     router.replace(safeReturnTo() || defaultDestination(response.data.role));
   }
 

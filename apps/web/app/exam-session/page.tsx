@@ -34,6 +34,7 @@ import {
   ReviewQuestionDto,
 } from "@/lib/api-types";
 import { QuestionRendererRegistry, RendererQuestion } from "@/components/exam/renderers";
+import { useAuth } from "@/components/auth/auth-provider";
 
 // High-Yield Default Practice Set covering canonical NCLEX-RN and NextGen NGN item types
 const fallbackQuestions: RendererQuestion[] = [
@@ -142,6 +143,7 @@ const fallbackQuestions: RendererQuestion[] = [
 function ExamSessionContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { status, user } = useAuth();
 
   const attemptIdParam = searchParams?.get("attemptId");
   const examIdParam = searchParams?.get("examId");
@@ -149,8 +151,8 @@ function ExamSessionContent() {
 
   // Session state
   const [attemptId, setAttemptId] = React.useState<string | null>(attemptIdParam);
-  const [examTitle, setExamTitle] = React.useState<string>("ATI Comprehensive Nursing Practice Examination");
-  const [questions, setQuestions] = React.useState<RendererQuestion[]>(fallbackQuestions);
+  const [examTitle, setExamTitle] = React.useState<string>("NURVIA examination");
+  const [questions, setQuestions] = React.useState<RendererQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = React.useState<number>(0);
   const [answers, setAnswers] = React.useState<Record<string, string>>({});
   const [flags, setFlags] = React.useState<Record<string, boolean>>({});
@@ -164,15 +166,29 @@ function ExamSessionContent() {
   const [isSubmitted, setIsSubmitted] = React.useState<boolean>(false);
   const [submittedResult, setSubmittedResult] = React.useState<SubmittedExamResultDto | null>(null);
   const [isQuestionGridOpen, setIsQuestionGridOpen] = React.useState<boolean>(false);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [submissionError, setSubmissionError] = React.useState<string | null>(null);
 
   // Autosave debounce timer ref
   const autosaveTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  React.useEffect(() => {
+    if (status === "unauthenticated") {
+      const returnTo = typeof window === "undefined"
+        ? "/exam-session"
+        : `${window.location.pathname}${window.location.search}`;
+      router.replace(`/sign-in?returnTo=${encodeURIComponent(returnTo)}`);
+    } else if (status === "authenticated" && user?.role !== "Learner") {
+      router.replace("/access-denied");
+    }
+  }, [status, user, router]);
 
   // 1. Initialize attempt from API
   React.useEffect(() => {
     async function loadAttempt() {
       if (attemptIdParam) {
         setIsLoading(true);
+        setLoadError(null);
         if (modeParam === "Review") {
           const reviewRes = await nurviaApi.getAttemptReview(attemptIdParam);
           if (reviewRes.success && reviewRes.data) {
@@ -190,17 +206,24 @@ function ExamSessionContent() {
           const reviewRes = await nurviaApi.getAttemptReview(attemptIdParam);
           if (reviewRes.success && reviewRes.data) {
             hydrateFromReview(reviewRes.data);
+          } else {
+            setLoadError(reviewRes.message || res.message || "Unable to load this exam attempt.");
           }
         }
         setIsLoading(false);
       } else if (examIdParam) {
         setIsLoading(true);
+        setLoadError(null);
         const res = await nurviaApi.startAttempt(examIdParam);
         if (res.success && res.data) {
           setAttemptId(res.data.attemptId);
           hydrateFromAttempt(res.data);
+        } else {
+          setLoadError(res.message || "Unable to start this exam. Please choose another published exam.");
         }
         setIsLoading(false);
+      } else {
+        setLoadError("Choose a published exam before opening an exam session.");
       }
     }
 
@@ -341,64 +364,28 @@ function ExamSessionContent() {
   // 4. Submit Examination Handler
   const handleSubmitExam = async () => {
     setIsSubmitModalOpen(false);
+    setSubmissionError(null);
+    if (!attemptId) {
+      setSubmissionError("There is no persisted exam attempt to submit.");
+      return;
+    }
     setIsLoading(true);
 
-    if (attemptId) {
-      try {
-        const res = await nurviaApi.submitAttempt(attemptId);
-        if (res.success && res.data) {
-          setSubmittedResult(res.data);
-          setIsSubmitted(true);
-          setDeliveryMode("Review");
-          // Merge review questions with answers and rationales
-          if (res.data.reviewQuestions && res.data.reviewQuestions.length > 0) {
-            const reviewMapped: RendererQuestion[] = res.data.reviewQuestions.map((rq) => ({
-              id: rq.questionId,
-              orderIndex: rq.orderIndex,
-              stem: rq.stem,
-              questionType: rq.questionType,
-              cognitiveSkill: rq.cognitiveSkill,
-              clientNeedCategory: rq.clientNeedCategory,
-              generalRationale: rq.generalRationale,
-              options: rq.options.map((ro) => ({
-                id: ro.id,
-                optionIndex: ro.optionIndex,
-                optionText: ro.optionText,
-                isCorrect: ro.isCorrect,
-                specificRationale: ro.specificRationale,
-                wasSelected: ro.wasSelected,
-              })),
-              exhibits: rq.exhibits,
-            }));
-            setQuestions(reviewMapped);
-          }
-        }
-      } catch (err) {
-        console.error("Submission failed", err);
+    try {
+      const response = await nurviaApi.submitAttempt(attemptId);
+      if (!response.success || !response.data) {
+        setSubmissionError(response.message || "The exam could not be submitted. Your attempt has not been marked complete.");
+      } else {
+        setSubmittedResult(response.data);
+        setIsSubmitted(true);
+        setDeliveryMode("Review");
+        router.replace(`/learner/attempts/${encodeURIComponent(attemptId)}`);
       }
-    } else {
-      // Local fallback mock submission
-      const mockResult: SubmittedExamResultDto = {
-        attemptId: "mock-attempt-local",
-        examId: "mock-exam-local",
-        examTitle,
-        status: "Graded",
-        startedAtUtc: new Date().toISOString(),
-        submittedAtUtc: new Date().toISOString(),
-        timeSpentSeconds: 1840,
-        totalQuestions: questions.length,
-        correctQuestions: Math.max(1, Math.round(questions.length * 0.85)),
-        scorePercentage: 85.0,
-        passingScorePercentage: 75.0,
-        passed: true,
-        reviewQuestions: [],
-      };
-      setSubmittedResult(mockResult);
-      setIsSubmitted(true);
-      setDeliveryMode("Review");
+    } catch (error) {
+      setSubmissionError(error instanceof Error ? error.message : "The exam could not be submitted.");
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   const currentQ = questions[currentIndex];
@@ -408,6 +395,24 @@ function ExamSessionContent() {
   const answeredCount = Object.keys(answers).length;
   const unansweredCount = questions.length - answeredCount;
   const flaggedCount = Object.values(flags).filter(Boolean).length;
+
+  if (status !== "authenticated" || user?.role !== "Learner") {
+    return <main className="flex min-h-screen items-center justify-center px-6 text-sm text-foreground-secondary" aria-live="polite">Checking your learner access…</main>;
+  }
+
+  if (isLoading) {
+    return <main className="flex min-h-screen items-center justify-center px-6 text-sm text-foreground-secondary" aria-live="polite">Loading your saved examination…</main>;
+  }
+
+  if (loadError && !attemptId && !questions.length) {
+    return (
+      <main className="mx-auto flex min-h-screen max-w-xl flex-col items-center justify-center gap-4 px-6 text-center">
+        <h1 className="font-brand text-2xl font-bold text-foreground">No exam session available</h1>
+        <p role="alert" className="text-sm text-foreground-secondary">{loadError}</p>
+        <Link href="/learner/exams"><Button>Choose a published exam</Button></Link>
+      </main>
+    );
+  }
 
   return (
     <ExamShell

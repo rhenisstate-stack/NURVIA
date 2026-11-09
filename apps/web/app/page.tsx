@@ -42,11 +42,15 @@ export default function HomePage() {
   const [selectedCategory, setSelectedCategory] = React.useState<string>("All");
   const [previewingSet, setPreviewingSet] = React.useState<StudySetItem | null>(null);
   const { status, user } = useAuth();
-  const practiceHref = status === "authenticated"
-    ? "/learner/custom-practice"
-    : "/sign-in?returnTo=%2Flearner%2Fcustom-practice";
-  const startHref = status === "authenticated"
+  const practiceHref = status === "authenticated" && user?.role === "Learner"
     ? "/learner/exams"
+    : status === "authenticated"
+      ? "/access-denied"
+    : "/sign-in?returnTo=%2Flearner%2Fcustom-practice";
+  const startHref = status === "authenticated" && user?.role === "Learner"
+    ? "/learner/exams"
+    : status === "authenticated"
+      ? "/access-denied"
     : "/sign-up?returnTo=%2Flearner%2Fexams";
 
   const categories = [
@@ -133,7 +137,7 @@ export default function HomePage() {
             >
               <Sparkles className="h-4 w-4" aria-hidden="true" />
               Quick Practice
-              {status === "authenticated" && user?.role === "Learner" && <span className="sr-only">, open custom practice</span>}
+              {status === "authenticated" && user?.role === "Learner" && <span className="sr-only">, open published exams</span>}
             </Link>
           </div>
 

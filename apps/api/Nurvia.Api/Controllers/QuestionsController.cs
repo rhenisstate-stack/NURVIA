@@ -23,6 +23,11 @@ public class QuestionsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<ApiResponse<PagedResult<QuestionDto>>>> GetQuestions([FromQuery] QuestionFilterRequest filter, CancellationToken ct)
     {
+        if (!HttpContext.GetCurrentUser().IsAuthenticated)
+            return Unauthorized(ApiResponse<PagedResult<QuestionDto>>.Error("Authenticated content staff access is required."));
+        if (!CanManageContent())
+            return Forbid();
+
         var result = await _questionService.GetQuestionsAsync(filter, ct);
         return Ok(ApiResponse<PagedResult<QuestionDto>>.Ok(result));
     }
@@ -30,6 +35,11 @@ public class QuestionsController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<ApiResponse<QuestionDto>>> GetQuestionById(Guid id, CancellationToken ct)
     {
+        if (!HttpContext.GetCurrentUser().IsAuthenticated)
+            return Unauthorized(ApiResponse<QuestionDto>.Error("Authenticated content staff access is required."));
+        if (!CanManageContent())
+            return Forbid();
+
         var question = await _questionService.GetQuestionByIdAsync(id, ct);
         if (question == null)
             return NotFound(ApiResponse<QuestionDto>.Error($"Question with ID '{id}' was not found."));
@@ -82,6 +92,11 @@ public class QuestionsController : ControllerBase
     [HttpPost("{id:guid}/validate")]
     public async Task<ActionResult<ApiResponse<List<string>>>> Validate(Guid id, CancellationToken ct)
     {
+        if (!HttpContext.GetCurrentUser().IsAuthenticated)
+            return Unauthorized(ApiResponse<List<string>>.Error("Authenticated content staff access is required."));
+        if (!CanManageContent())
+            return Forbid();
+
         try
         {
             var errors = await _questionService.ValidateQuestionAsync(id, ct);
@@ -197,6 +212,11 @@ public class QuestionsController : ControllerBase
         catch (DomainException ex)
         {
             return BadRequest(ApiResponse<QuestionDto>.Error(ex.Message));
+        }
+
+        private bool CanManageContent()
+        {
+            return HttpContext.HasRole("Author", "Reviewer", "Publisher", "Administrator", "Superadmin");
         }
     }
 }

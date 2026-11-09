@@ -3,112 +3,82 @@
 import * as React from "react";
 import Link from "next/link";
 import { LearnerShell } from "@/components/layout/learner-shell";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Sliders, Sparkles, Play, CheckCircle2 } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { nurviaApi } from "@/lib/api-client";
+import type { ExamDto } from "@/lib/api-types";
+
+const pathways = ["RN", "PN_LPN", "RN_Exit", "PN_Exit"] as const;
 
 export default function CustomPracticePage() {
-  const [selectedTrack, setSelectedTrack] = React.useState("RN");
-  const [selectedMode, setSelectedMode] = React.useState<"Review" | "Exam" | "Tutor">("Review");
-  const [questionCount, setQuestionCount] = React.useState(25);
-  const [onlyIncorrect, setOnlyIncorrect] = React.useState(false);
+  const [pathway, setPathway] = React.useState<(typeof pathways)[number]>("RN");
+  const [exams, setExams] = React.useState<ExamDto[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError(null);
+    void nurviaApi.getExams({ status: "Published", pathway, pageSize: 50 }).then((response) => {
+      if (!active) return;
+      if (response.success) {
+        setExams(response.data?.items || []);
+      } else {
+        setError(response.message || "Unable to load published exams.");
+      }
+      setLoading(false);
+    });
+    return () => { active = false; };
+  }, [pathway]);
 
   return (
     <LearnerShell>
-      <div className="space-y-6 max-w-3xl">
-        <div className="space-y-1">
-          <Badge variant="teal">Custom Practice Engine</Badge>
-          <h1 className="font-brand text-2xl sm:text-3xl font-bold text-foreground">
-            Build a Custom Practice Quiz
-          </h1>
-          <p className="text-xs sm:text-sm text-foreground-secondary">
-            Configure subjects, question volume, and study mode targeted to your current study goals.
+      <div className="space-y-6">
+        <header className="space-y-2">
+          <p className="text-xs font-bold uppercase tracking-wider text-brand-teal">Quick practice</p>
+          <h1 className="font-brand text-2xl font-bold text-foreground sm:text-3xl">Choose a published exam</h1>
+          <p className="max-w-2xl text-sm text-foreground-secondary">
+            Select an available assessment to create or resume a persisted attempt. Custom question counts and remediation filters are not offered until supported by the exam service.
           </p>
+        </header>
+
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by nursing pathway">
+          {pathways.map((item) => (
+            <Button
+              key={item}
+              type="button"
+              variant={pathway === item ? "primary" : "outline"}
+              aria-pressed={pathway === item}
+              onClick={() => setPathway(item)}
+            >
+              {item.replace("_", " ")}
+            </Button>
+          ))}
         </div>
 
-        <Card className="p-6 space-y-6">
-          {/* Pathway Selection */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-foreground">Nursing Pathway</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {["RN", "PN_LPN", "RN_Exit", "PN_Exit"].map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => setSelectedTrack(p)}
-                  className={`p-3 rounded-xl border text-xs font-semibold text-center transition-all ${
-                    selectedTrack === p
-                      ? "bg-brand-navy text-white border-brand-navy dark:bg-brand-teal dark:border-brand-teal"
-                      : "bg-surface text-foreground-secondary border-border hover:border-brand-teal"
-                  }`}
-                >
-                  {p.replace("_", " ")}
-                </button>
-              ))}
-            </div>
+        {loading && <p className="py-8 text-center text-sm text-foreground-secondary" aria-live="polite">Loading published exams…</p>}
+        {error && <p role="alert" className="rounded-lg border border-rose-300 bg-rose-50 p-4 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200">{error}</p>}
+        {!loading && !error && exams.length === 0 && (
+          <Card className="p-6 text-sm text-foreground-secondary">No published exams are available for this pathway yet.</Card>
+        )}
+        {!loading && !error && exams.length > 0 && (
+          <div className="grid gap-4 md:grid-cols-2">
+            {exams.map((exam) => (
+              <Card key={exam.id} className="flex flex-col justify-between gap-4 p-5">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-brand-teal">{exam.pathway} · {exam.category}</p>
+                  <h2 className="mt-2 font-brand text-lg font-bold text-foreground">{exam.title}</h2>
+                  <p className="mt-2 text-sm text-foreground-secondary">{exam.description}</p>
+                  <p className="mt-3 text-xs text-foreground-muted">{exam.totalQuestions} questions · {exam.timeLimitMinutes} minutes</p>
+                </div>
+                <Link href={`/exam-session?examId=${encodeURIComponent(exam.id)}`}>
+                  <Button className="w-full">Start practice</Button>
+                </Link>
+              </Card>
+            ))}
           </div>
-
-          {/* Mode Selection */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-foreground">Study Mode</label>
-            <div className="grid grid-cols-3 gap-2">
-              {(["Review", "Exam", "Tutor"] as const).map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => setSelectedMode(m)}
-                  className={`p-3 rounded-xl border text-xs font-semibold text-center transition-all ${
-                    selectedMode === m
-                      ? "bg-brand-navy text-white border-brand-navy dark:bg-brand-teal dark:border-brand-teal"
-                      : "bg-surface text-foreground-secondary border-border hover:border-brand-teal"
-                  }`}
-                >
-                  {m} Mode
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Question Count Slider */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <label className="font-bold uppercase tracking-wider text-foreground">Number of Questions</label>
-              <span className="font-bold text-brand-teal">{questionCount} Questions</span>
-            </div>
-            <input
-              type="range"
-              min="10"
-              max="75"
-              step="5"
-              value={questionCount}
-              onChange={(e) => setQuestionCount(Number(e.target.value))}
-              className="w-full accent-brand-teal"
-            />
-          </div>
-
-          {/* Filter options */}
-          <div className="space-y-2 pt-2 border-t border-border">
-            <label className="flex items-center gap-2 text-xs font-medium text-foreground cursor-pointer">
-              <input
-                type="checkbox"
-                checked={onlyIncorrect}
-                onChange={(e) => setOnlyIncorrect(e.target.checked)}
-                className="rounded accent-brand-teal"
-              />
-              <span>Focus only on previously incorrect questions (Adaptive Remediation)</span>
-            </label>
-          </div>
-
-          <div className="pt-4 border-t border-border">
-            <Link href={`/exam-session?track=${selectedTrack}&mode=${selectedMode}&count=${questionCount}`}>
-              <Button size="lg" className="w-full h-11 text-xs sm:text-sm font-semibold bg-brand-navy hover:bg-brand-navyDeep text-white dark:bg-brand-teal dark:hover:bg-brand-tealDark gap-2 justify-center">
-                <Play className="w-4 h-4 fill-white" />
-                <span>Launch Custom Practice Session ({questionCount} Qs)</span>
-              </Button>
-            </Link>
-          </div>
-        </Card>
+        )}
       </div>
     </LearnerShell>
   );

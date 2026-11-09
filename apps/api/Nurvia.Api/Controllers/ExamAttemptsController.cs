@@ -26,6 +26,8 @@ public class ExamAttemptsController : ControllerBase
         var user = HttpContext.GetCurrentUser();
         if (!user.IsAuthenticated)
             return Unauthorized(ApiResponse<StartAttemptResultDto>.Error("Authentication is required to start an examination."));
+        if (!user.Role.Equals("Learner", StringComparison.OrdinalIgnoreCase))
+            return Forbid();
 
         try
         {

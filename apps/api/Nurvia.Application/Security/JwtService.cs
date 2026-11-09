@@ -110,7 +110,7 @@ public class JwtService : IJwtService
             var name = root.TryGetProperty("name", out var nameProp) ? nameProp.GetString() ?? "" : "";
             var email = root.TryGetProperty("email", out var emailProp) ? emailProp.GetString() ?? "" : "";
             var role = root.TryGetProperty("role", out var roleProp) ? roleProp.GetString() ?? "" : "";
-            if (!Guid.TryParse(sub, out _) || string.IsNullOrWhiteSpace(role))
+            if (string.IsNullOrWhiteSpace(sub) || string.IsNullOrWhiteSpace(role))
                 return null;
 
             var claims = new List<Claim>
