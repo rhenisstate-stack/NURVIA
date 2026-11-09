@@ -171,7 +171,7 @@ export default function AttemptHistoryPage() {
                         ) : (
                           <Link href={`/exam-session?attemptId=${a.id}&mode=Exam`}>
                             <Button
-                              variant="default"
+                              variant="primary"
                               size="sm"
                               className="h-7 text-xs gap-1 bg-brand-teal text-white hover:bg-brand-tealDark"
                             >

@@ -67,14 +67,19 @@ export function StudyLibraryView({
           const apiSets: StudySetItem[] = res.data.items.map((exam) => ({
             id: exam.id,
             title: exam.title,
-            category: exam.category ? String(exam.category) : "COMPREHENSIVE",
-            questionCount: exam.currentVersion?.targetQuestionCount || 50,
+            slug: exam.code ? exam.code.toLowerCase().replace(/[^a-z0-9]+/g, "-") : `exam-${exam.id.slice(0, 8)}`,
+            category: "EXIT EXAM" as const,
+            badge: "Proctored" as const,
+            viewsCount: "1.2k",
+            hasRationales: true,
+            hasNgnFormat: true,
+            questionCount: exam.totalQuestions || 50,
             rating: 4.9,
             reviewsCount: 128,
             description: exam.description || "",
-            examTrack: exam.pathway ? String(exam.pathway) : "RN",
-            pathway: exam.pathway,
-            studentQuote: exam.instructions || "Official board-aligned examination module.",
+            examTrack: exam.category === "ExitPredictor" ? "NCLEX" : "ATI",
+            pathway: exam.pathway || "RN",
+            studentQuote: exam.currentVersion?.instructions || exam.description || "Official board-aligned examination module.",
           }));
           setStudySets([...apiSets, ...initialStudySets.filter((s) => !apiSets.some((a) => a.id === s.id))]);
         }
