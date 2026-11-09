@@ -1,8 +1,21 @@
+using System.Text.Json.Serialization;
 using Microsoft.OpenApi.Models;
+using Nurvia.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container
+// Add Infrastructure layer (PostgreSQL EF Core, repositories, domain services)
+builder.Services.AddInfrastructure(builder.Configuration);
+
+// Add API Controllers with string enum serializer
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+    });
+
+// Configure Swagger with API Information
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -10,7 +23,7 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title = "NURVIA Nursing Education API",
         Version = "v1",
-        Description = "Modular API for the NURVIA Nursing Exam Preparation and Learning Platform"
+        Description = "Examination Management Studio & Question Bank Builder API for NURVIA"
     });
 });
 
@@ -43,12 +56,15 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowFrontend");
 
+// Map API Controllers
+app.MapControllers();
+
 // Health and Status Endpoint
 app.MapGet("/api/health", () => Results.Ok(new
 {
     Status = "Healthy",
     Application = "NURVIA Core API",
-    Version = "1.0.0",
+    Version = "2.0.0",
     Timestamp = DateTime.UtcNow
 }))
 .WithName("HealthCheck")
