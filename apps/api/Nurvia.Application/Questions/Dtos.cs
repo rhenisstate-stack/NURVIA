@@ -148,3 +148,51 @@ public class QuestionFilterRequest
     public int PageNumber { get; set; } = 1;
     public int PageSize { get; set; } = 15;
 }
+
+public class ActiveExamOptionDto
+{
+    public Guid Id { get; set; }
+    public int OptionIndex { get; set; }
+    public string OptionText { get; set; } = string.Empty;
+    public int DisplayOrder { get; set; }
+}
+
+public class ActiveExamQuestionDto
+{
+    public Guid Id { get; set; }
+    public int OrderIndex { get; set; }
+    public string Stem { get; set; } = string.Empty;
+    public QuestionType QuestionType { get; set; }
+    public CognitiveSkill CognitiveSkill { get; set; }
+    public ClientNeedCategory ClientNeedCategory { get; set; }
+    public string? ContentJsonData { get; set; }
+    public List<ActiveExamOptionDto> Options { get; set; } = new();
+    public List<QuestionExhibitDto> Exhibits { get; set; } = new();
+}
+
+public class ReviewOptionDto
+{
+    public Guid Id { get; set; }
+    public int OptionIndex { get; set; }
+    public string OptionText { get; set; } = string.Empty;
+    public bool IsCorrect { get; set; }
+    public string? SpecificRationale { get; set; }
+    public bool WasSelected { get; set; }
+}
+
+public class ReviewQuestionDto
+{
+    public Guid QuestionId { get; set; }
+    public int OrderIndex { get; set; }
+    public string Stem { get; set; } = string.Empty;
+    public QuestionType QuestionType { get; set; }
+    public CognitiveSkill CognitiveSkill { get; set; }
+    public ClientNeedCategory ClientNeedCategory { get; set; }
+    public string GeneralRationale { get; set; } = string.Empty;
+    public string? LearnerResponse { get; set; }
+    public bool IsCorrect { get; set; }
+    public decimal PointsAwarded { get; set; }
+    public decimal MaxPoints { get; set; }
+    public List<ReviewOptionDto> Options { get; set; } = new();
+    public List<QuestionExhibitDto> Exhibits { get; set; } = new();
+}

@@ -40,10 +40,13 @@ public class QuestionsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<ApiResponse<QuestionDto>>> CreateDraft([FromBody] CreateQuestionRequest request, CancellationToken ct)
     {
+        var user = HttpContext.GetCurrentUser();
+        if (!user.IsAuthenticated)
+            return Unauthorized(ApiResponse<QuestionDto>.Error("Authentication is required to create question drafts."));
+
         if (!HttpContext.HasRole("Author", "Administrator"))
             return StatusCode(403, ApiResponse<QuestionDto>.Error("Only Authors and Administrators can create question drafts."));
 
-        var user = HttpContext.GetCurrentUser();
         try
         {
             var result = await _questionService.CreateDraftAsync(request, user.Name, ct);
@@ -58,10 +61,13 @@ public class QuestionsController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<ApiResponse<QuestionDto>>> UpdateDraft(Guid id, [FromBody] UpdateQuestionDraftRequest request, CancellationToken ct)
     {
+        var user = HttpContext.GetCurrentUser();
+        if (!user.IsAuthenticated)
+            return Unauthorized(ApiResponse<QuestionDto>.Error("Authentication is required to edit question drafts."));
+
         if (!HttpContext.HasRole("Author", "Administrator"))
             return StatusCode(403, ApiResponse<QuestionDto>.Error("Only Authors and Administrators can edit question drafts."));
 
-        var user = HttpContext.GetCurrentUser();
         try
         {
             var result = await _questionService.UpdateDraftAsync(id, request, user.Name, ct);
@@ -91,10 +97,13 @@ public class QuestionsController : ControllerBase
     [HttpPost("{id:guid}/submit")]
     public async Task<ActionResult<ApiResponse<QuestionDto>>> SubmitForReview(Guid id, CancellationToken ct)
     {
+        var user = HttpContext.GetCurrentUser();
+        if (!user.IsAuthenticated)
+            return Unauthorized(ApiResponse<QuestionDto>.Error("Authentication is required to submit questions for review."));
+
         if (!HttpContext.HasRole("Author", "Administrator"))
             return StatusCode(403, ApiResponse<QuestionDto>.Error("Only Authors and Administrators can submit questions for review."));
 
-        var user = HttpContext.GetCurrentUser();
         try
         {
             var result = await _questionService.SubmitForReviewAsync(id, user.Name, ct);
@@ -109,10 +118,13 @@ public class QuestionsController : ControllerBase
     [HttpPost("{id:guid}/review")]
     public async Task<ActionResult<ApiResponse<QuestionDto>>> ReviewQuestion(Guid id, [FromBody] QuestionReviewRequest request, CancellationToken ct)
     {
+        var user = HttpContext.GetCurrentUser();
+        if (!user.IsAuthenticated)
+            return Unauthorized(ApiResponse<QuestionDto>.Error("Authentication is required to review questions."));
+
         if (!HttpContext.HasRole("Reviewer", "Administrator"))
             return StatusCode(403, ApiResponse<QuestionDto>.Error("Only Clinical Reviewers and Administrators can approve or reject questions."));
 
-        var user = HttpContext.GetCurrentUser();
         try
         {
             var result = await _questionService.ReviewQuestionAsync(id, request, user.Id, user.Name, ct);
@@ -128,10 +140,13 @@ public class QuestionsController : ControllerBase
     [HttpPost("{id:guid}/publish")]
     public async Task<ActionResult<ApiResponse<QuestionDto>>> Publish(Guid id, CancellationToken ct)
     {
+        var user = HttpContext.GetCurrentUser();
+        if (!user.IsAuthenticated)
+            return Unauthorized(ApiResponse<QuestionDto>.Error("Authentication is required to publish questions."));
+
         if (!HttpContext.HasRole("Publisher", "Administrator"))
             return StatusCode(403, ApiResponse<QuestionDto>.Error("Only Content Publishers and Administrators can publish questions."));
 
-        var user = HttpContext.GetCurrentUser();
         try
         {
             var result = await _questionService.PublishQuestionAsync(id, user.Name, ct);
@@ -146,10 +161,13 @@ public class QuestionsController : ControllerBase
     [HttpPost("{id:guid}/archive")]
     public async Task<ActionResult<ApiResponse<QuestionDto>>> Archive(Guid id, CancellationToken ct)
     {
+        var user = HttpContext.GetCurrentUser();
+        if (!user.IsAuthenticated)
+            return Unauthorized(ApiResponse<QuestionDto>.Error("Authentication is required to archive questions."));
+
         if (!HttpContext.HasRole("Publisher", "Administrator"))
             return StatusCode(403, ApiResponse<QuestionDto>.Error("Only Content Publishers and Administrators can archive questions."));
 
-        var user = HttpContext.GetCurrentUser();
         try
         {
             var result = await _questionService.ArchiveQuestionAsync(id, user.Name, ct);
@@ -164,10 +182,13 @@ public class QuestionsController : ControllerBase
     [HttpPost("{id:guid}/versions")]
     public async Task<ActionResult<ApiResponse<QuestionDto>>> CreateNewVersion(Guid id, CancellationToken ct)
     {
+        var user = HttpContext.GetCurrentUser();
+        if (!user.IsAuthenticated)
+            return Unauthorized(ApiResponse<QuestionDto>.Error("Authentication is required to create question versions."));
+
         if (!HttpContext.HasRole("Author", "Administrator"))
             return StatusCode(403, ApiResponse<QuestionDto>.Error("Only Authors and Administrators can create new question versions."));
 
-        var user = HttpContext.GetCurrentUser();
         try
         {
             var result = await _questionService.CreateNewVersionAsync(id, user.Name, ct);

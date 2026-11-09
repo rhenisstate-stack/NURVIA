@@ -64,7 +64,7 @@ public class Question : Entity, IAuditableEntity
         ConcurrencyToken = Guid.NewGuid();
     }
 
-    public void Approve(string reviewerId, string reviewerName, string comments)
+    public QuestionReview Approve(string reviewerId, string reviewerName, string comments)
     {
         if (Status != ContentStatus.PendingReview)
             throw new DomainException($"Only questions in 'PendingReview' status can be approved. Current status: '{Status}'.");
@@ -76,14 +76,16 @@ public class Question : Entity, IAuditableEntity
         CurrentVersion.Status = ContentStatus.Approved;
         CurrentVersion.ReviewNotes = comments;
 
-        Reviews.Add(new QuestionReview(Id, CurrentVersion.Id, reviewerId, reviewerName, ReviewDecision.Approved, comments));
+        var review = new QuestionReview(Id, CurrentVersion.Id, reviewerId, reviewerName, ReviewDecision.Approved, comments);
+        Reviews.Add(review);
 
         UpdatedAtUtc = DateTime.UtcNow;
         UpdatedBy = reviewerName;
         ConcurrencyToken = Guid.NewGuid();
+        return review;
     }
 
-    public void Reject(string reviewerId, string reviewerName, string comments)
+    public QuestionReview Reject(string reviewerId, string reviewerName, string comments)
     {
         if (Status != ContentStatus.PendingReview)
             throw new DomainException($"Only questions in 'PendingReview' status can be rejected. Current status: '{Status}'.");
@@ -95,11 +97,13 @@ public class Question : Entity, IAuditableEntity
         CurrentVersion.Status = ContentStatus.Rejected;
         CurrentVersion.ReviewNotes = comments;
 
-        Reviews.Add(new QuestionReview(Id, CurrentVersion.Id, reviewerId, reviewerName, ReviewDecision.Rejected, comments));
+        var review = new QuestionReview(Id, CurrentVersion.Id, reviewerId, reviewerName, ReviewDecision.Rejected, comments);
+        Reviews.Add(review);
 
         UpdatedAtUtc = DateTime.UtcNow;
         UpdatedBy = reviewerName;
         ConcurrencyToken = Guid.NewGuid();
+        return review;
     }
 
     public void Publish(string publisher)

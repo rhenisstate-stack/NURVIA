@@ -250,15 +250,17 @@ public class QuestionService : IQuestionService
         if (question == null)
             throw new DomainException($"Question with ID '{id}' was not found.");
 
+        QuestionReview review;
         if (request.Decision == ReviewDecision.Approved)
         {
-            question.Approve(reviewerId, reviewerName, request.Comments);
+            review = question.Approve(reviewerId, reviewerName, request.Comments);
         }
         else
         {
-            question.Reject(reviewerId, reviewerName, request.Comments);
+            review = question.Reject(reviewerId, reviewerName, request.Comments);
         }
 
+        _context.QuestionReviews.Add(review);
         await _context.SaveChangesAsync(ct);
 
         if (request.Decision == ReviewDecision.Approved)

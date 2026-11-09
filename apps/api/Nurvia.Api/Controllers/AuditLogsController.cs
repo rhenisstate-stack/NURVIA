@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Nurvia.Api.Common;
 using Nurvia.Application.Common;
 using Nurvia.Application.Interfaces;
 using Nurvia.Domain.Auditing;
@@ -25,6 +26,13 @@ public class AuditLogsController : ControllerBase
         [FromQuery] int pageSize = 50,
         CancellationToken ct = default)
     {
+        var user = HttpContext.GetCurrentUser();
+        if (!user.IsAuthenticated)
+            return Unauthorized(ApiResponse<PagedResult<AuditLog>>.Error("Authentication is required to view audit logs."));
+
+        if (!HttpContext.HasRole("Administrator", "Superadmin"))
+            return StatusCode(403, ApiResponse<PagedResult<AuditLog>>.Error("Only Administrators and Superadministrators can access the audit log trail."));
+
         var query = _context.AuditLogs.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(entityType))

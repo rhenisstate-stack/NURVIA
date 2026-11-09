@@ -15,6 +15,13 @@ namespace Nurvia.Tests;
 
 public class PostgreSqlIntegrationTests : IAsyncLifetime
 {
+    private readonly Xunit.Abstractions.ITestOutputHelper _output;
+
+    public PostgreSqlIntegrationTests(Xunit.Abstractions.ITestOutputHelper output)
+    {
+        _output = output;
+    }
+
     private const string ConnectionString = "Host=localhost;Port=5432;Database=nurvia_db;Username=nurvia_user;Password=nurvia_secure_password_dev2026!;Include Error Detail=true";
     private readonly List<Guid> _createdQuestionIds = new();
     private readonly List<Guid> _createdExamIds = new();
@@ -24,6 +31,7 @@ public class PostgreSqlIntegrationTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<NurviaDbContext>()
             .UseNpgsql(ConnectionString)
             .EnableSensitiveDataLogging()
+            .LogTo(_output.WriteLine, Microsoft.Extensions.Logging.LogLevel.Information)
             .Options;
 
         return new NurviaDbContext(options);

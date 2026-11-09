@@ -104,3 +104,33 @@ public class ExamFilterRequest
     public int PageNumber { get; set; } = 1;
     public int PageSize { get; set; } = 15;
 }
+
+public class SubmittedExamResultDto
+{
+    public Guid AttemptId { get; set; }
+    public Guid ExamId { get; set; }
+    public string ExamTitle { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public DateTime StartedAtUtc { get; set; }
+    public DateTime SubmittedAtUtc { get; set; }
+    public int TimeSpentSeconds { get; set; }
+    public int TotalQuestions { get; set; }
+    public int CorrectQuestions { get; set; }
+    public decimal ScorePercentage { get; set; }
+    public decimal PassingScorePercentage { get; set; }
+    public bool Passed { get; set; }
+    public List<ReviewQuestionDto> ReviewQuestions { get; set; } = new();
+}
+
+public class ExamAttemptSummaryDto
+{
+    public Guid AttemptId { get; set; }
+    public Guid ExamId { get; set; }
+    public string ExamTitle { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public DateTime StartedAtUtc { get; set; }
+    public DateTime? SubmittedAtUtc { get; set; }
+    public decimal? ScorePercentage { get; set; }
+    public bool? Passed { get; set; }
+    public int TotalQuestions { get; set; }
+}

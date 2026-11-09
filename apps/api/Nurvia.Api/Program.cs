@@ -1,5 +1,7 @@
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.OpenApi.Models;
+using Nurvia.Api.Security;
 using Nurvia.Infrastructure;
 using Nurvia.Infrastructure.Persistence;
 
@@ -7,6 +9,15 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add Infrastructure layer (PostgreSQL EF Core, repositories, domain services)
 builder.Services.AddInfrastructure(builder.Configuration);
+
+// Add JWT Authentication & Security
+builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
+builder.Services.AddSingleton<IJwtService, JwtService>();
+
+builder.Services.AddAuthentication("Bearer")
+    .AddScheme<AuthenticationSchemeOptions, JwtBearerAuthenticationHandler>("Bearer", null);
+
+builder.Services.AddAuthorization();
 
 // Add API Controllers with string enum serializer
 builder.Services.AddControllers()
@@ -16,7 +27,7 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
     });
 
-// Configure Swagger with API Information
+// Configure Swagger with API Information and Bearer Authentication
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -25,6 +36,30 @@ builder.Services.AddSwaggerGen(c =>
         Title = "NURVIA Nursing Education API",
         Version = "v1",
         Description = "Examination Management Studio & Question Bank Builder API for NURVIA"
+    });
+
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Enter 'Bearer' followed by space and token (e.g. 'Bearer eyJ...').",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
     });
 });
 
@@ -56,6 +91,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowFrontend");
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 // Map API Controllers
 app.MapControllers();

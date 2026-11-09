@@ -40,10 +40,13 @@ public class ExamsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<ApiResponse<ExamDto>>> CreateExam([FromBody] CreateExamRequest request, CancellationToken ct)
     {
+        var user = HttpContext.GetCurrentUser();
+        if (!user.IsAuthenticated)
+            return Unauthorized(ApiResponse<ExamDto>.Error("Authentication is required to create exams."));
+
         if (!HttpContext.HasRole("Author", "Administrator"))
             return StatusCode(403, ApiResponse<ExamDto>.Error("Only Authors and Administrators can create exams."));
 
-        var user = HttpContext.GetCurrentUser();
         try
         {
             var result = await _examService.CreateExamAsync(request, user.Name, ct);
@@ -58,10 +61,13 @@ public class ExamsController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<ApiResponse<ExamDto>>> ConfigureExam(Guid id, [FromBody] ConfigureExamRequest request, CancellationToken ct)
     {
+        var user = HttpContext.GetCurrentUser();
+        if (!user.IsAuthenticated)
+            return Unauthorized(ApiResponse<ExamDto>.Error("Authentication is required to configure exams."));
+
         if (!HttpContext.HasRole("Author", "Administrator"))
             return StatusCode(403, ApiResponse<ExamDto>.Error("Only Authors and Administrators can configure exams."));
 
-        var user = HttpContext.GetCurrentUser();
         try
         {
             var result = await _examService.ConfigureExamAsync(id, request, user.Name, ct);
@@ -94,10 +100,13 @@ public class ExamsController : ControllerBase
     [HttpPost("{id:guid}/submit")]
     public async Task<ActionResult<ApiResponse<ExamDto>>> SubmitForReview(Guid id, CancellationToken ct)
     {
+        var user = HttpContext.GetCurrentUser();
+        if (!user.IsAuthenticated)
+            return Unauthorized(ApiResponse<ExamDto>.Error("Authentication is required to submit exams for review."));
+
         if (!HttpContext.HasRole("Author", "Administrator"))
             return StatusCode(403, ApiResponse<ExamDto>.Error("Only Authors and Administrators can submit exams for review."));
 
-        var user = HttpContext.GetCurrentUser();
         try
         {
             var result = await _examService.SubmitForReviewAsync(id, user.Name, ct);
@@ -112,10 +121,13 @@ public class ExamsController : ControllerBase
     [HttpPost("{id:guid}/approve")]
     public async Task<ActionResult<ApiResponse<ExamDto>>> Approve(Guid id, [FromBody] ApproveExamRequest request, CancellationToken ct)
     {
+        var user = HttpContext.GetCurrentUser();
+        if (!user.IsAuthenticated)
+            return Unauthorized(ApiResponse<ExamDto>.Error("Authentication is required to approve exams."));
+
         if (!HttpContext.HasRole("Reviewer", "Administrator"))
             return StatusCode(403, ApiResponse<ExamDto>.Error("Only Reviewers and Administrators can approve exams."));
 
-        var user = HttpContext.GetCurrentUser();
         try
         {
             var result = await _examService.ApproveExamAsync(id, user.Name, request.Comments, ct);
@@ -130,10 +142,13 @@ public class ExamsController : ControllerBase
     [HttpPost("{id:guid}/publish")]
     public async Task<ActionResult<ApiResponse<ExamDto>>> Publish(Guid id, CancellationToken ct)
     {
+        var user = HttpContext.GetCurrentUser();
+        if (!user.IsAuthenticated)
+            return Unauthorized(ApiResponse<ExamDto>.Error("Authentication is required to publish exams."));
+
         if (!HttpContext.HasRole("Publisher", "Administrator"))
             return StatusCode(403, ApiResponse<ExamDto>.Error("Only Publishers and Administrators can publish exams."));
 
-        var user = HttpContext.GetCurrentUser();
         try
         {
             var result = await _examService.PublishExamAsync(id, user.Name, ct);
@@ -148,10 +163,13 @@ public class ExamsController : ControllerBase
     [HttpPost("{id:guid}/archive")]
     public async Task<ActionResult<ApiResponse<ExamDto>>> Archive(Guid id, CancellationToken ct)
     {
+        var user = HttpContext.GetCurrentUser();
+        if (!user.IsAuthenticated)
+            return Unauthorized(ApiResponse<ExamDto>.Error("Authentication is required to archive exams."));
+
         if (!HttpContext.HasRole("Publisher", "Administrator"))
             return StatusCode(403, ApiResponse<ExamDto>.Error("Only Publishers and Administrators can archive exams."));
 
-        var user = HttpContext.GetCurrentUser();
         try
         {
             var result = await _examService.ArchiveExamAsync(id, user.Name, ct);
@@ -166,10 +184,13 @@ public class ExamsController : ControllerBase
     [HttpPost("{id:guid}/versions")]
     public async Task<ActionResult<ApiResponse<ExamDto>>> CreateNewVersion(Guid id, CancellationToken ct)
     {
+        var user = HttpContext.GetCurrentUser();
+        if (!user.IsAuthenticated)
+            return Unauthorized(ApiResponse<ExamDto>.Error("Authentication is required to create exam versions."));
+
         if (!HttpContext.HasRole("Author", "Administrator"))
             return StatusCode(403, ApiResponse<ExamDto>.Error("Only Authors and Administrators can create exam versions."));
 
-        var user = HttpContext.GetCurrentUser();
         try
         {
             var result = await _examService.CreateNewVersionAsync(id, user.Name, ct);
