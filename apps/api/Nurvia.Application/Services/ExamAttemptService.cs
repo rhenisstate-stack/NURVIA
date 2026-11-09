@@ -175,6 +175,7 @@ public class ExamAttemptService : IExamAttemptService
     {
         var attempt = await _context.ExamAttempts
             .Include(a => a.Exam)
+            .Include(a => a.ExamVersion)
             .Include(a => a.Responses)
                 .ThenInclude(r => r.Question)
                     .ThenInclude(q => q!.CurrentVersion)
@@ -190,10 +191,13 @@ public class ExamAttemptService : IExamAttemptService
 
         VerifyLearnerOwnership(attempt, learnerId);
 
+        // Review release policy is resolved from the exam version that owns this attempt.
+        var reviewReleased = IsReviewReleased(attempt);
+
         // If already graded, return existing result (Idempotent)
         if (attempt.Status == ExamAttemptStatus.Graded || attempt.Status == ExamAttemptStatus.Submitted)
         {
-            return BuildSubmittedResultDto(attempt);
+            return BuildSubmittedResultDto(attempt, reviewReleased);
         }
 
         // Deterministic Scoring Engine
@@ -219,13 +223,14 @@ public class ExamAttemptService : IExamAttemptService
 
         await _context.SaveChangesAsync(ct);
 
-        return BuildSubmittedResultDto(attempt);
+        return BuildSubmittedResultDto(attempt, reviewReleased);
     }
 
     public async Task<SubmittedExamResultDto> GetAttemptReviewAsync(Guid attemptId, string learnerId, CancellationToken ct = default)
     {
         var attempt = await _context.ExamAttempts
             .Include(a => a.Exam)
+            .Include(a => a.ExamVersion)
             .Include(a => a.Responses)
                 .ThenInclude(r => r.Question)
                     .ThenInclude(q => q!.CurrentVersion)
@@ -244,7 +249,10 @@ public class ExamAttemptService : IExamAttemptService
         if (attempt.Status == ExamAttemptStatus.InProgress)
             throw new DomainException("Review is not permitted while an examination attempt is in progress.");
 
-        return BuildSubmittedResultDto(attempt);
+        if (!IsReviewReleased(attempt))
+            throw new ReviewNotReleasedException();
+
+        return BuildSubmittedResultDto(attempt, reviewReleased: true);
     }
 
     public async Task<List<ExamAttemptSummaryDto>> GetLearnerHistoryAsync(string learnerId, CancellationToken ct = default)
@@ -407,7 +415,17 @@ public class ExamAttemptService : IExamAttemptService
         };
     }
 
-    private static SubmittedExamResultDto BuildSubmittedResultDto(ExamAttempt attempt)
+    private static bool IsReviewReleased(ExamAttempt attempt)
+    {
+        var version = attempt.ExamVersion;
+        if (version == null)
+            return true; // Legacy attempts without a resolvable version keep immediate review.
+
+        return version.ReviewReleasePolicy == ReviewReleasePolicy.Immediate
+            || version.ReviewReleasedAtUtc != null;
+    }
+
+    private static SubmittedExamResultDto BuildSubmittedResultDto(ExamAttempt attempt, bool reviewReleased)
     {
         var reviewQuestions = new List<ReviewQuestionDto>();
         int order = 1;
@@ -419,7 +437,8 @@ public class ExamAttemptService : IExamAttemptService
             if (q == null || qv == null)
                 continue;
 
-            // Review questions include full feedback: IsCorrect, specific rationale, and general rationale
+            // Review questions include full feedback: IsCorrect, specific rationale, and general rationale.
+            // While review is withheld, correctness indicators and rationales are strictly sanitized.
             var reviewQ = new ReviewQuestionDto
             {
                 QuestionId = q.Id,
@@ -428,18 +447,18 @@ public class ExamAttemptService : IExamAttemptService
                 QuestionType = qv.QuestionType,
                 CognitiveSkill = qv.CognitiveSkill,
                 ClientNeedCategory = qv.ClientNeedCategory,
-                GeneralRationale = qv.GeneralRationale,
+                GeneralRationale = reviewReleased ? qv.GeneralRationale : null,
                 LearnerResponse = resp.ResponseJson,
-                IsCorrect = resp.IsCorrect == true,
-                PointsAwarded = resp.PointsAwarded,
+                IsCorrect = reviewReleased && resp.IsCorrect == true,
+                PointsAwarded = reviewReleased ? resp.PointsAwarded : 0m,
                 MaxPoints = resp.MaxPoints,
                 Options = qv.Options.OrderBy(o => o.DisplayOrder).Select(o => new ReviewOptionDto
                 {
                     Id = o.Id,
                     OptionIndex = o.OptionIndex,
                     OptionText = o.OptionText,
-                    IsCorrect = o.IsCorrect,
-                    SpecificRationale = o.SpecificRationale,
+                    IsCorrect = reviewReleased && o.IsCorrect,
+                    SpecificRationale = reviewReleased ? o.SpecificRationale : null,
                     WasSelected = IsOptionSelected(o, resp.ResponseJson, qv.QuestionType)
                 }).ToList(),
                 Exhibits = qv.Exhibits.OrderBy(e => e.DisplayOrder).Select(e => new QuestionExhibitDto
@@ -471,6 +490,7 @@ public class ExamAttemptService : IExamAttemptService
             ScorePercentage = attempt.ScorePercentage ?? 0m,
             PassingScorePercentage = attempt.PassingScorePercentage,
             Passed = attempt.Passed == true,
+            ReviewReleased = reviewReleased,
             ReviewQuestions = reviewQuestions
         };
     }
@@ -619,10 +639,8 @@ public class ExamAttemptService : IExamAttemptService
 
     private static void VerifyLearnerOwnership(ExamAttempt attempt, string learnerId)
     {
-        // Allow administrator bypass if needed, but enforce learner isolation
-        if (!string.Equals(attempt.LearnerId, learnerId, StringComparison.OrdinalIgnoreCase) &&
-            !string.Equals(learnerId, "usr-admin-01", StringComparison.OrdinalIgnoreCase) &&
-            !string.Equals(learnerId, "usr-superadmin-01", StringComparison.OrdinalIgnoreCase))
+        // Strict learner isolation: no role-based bypass. Staff review occurs through admin tooling.
+        if (!string.Equals(attempt.LearnerId, learnerId, StringComparison.OrdinalIgnoreCase))
         {
             throw new UnauthorizedAccessException("Access denied: You do not own this examination attempt.");
         }

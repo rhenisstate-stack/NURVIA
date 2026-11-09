@@ -130,6 +130,10 @@ public class ExamAttemptsController : ControllerBase
             var result = await _attemptService.GetAttemptReviewAsync(id, user.Id, ct);
             return Ok(ApiResponse<SubmittedExamResultDto>.Ok(result));
         }
+        catch (ReviewNotReleasedException ex)
+        {
+            return StatusCode(403, ApiResponse<SubmittedExamResultDto>.Error(ex.Message));
+        }
         catch (UnauthorizedAccessException ex)
         {
             return StatusCode(403, ApiResponse<SubmittedExamResultDto>.Error(ex.Message));

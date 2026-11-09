@@ -127,3 +127,14 @@ public enum ExamAttemptStatus
     Graded = 3,
     Expired = 4
 }
+
+/// <summary>
+/// Governs when a learner may review a submitted attempt's answer key and rationales.
+/// Immediate preserves the legacy behavior; ManualRelease withholds review until
+/// authorized staff release the results for the exam.
+/// </summary>
+public enum ReviewReleasePolicy
+{
+    Immediate = 1,
+    ManualRelease = 2
+}

@@ -100,6 +100,13 @@ public class ExamVersionConfiguration : IEntityTypeConfiguration<ExamVersion>
             .HasMaxLength(30)
             .IsRequired();
 
+        builder.Property(v => v.ReviewReleasePolicy)
+            .HasConversion<string>()
+            .HasMaxLength(30)
+            .IsRequired();
+
+        builder.Property(v => v.ReviewReleasedAtUtc);
+
         builder.Property(v => v.CreatedBy)
             .IsRequired()
             .HasMaxLength(100);

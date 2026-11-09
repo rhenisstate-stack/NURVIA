@@ -15,6 +15,12 @@ public class ExamVersion : Entity, IAuditableEntity
     public ExamStatus Status { get; set; } = ExamStatus.Draft;
     public string? ValidationErrors { get; set; }
 
+    /// <summary>Controls when learners may review submitted attempts for this exam version.</summary>
+    public ReviewReleasePolicy ReviewReleasePolicy { get; set; } = ReviewReleasePolicy.Immediate;
+
+    /// <summary>UTC timestamp at which staff released review for ManualRelease exams; null while withheld.</summary>
+    public DateTime? ReviewReleasedAtUtc { get; set; }
+
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public string CreatedBy { get; set; } = string.Empty;
     public DateTime? UpdatedAtUtc { get; set; }

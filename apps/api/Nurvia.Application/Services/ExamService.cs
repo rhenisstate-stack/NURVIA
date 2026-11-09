@@ -95,6 +95,7 @@ public class ExamService : IExamService
             Instructions = request.Instructions,
             TimeLimitMinutes = request.TimeLimitMinutes,
             PassingScorePercentage = request.PassingScorePercentage,
+            ReviewReleasePolicy = request.ReviewReleasePolicy,
             Status = ExamStatus.Draft,
             Blueprint = new ExamBlueprint(Guid.NewGuid(), request.TargetQuestionCount)
         };
@@ -165,6 +166,7 @@ public class ExamService : IExamService
             exam.CurrentVersion.Instructions = request.Instructions;
             exam.CurrentVersion.TimeLimitMinutes = request.TimeLimitMinutes;
             exam.CurrentVersion.PassingScorePercentage = request.PassingScorePercentage;
+            exam.CurrentVersion.ReviewReleasePolicy = request.ReviewReleasePolicy;
             exam.CurrentVersion.UpdatedAtUtc = DateTime.UtcNow;
             exam.CurrentVersion.UpdatedBy = author;
 
@@ -297,8 +299,35 @@ public class ExamService : IExamService
         return MapToDto(exam, true);
     }
 
-    public async Task<ExamDto> CreateNewVersionAsync(Guid id, string author, CancellationToken ct = default)
+    /// <summary>
+    /// Releases review availability for every version of the exam, unlocking answer keys and
+    /// rationales for submitted attempts governed by <see cref="ReviewReleasePolicy.ManualRelease"/>.
+    /// </summary>
+    public async Task<ExamDto> ReleaseReviewAsync(Guid id, string actor, CancellationToken ct = default)
     {
+        var exam = await _context.Exams
+            .Include(e => e.Versions)
+            .FirstOrDefaultAsync(e => e.Id == id, ct);
+
+        if (exam == null)
+            throw new DomainException($"Exam with ID '{id}' was not found.");
+
+        var releasedAt = DateTime.UtcNow;
+        foreach (var version in exam.Versions)
+        {
+            version.ReviewReleasedAtUtc = version.ReviewReleasedAtUtc ?? releasedAt;
+            version.UpdatedAtUtc = releasedAt;
+            version.UpdatedBy = actor;
+        }
+
+        await _context.SaveChangesAsync(ct);
+
+        await _audit.LogAsync("Exam", exam.Id.ToString(), "ReleaseReview", actor, actor, "Admin", $"Released review results for exam '{exam.Title}'", ct);
+
+        return MapToDto(exam, true);
+    }
+
+    public async Task<ExamDto> CreateNewVersionAsync(Guid id, string author, CancellationToken ct = default)    {
         var exam = await _context.Exams
             .Include(e => e.Versions)
                 .ThenInclude(v => v.ExamQuestions)
@@ -353,6 +382,8 @@ public class ExamService : IExamService
                 PassingScorePercentage = e.CurrentVersion.PassingScorePercentage,
                 Status = e.CurrentVersion.Status,
                 ValidationErrors = e.CurrentVersion.ValidationErrors,
+                ReviewReleasePolicy = e.CurrentVersion.ReviewReleasePolicy,
+                ReviewReleasedAtUtc = e.CurrentVersion.ReviewReleasedAtUtc,
                 CreatedAtUtc = e.CurrentVersion.CreatedAtUtc,
                 CreatedBy = e.CurrentVersion.CreatedBy,
                 Blueprint = e.CurrentVersion.Blueprint != null ? new ExamBlueprintDto

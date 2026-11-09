@@ -14,5 +14,6 @@ public interface IExamService
     Task<ExamDto> ApproveExamAsync(Guid id, string reviewerName, string comments, CancellationToken ct = default);
     Task<ExamDto> PublishExamAsync(Guid id, string publisher, CancellationToken ct = default);
     Task<ExamDto> ArchiveExamAsync(Guid id, string actor, CancellationToken ct = default);
+    Task<ExamDto> ReleaseReviewAsync(Guid id, string actor, CancellationToken ct = default);
     Task<ExamDto> CreateNewVersionAsync(Guid id, string author, CancellationToken ct = default);
 }

@@ -36,6 +36,8 @@ public class ExamVersionDto
     public decimal PassingScorePercentage { get; set; }
     public ExamStatus Status { get; set; }
     public string? ValidationErrors { get; set; }
+    public ReviewReleasePolicy ReviewReleasePolicy { get; set; }
+    public DateTime? ReviewReleasedAtUtc { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public string CreatedBy { get; set; } = string.Empty;
     public ExamBlueprintDto? Blueprint { get; set; }
@@ -76,6 +78,7 @@ public class CreateExamRequest
     public ExamDeliveryMode ModeAllowed { get; set; } = ExamDeliveryMode.All;
     public int TimeLimitMinutes { get; set; } = 90;
     public decimal PassingScorePercentage { get; set; } = 75.0m;
+    public ReviewReleasePolicy ReviewReleasePolicy { get; set; } = ReviewReleasePolicy.Immediate;
     public int TargetQuestionCount { get; set; } = 50;
     public List<Guid>? InitialQuestionIds { get; set; }
 }
@@ -91,6 +94,7 @@ public class ConfigureExamRequest
     public ExamDeliveryMode ModeAllowed { get; set; }
     public int TimeLimitMinutes { get; set; }
     public decimal PassingScorePercentage { get; set; }
+    public ReviewReleasePolicy ReviewReleasePolicy { get; set; } = ReviewReleasePolicy.Immediate;
     public int TargetQuestionCount { get; set; }
     public List<Guid> AssignedQuestionIds { get; set; } = new();
 }
@@ -119,6 +123,10 @@ public class SubmittedExamResultDto
     public decimal ScorePercentage { get; set; }
     public decimal PassingScorePercentage { get; set; }
     public bool Passed { get; set; }
+
+    /// <summary>False when the exam's review release policy withholds answer keys and rationales until staff release.</summary>
+    public bool ReviewReleased { get; set; } = true;
+
     public List<ReviewQuestionDto> ReviewQuestions { get; set; } = new();
 }
 

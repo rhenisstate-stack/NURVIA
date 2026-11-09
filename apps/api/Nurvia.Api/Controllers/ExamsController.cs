@@ -207,6 +207,27 @@ public class ExamsController : ControllerBase
         }
     }
 
+    [HttpPost("{id:guid}/release-review")]
+    public async Task<ActionResult<ApiResponse<ExamDto>>> ReleaseReview(Guid id, CancellationToken ct)
+    {
+        var user = HttpContext.GetCurrentUser();
+        if (!user.IsAuthenticated)
+            return Unauthorized(ApiResponse<ExamDto>.Error("Authentication is required to release exam review results."));
+
+        if (!HttpContext.HasRole("Publisher", "Administrator"))
+            return StatusCode(403, ApiResponse<ExamDto>.Error("Only Publishers and Administrators can release exam review results."));
+
+        try
+        {
+            var result = await _examService.ReleaseReviewAsync(id, user.Name, ct);
+            return Ok(ApiResponse<ExamDto>.Ok(result, "Review results released to learners."));
+        }
+        catch (DomainException ex)
+        {
+            return BadRequest(ApiResponse<ExamDto>.Error(ex.Message));
+        }
+    }
+
     [HttpPost("{id:guid}/versions")]
     public async Task<ActionResult<ApiResponse<ExamDto>>> CreateNewVersion(Guid id, CancellationToken ct)
     {
