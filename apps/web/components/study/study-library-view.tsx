@@ -23,6 +23,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { nurviaApi } from "@/lib/api-client";
 
 interface StudyLibraryViewProps {
   isPublic?: boolean;
@@ -52,10 +53,38 @@ export function StudyLibraryView({
   const [activeMenuId, setActiveMenuId] = React.useState<string | null>(null);
   const [savedSets, setSavedSets] = React.useState<Record<string, boolean>>({});
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
+  const [studySets, setStudySets] = React.useState<StudySetItem[]>(initialStudySets);
 
   React.useEffect(() => {
     setActiveFilter(defaultFilter);
   }, [defaultFilter]);
+
+  React.useEffect(() => {
+    async function fetchPublishedExams() {
+      try {
+        const res = await nurviaApi.getExams({ status: 5 }); // 5 = ExamStatus.Published
+        if (res.success && res.data && res.data.items && res.data.items.length > 0) {
+          const apiSets: StudySetItem[] = res.data.items.map((exam) => ({
+            id: exam.id,
+            title: exam.title,
+            category: exam.category ? String(exam.category) : "COMPREHENSIVE",
+            questionCount: exam.currentVersion?.targetQuestionCount || 50,
+            rating: 4.9,
+            reviewsCount: 128,
+            description: exam.description || "",
+            examTrack: exam.pathway ? String(exam.pathway) : "RN",
+            pathway: exam.pathway,
+            studentQuote: exam.instructions || "Official board-aligned examination module.",
+          }));
+          setStudySets([...apiSets, ...initialStudySets.filter((s) => !apiSets.some((a) => a.id === s.id))]);
+        }
+      } catch {
+        // Fallback maintained
+      }
+    }
+
+    fetchPublishedExams();
+  }, []);
 
   const filterChips = [
     { label: "All", value: "All" },
@@ -67,7 +96,7 @@ export function StudyLibraryView({
 
   // Filter study sets
   const filteredSets = React.useMemo(() => {
-    return initialStudySets.filter((set) => {
+    return studySets.filter((set) => {
       // Search matching
       const q = searchQuery.toLowerCase().trim();
       const matchesSearch =
@@ -267,51 +296,58 @@ export function StudyLibraryView({
               </div>
 
               {/* 3 Action Buttons matching screenshot */}
-              <div className="grid grid-cols-3 gap-2 pt-3 border-t border-border/60">
-                {/* 1. Exam action */}
-                <Link
-                  href={`/exam-session?setId=${set.id}&mode=Exam`}
-                  className="w-full"
-                >
-                  <Button
-                    size="sm"
-                    className="w-full text-xs h-8 px-2 font-semibold bg-brand-navy hover:bg-brand-navyDeep text-white dark:bg-brand-teal dark:hover:bg-brand-tealDark gap-1 justify-center shadow-2xs"
-                  >
-                    <Play className="w-3 h-3 fill-white" />
-                    <span>Exam</span>
-                  </Button>
-                </Link>
+              {(() => {
+                const isRealExam = set.id.length > 20 && set.id.includes("-");
+                const queryParam = isRealExam ? `examId=${set.id}` : `setId=${set.id}`;
 
-                {/* 2. Review action */}
-                <Link
-                  href={`/exam-session?setId=${set.id}&mode=Review`}
-                  className="w-full"
-                >
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full text-xs h-8 px-2 font-semibold gap-1 justify-center hover:bg-surface-muted"
-                  >
-                    <Eye className="w-3 h-3 text-foreground-muted" />
-                    <span>Review</span>
-                  </Button>
-                </Link>
+                return (
+                  <div className="grid grid-cols-3 gap-2 pt-3 border-t border-border/60">
+                    {/* 1. Exam action */}
+                    <Link
+                      href={`/exam-session?${queryParam}&mode=Exam`}
+                      className="w-full"
+                    >
+                      <Button
+                        size="sm"
+                        className="w-full text-xs h-8 px-2 font-semibold bg-brand-navy hover:bg-brand-navyDeep text-white dark:bg-brand-teal dark:hover:bg-brand-tealDark gap-1 justify-center shadow-2xs"
+                      >
+                        <Play className="w-3 h-3 fill-white" />
+                        <span>Exam</span>
+                      </Button>
+                    </Link>
 
-                {/* 3. Tutor action */}
-                <Link
-                  href={`/exam-session?setId=${set.id}&mode=Tutor`}
-                  className="w-full"
-                >
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full text-xs h-8 px-2 font-semibold gap-1 justify-center hover:bg-surface-muted"
-                  >
-                    <Bot className="w-3 h-3 text-foreground-muted" />
-                    <span>Tutor</span>
-                  </Button>
-                </Link>
-              </div>
+                    {/* 2. Review action */}
+                    <Link
+                      href={`/exam-session?${queryParam}&mode=Review`}
+                      className="w-full"
+                    >
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full text-xs h-8 px-2 font-semibold gap-1 justify-center hover:bg-surface-muted"
+                      >
+                        <Eye className="w-3 h-3 text-foreground-muted" />
+                        <span>Review</span>
+                      </Button>
+                    </Link>
+
+                    {/* 3. Tutor action */}
+                    <Link
+                      href={`/exam-session?${queryParam}&mode=Tutor`}
+                      className="w-full"
+                    >
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full text-xs h-8 px-2 font-semibold gap-1 justify-center hover:bg-surface-muted"
+                      >
+                        <Bot className="w-3 h-3 text-foreground-muted" />
+                        <span>Tutor</span>
+                      </Button>
+                    </Link>
+                  </div>
+                );
+              })()}
             </div>
           );
         })}
