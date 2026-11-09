@@ -9,7 +9,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "node tests/navigation-and-carousel.test.mjs"
+    "test": "node tests/navigation-and-carousel.test.mjs && node tests/learning-integration.test.mjs && node tests/question-renderers.test.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",

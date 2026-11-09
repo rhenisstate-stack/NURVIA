@@ -103,6 +103,15 @@ export function MultipleResponseRenderer({
           );
         })}
       </div>
+
+      {isReview && question.generalRationale && (
+        <div className="mt-4 p-4 rounded-xl border border-brand-teal/30 bg-teal-500/5 space-y-1 text-xs">
+          <div className="font-bold text-brand-teal flex items-center gap-1.5">
+            <span>Overall Clinical Rationale</span>
+          </div>
+          <p className="text-foreground leading-relaxed">{question.generalRationale}</p>
+        </div>
+      )}
     </div>
   );
 }
