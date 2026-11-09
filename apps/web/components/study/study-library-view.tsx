@@ -26,18 +26,36 @@ import { cn } from "@/lib/utils";
 
 interface StudyLibraryViewProps {
   isPublic?: boolean;
+  initialTrack?: string;
+  initialCategory?: string;
 }
 
-export function StudyLibraryView({ isPublic = false }: StudyLibraryViewProps) {
+export function StudyLibraryView({
+  isPublic = false,
+  initialTrack,
+  initialCategory: propCategory,
+}: StudyLibraryViewProps) {
   const searchParams = useSearchParams();
-  const initialQ = searchParams?.get("q") || "";
-  const initialCategory = searchParams?.get("category") || "RN Exams";
+  const paramTrack = initialTrack || searchParams?.get("track") || "";
+  const paramCategory = propCategory || searchParams?.get("category") || "";
 
-  const [searchQuery, setSearchQuery] = React.useState(initialQ);
-  const [activeFilter, setActiveFilter] = React.useState(initialCategory);
+  // Compute default filter chip based on track
+  const defaultFilter = React.useMemo(() => {
+    if (paramTrack === "PN_LPN" || paramTrack === "PN_Exit") return "LPN Exams";
+    if (paramTrack === "RN" || paramTrack === "RN_Exit") return "RN Exams";
+    if (paramCategory === "NCLEX") return "NCLEX";
+    return "All";
+  }, [paramTrack, paramCategory]);
+
+  const [searchQuery, setSearchQuery] = React.useState(searchParams?.get("q") || "");
+  const [activeFilter, setActiveFilter] = React.useState(defaultFilter);
   const [activeMenuId, setActiveMenuId] = React.useState<string | null>(null);
   const [savedSets, setSavedSets] = React.useState<Record<string, boolean>>({});
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    setActiveFilter(defaultFilter);
+  }, [defaultFilter]);
 
   const filterChips = [
     { label: "All", value: "All" },
@@ -59,6 +77,16 @@ export function StudyLibraryView({ isPublic = false }: StudyLibraryViewProps) {
         set.category.toLowerCase().includes(q) ||
         set.examTrack.toLowerCase().includes(q);
 
+      // Specific track/category matching when provided via URL params
+      if (paramCategory) {
+        const cat = paramCategory.toLowerCase();
+        const matchesSpecificCat =
+          set.examTrack.toLowerCase().includes(cat) ||
+          set.category.toLowerCase().includes(cat) ||
+          (cat === "exitpredictor" && (set.category === "EXIT EXAM" || set.title.toLowerCase().includes("predictor")));
+        if (!matchesSpecificCat) return false;
+      }
+
       // Filter chip matching
       let matchesFilter = true;
       if (activeFilter === "RN Exams") {
@@ -73,7 +101,7 @@ export function StudyLibraryView({ isPublic = false }: StudyLibraryViewProps) {
 
       return matchesSearch && matchesFilter;
     });
-  }, [searchQuery, activeFilter]);
+  }, [searchQuery, activeFilter, paramCategory]);
 
   const toggleSave = (id: string) => {
     setSavedSets((prev) => ({

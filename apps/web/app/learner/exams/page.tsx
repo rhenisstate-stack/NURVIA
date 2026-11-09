@@ -61,7 +61,7 @@ function LearnerExamsContent() {
         </div>
       </div>
 
-      <StudyLibraryView />
+      <StudyLibraryView initialTrack={track} initialCategory={category} />
     </div>
   );
 }
