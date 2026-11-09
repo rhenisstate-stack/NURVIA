@@ -6,6 +6,7 @@ const appDir = path.join(webRoot, 'app');
 const nextDir = path.join(webRoot, '.next');
 const nextTypesApp = path.join(nextDir, 'types', 'app');
 const nextServerApp = path.join(nextDir, 'server', 'app');
+const nextStaticChunksApp = path.join(nextDir, 'static', 'chunks', 'app');
 
 function ensureDir(p) {
   if (!fs.existsSync(p)) {
@@ -29,9 +30,10 @@ function mirrorDirs(sourceDir, targetRoot) {
 try {
   ensureDir(nextTypesApp);
   ensureDir(nextServerApp);
+  ensureDir(nextStaticChunksApp);
   mirrorDirs(appDir, nextTypesApp);
   mirrorDirs(appDir, nextServerApp);
+  mirrorDirs(appDir, nextStaticChunksApp);
 } catch (err) {
-  // Graceful warning without breaking build
   console.warn('[prepare-dirs] Note during directory preparation:', err.message);
 }
