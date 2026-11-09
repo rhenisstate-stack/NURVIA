@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Nurvia.Application.Interfaces;
+using Nurvia.Domain.Attempts;
 using Nurvia.Domain.Auditing;
 using Nurvia.Domain.Common;
 using Nurvia.Domain.Exams;
@@ -24,6 +25,9 @@ public class NurviaDbContext : DbContext, INurviaDbContext
     public DbSet<ExamVersion> ExamVersions => Set<ExamVersion>();
     public DbSet<ExamQuestion> ExamQuestions => Set<ExamQuestion>();
     public DbSet<ExamBlueprint> ExamBlueprints => Set<ExamBlueprint>();
+
+    public DbSet<ExamAttempt> ExamAttempts => Set<ExamAttempt>();
+    public DbSet<AttemptResponse> AttemptResponses => Set<AttemptResponse>();
 
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 

@@ -119,3 +119,11 @@ public enum ExhibitType
     Diagram = 7,
     Chart = 8
 }
+
+public enum ExamAttemptStatus
+{
+    InProgress = 1,
+    Submitted = 2,
+    Graded = 3,
+    Expired = 4
+}

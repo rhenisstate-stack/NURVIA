@@ -22,6 +22,137 @@ namespace Nurvia.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Nurvia.Domain.Attempts.AttemptResponse", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ExamAttemptId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsAnswered")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool?>("IsCorrect")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsFlagged")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("MaxPoints")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<int>("OrderIndex")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("PointsAwarded")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<Guid>("QuestionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("QuestionVersionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ResponseJson")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("SavedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuestionId");
+
+                    b.HasIndex("QuestionVersionId");
+
+                    b.HasIndex("ExamAttemptId", "QuestionId")
+                        .IsUnique();
+
+                    b.ToTable("AttemptResponses", (string)null);
+                });
+
+            modelBuilder.Entity("Nurvia.Domain.Attempts.ExamAttempt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("CorrectQuestions")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("DeadlineUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ExamId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ExamVersionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("LearnerId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("LearnerName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool?>("Passed")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("PassingScorePercentage")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal?>("ScorePercentage")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<DateTime>("StartedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("SubmittedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("TimeLimitMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TotalQuestions")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExamId");
+
+                    b.HasIndex("ExamVersionId");
+
+                    b.HasIndex("LearnerId", "ExamId", "Status");
+
+                    b.ToTable("ExamAttempts", (string)null);
+                });
+
             modelBuilder.Entity("Nurvia.Domain.Auditing.AuditLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -540,6 +671,52 @@ namespace Nurvia.Infrastructure.Migrations
                     b.ToTable("QuestionVersions", (string)null);
                 });
 
+            modelBuilder.Entity("Nurvia.Domain.Attempts.AttemptResponse", b =>
+                {
+                    b.HasOne("Nurvia.Domain.Attempts.ExamAttempt", "ExamAttempt")
+                        .WithMany("Responses")
+                        .HasForeignKey("ExamAttemptId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Nurvia.Domain.Questions.Question", "Question")
+                        .WithMany()
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Nurvia.Domain.Questions.QuestionVersion", "QuestionVersion")
+                        .WithMany()
+                        .HasForeignKey("QuestionVersionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ExamAttempt");
+
+                    b.Navigation("Question");
+
+                    b.Navigation("QuestionVersion");
+                });
+
+            modelBuilder.Entity("Nurvia.Domain.Attempts.ExamAttempt", b =>
+                {
+                    b.HasOne("Nurvia.Domain.Exams.Exam", "Exam")
+                        .WithMany()
+                        .HasForeignKey("ExamId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Nurvia.Domain.Exams.ExamVersion", "ExamVersion")
+                        .WithMany()
+                        .HasForeignKey("ExamVersionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Exam");
+
+                    b.Navigation("ExamVersion");
+                });
+
             modelBuilder.Entity("Nurvia.Domain.Exams.Exam", b =>
                 {
                     b.HasOne("Nurvia.Domain.Exams.ExamVersion", "CurrentVersion")
@@ -659,6 +836,11 @@ namespace Nurvia.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Question");
+                });
+
+            modelBuilder.Entity("Nurvia.Domain.Attempts.ExamAttempt", b =>
+                {
+                    b.Navigation("Responses");
                 });
 
             modelBuilder.Entity("Nurvia.Domain.Exams.Exam", b =>

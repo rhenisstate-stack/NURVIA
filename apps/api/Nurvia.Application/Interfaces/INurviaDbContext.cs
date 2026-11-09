@@ -18,6 +18,9 @@ public interface INurviaDbContext
     DbSet<ExamQuestion> ExamQuestions { get; }
     DbSet<ExamBlueprint> ExamBlueprints { get; }
 
+    DbSet<Nurvia.Domain.Attempts.ExamAttempt> ExamAttempts { get; }
+    DbSet<Nurvia.Domain.Attempts.AttemptResponse> AttemptResponses { get; }
+
     DbSet<AuditLog> AuditLogs { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
