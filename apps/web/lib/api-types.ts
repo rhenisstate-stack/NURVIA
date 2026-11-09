@@ -210,6 +210,13 @@ export interface ApiResponse<T> {
   errors?: string[];
 }
 
+export interface AuthUserDto {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
 export interface ActiveExamOptionDto {
   id: string;
   optionIndex: number;

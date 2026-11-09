@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Nurvia.Application.Interfaces;
+using Nurvia.Application.Security;
 using Nurvia.Application.Services;
 using Nurvia.Infrastructure.Persistence;
 
@@ -20,6 +21,8 @@ public static class DependencyInjection
         services.AddScoped<INurviaDbContext>(provider => provider.GetRequiredService<NurviaDbContext>());
 
         // Register Application Services
+        services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
+        services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<IQuestionService, QuestionService>();
         services.AddScoped<IExamService, ExamService>();

@@ -12,37 +12,95 @@ import {
 } from './api-types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5055';
+let csrfTokenPromise: Promise<string> | null = null;
+
+async function getCsrfToken(): Promise<string> {
+  if (!csrfTokenPromise) {
+    csrfTokenPromise = fetch(`${API_BASE}/api/auth/csrf`, {
+      credentials: 'include',
+      cache: 'no-store',
+    })
+      .then(async (response) => {
+        const result = await response.json() as ApiResponse<string>;
+        if (!response.ok || !result.success || !result.data) {
+          throw new Error(result.message || 'Unable to start a secure request.');
+        }
+        return result.data;
+      })
+      .catch((error: unknown) => {
+        csrfTokenPromise = null;
+        throw error;
+      });
+  }
+
+  return csrfTokenPromise;
+}
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('nurvia_token') : null;
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'X-User-Role': 'Learner',
-    'X-User-Name': 'Jane Doe, SN',
-    'X-User-Id': 'usr-learner-01',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(options.headers as Record<string, string>),
   };
 
   try {
+    const method = (options.method || 'GET').toUpperCase();
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+      headers['X-CSRF-TOKEN'] = await getCsrfToken();
+    }
+
     const res = await fetch(`${API_BASE}${endpoint}`, {
       ...options,
       headers,
+      credentials: 'include',
       cache: 'no-store',
     });
 
-    const json = await res.json();
+    const json = await res.json() as ApiResponse<T>;
+    if (!res.ok && json.success) {
+      return { success: false, message: `Request failed (${res.status}).` };
+    }
     return json;
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown network error';
     return {
       success: false,
-      message: error?.message || 'Network error connecting to NURVIA API',
-      errors: [error?.message || 'Unknown network error'],
+      message: message || 'Network error connecting to NURVIA API',
+      errors: [message],
     };
   }
 }
 
 export const nurviaApi = {
+  // Authentication and learner profile
+  async register(payload: { name: string; email: string; password: string }): Promise<ApiResponse<string>> {
+    return request<string>('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async login(payload: { email: string; password: string }): Promise<ApiResponse<AuthUserDto>> {
+    return request<AuthUserDto>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async getCurrentUser(): Promise<ApiResponse<AuthUserDto>> {
+    return request<AuthUserDto>('/api/auth/me');
+  },
+
+  async updateProfile(payload: { name: string }): Promise<ApiResponse<AuthUserDto>> {
+    return request<AuthUserDto>('/api/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async logout(): Promise<ApiResponse<string>> {
+    return request<string>('/api/auth/logout', { method: 'POST' });
+  },
+
   // Questions
   async getQuestions(params?: Record<string, any>): Promise<ApiResponse<PagedResult<QuestionDto>>> {
     const query = new URLSearchParams(params || {}).toString();

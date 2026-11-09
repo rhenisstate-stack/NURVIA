@@ -4,7 +4,7 @@ namespace Nurvia.Application.Security;
 
 public class JwtSettings
 {
-    public string Secret { get; set; } = "NurviaSecretKeyForJwtTokenGeneration2026!ExamPlatformSecureToken";
+    public string Secret { get; set; } = string.Empty;
     public string Issuer { get; set; } = "NurviaApi";
     public string Audience { get; set; } = "NurviaWeb";
     public int ExpiryMinutes { get; set; } = 1440;

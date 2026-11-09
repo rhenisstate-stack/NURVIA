@@ -21,18 +21,19 @@ public class JwtBearerAuthenticationHandler : AuthenticationHandler<Authenticati
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        if (!Request.Headers.TryGetValue("Authorization", out var authHeader) || string.IsNullOrWhiteSpace(authHeader))
+        var token = Request.Cookies["nurvia_session"];
+        if (string.IsNullOrWhiteSpace(token) &&
+            Request.Headers.TryGetValue("Authorization", out var authHeader) &&
+            !string.IsNullOrWhiteSpace(authHeader))
         {
-            return Task.FromResult(AuthenticateResult.NoResult());
+            var headerValue = authHeader.ToString().Trim();
+            if (headerValue.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                token = headerValue["Bearer ".Length..].Trim();
         }
 
-        var headerValue = authHeader.ToString().Trim();
-        if (!headerValue.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-        {
+        if (string.IsNullOrWhiteSpace(token))
             return Task.FromResult(AuthenticateResult.NoResult());
-        }
 
-        var token = headerValue.Substring("Bearer ".Length).Trim();
         var principal = _jwtService.ValidateToken(token);
 
         if (principal == null)

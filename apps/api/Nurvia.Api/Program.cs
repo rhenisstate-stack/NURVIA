@@ -1,4 +1,6 @@
 using System.Text.Json.Serialization;
+using System.Security.Cryptography;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.OpenApi.Models;
 using Nurvia.Api.Security;
@@ -12,16 +14,35 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddInfrastructure(builder.Configuration);
 
 // Add JWT Authentication & Security
+var jwtSecret = builder.Configuration["JwtSettings:Secret"];
+if (string.IsNullOrWhiteSpace(jwtSecret))
+{
+    if (!builder.Environment.IsDevelopment())
+        throw new InvalidOperationException("JwtSettings:Secret must be configured outside Development.");
+
+    jwtSecret = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
+}
+
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
+builder.Services.PostConfigure<JwtSettings>(settings => settings.Secret = jwtSecret);
 builder.Services.AddSingleton<IJwtService, JwtService>();
 
 builder.Services.AddAuthentication("Bearer")
     .AddScheme<AuthenticationSchemeOptions, JwtBearerAuthenticationHandler>("Bearer", null);
 
 builder.Services.AddAuthorization();
+builder.Services.AddAntiforgery(options =>
+{
+    options.HeaderName = "X-CSRF-TOKEN";
+    options.Cookie.Name = "nurvia_csrf";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Strict;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+});
 
 // Add API Controllers with string enum serializer
-builder.Services.AddControllers()
+builder.Services.AddControllers(options =>
+    options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()))
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());

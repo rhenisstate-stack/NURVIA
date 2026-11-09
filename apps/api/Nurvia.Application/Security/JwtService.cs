@@ -14,6 +14,9 @@ public class JwtService : IJwtService
     public JwtService(IOptions<JwtSettings> settings)
     {
         _settings = settings.Value;
+        if (Encoding.UTF8.GetByteCount(_settings.Secret) < 32)
+            throw new InvalidOperationException("JwtSettings:Secret must contain at least 32 bytes.");
+
         _keyBytes = Encoding.UTF8.GetBytes(_settings.Secret);
     }
 
@@ -82,23 +85,33 @@ public class JwtService : IJwtService
 
         try
         {
+            var headerBytes = Base64UrlDecode(headerB64);
+            using var headerDoc = JsonDocument.Parse(headerBytes);
+            if (!headerDoc.RootElement.TryGetProperty("alg", out var algorithm) ||
+                algorithm.GetString() != "HS256")
+            {
+                return null;
+            }
+
             var payloadBytes = Base64UrlDecode(payloadB64);
             var payloadJson = Encoding.UTF8.GetString(payloadBytes);
             using var doc = JsonDocument.Parse(payloadJson);
             var root = doc.RootElement;
 
-            if (root.TryGetProperty("exp", out var expElement))
-            {
-                var expSeconds = expElement.GetInt64();
-                var expTime = DateTimeOffset.FromUnixTimeSeconds(expSeconds);
-                if (expTime <= DateTimeOffset.UtcNow)
-                    return null; // Expired
-            }
+            if (!root.TryGetProperty("exp", out var expElement) ||
+                DateTimeOffset.FromUnixTimeSeconds(expElement.GetInt64()) <= DateTimeOffset.UtcNow ||
+                !root.TryGetProperty("iss", out var issuer) ||
+                issuer.GetString() != _settings.Issuer ||
+                !root.TryGetProperty("aud", out var audience) ||
+                audience.GetString() != _settings.Audience)
+                return null;
 
             var sub = root.TryGetProperty("sub", out var subProp) ? subProp.GetString() ?? "" : "";
             var name = root.TryGetProperty("name", out var nameProp) ? nameProp.GetString() ?? "" : "";
             var email = root.TryGetProperty("email", out var emailProp) ? emailProp.GetString() ?? "" : "";
-            var role = root.TryGetProperty("role", out var roleProp) ? roleProp.GetString() ?? "Learner" : "Learner";
+            var role = root.TryGetProperty("role", out var roleProp) ? roleProp.GetString() ?? "" : "";
+            if (!Guid.TryParse(sub, out _) || string.IsNullOrWhiteSpace(role))
+                return null;
 
             var claims = new List<Claim>
             {
@@ -112,7 +125,8 @@ public class JwtService : IJwtService
             var identity = new ClaimsIdentity(claims, "Bearer", ClaimTypes.Name, ClaimTypes.Role);
             return new ClaimsPrincipal(identity);
         }
-        catch
+        catch (Exception ex) when (
+            ex is JsonException or FormatException or InvalidOperationException or ArgumentOutOfRangeException)
         {
             return null;
         }

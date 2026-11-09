@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Nurvia.Application.Interfaces;
+using Nurvia.Domain.Accounts;
 using Nurvia.Domain.Attempts;
 using Nurvia.Domain.Auditing;
 using Nurvia.Domain.Common;
@@ -16,6 +17,7 @@ public class NurviaDbContext : DbContext, INurviaDbContext
     }
 
     public DbSet<Question> Questions => Set<Question>();
+    public DbSet<UserAccount> UserAccounts => Set<UserAccount>();
     public DbSet<QuestionVersion> QuestionVersions => Set<QuestionVersion>();
     public DbSet<QuestionOption> QuestionOptions => Set<QuestionOption>();
     public DbSet<QuestionExhibit> QuestionExhibits => Set<QuestionExhibit>();
