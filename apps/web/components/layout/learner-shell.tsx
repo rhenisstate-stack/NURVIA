@@ -184,7 +184,7 @@ export function LearnerShell({ children }: { children: React.ReactNode }) {
         {/* Brand Header */}
         <div className="flex h-16 items-center justify-between px-4 border-b border-border">
           <Link href="/learner" className="flex items-center gap-2 overflow-hidden">
-            <Logo size={collapsed ? "sm" : "md"} showText={!collapsed} />
+            <Logo size={collapsed ? "sm" : "md"} variant={collapsed ? "symbol" : "full"} withLink={false} />
           </Link>
           <div className="flex items-center gap-1">
             <Button
