@@ -53,6 +53,10 @@ public class ExamAttemptsController : ControllerBase
 
             return Ok(ApiResponse<StartAttemptResultDto>.Ok(result));
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, ApiResponse<StartAttemptResultDto>.Error(ex.Message));
+        }
         catch (DomainException ex)
         {
             if (ex.Message.Contains("Access denied"))
@@ -73,6 +77,10 @@ public class ExamAttemptsController : ControllerBase
         {
             var result = await _attemptService.AutosaveResponseAsync(id, request, user.Id, ct);
             return Ok(ApiResponse<AutosaveResultDto>.Ok(result, "Response autosaved successfully."));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, ApiResponse<AutosaveResultDto>.Error(ex.Message));
         }
         catch (DomainException ex)
         {
@@ -95,6 +103,10 @@ public class ExamAttemptsController : ControllerBase
             var result = await _attemptService.SubmitAttemptAsync(id, user.Id, ct);
             return Ok(ApiResponse<SubmittedExamResultDto>.Ok(result, "Examination attempt submitted and graded successfully."));
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, ApiResponse<SubmittedExamResultDto>.Error(ex.Message));
+        }
         catch (DomainException ex)
         {
             if (ex.Message.Contains("Access denied"))
@@ -115,6 +127,10 @@ public class ExamAttemptsController : ControllerBase
         {
             var result = await _attemptService.GetAttemptReviewAsync(id, user.Id, ct);
             return Ok(ApiResponse<SubmittedExamResultDto>.Ok(result));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, ApiResponse<SubmittedExamResultDto>.Error(ex.Message));
         }
         catch (DomainException ex)
         {

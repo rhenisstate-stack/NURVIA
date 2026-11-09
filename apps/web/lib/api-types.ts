@@ -18,14 +18,28 @@ export type ExamStatus =
 export type QuestionType =
   | 'MultipleChoice'
   | 'MultipleResponse'
+  | 'SelectAllThatApply'
   | 'TrueFalse'
   | 'FillInTheBlank'
+  | 'Cloze'
   | 'NumericResponse'
+  | 'NumericCalculation'
   | 'OrderedResponse'
   | 'Matching'
   | 'MatrixGrid'
   | 'ClinicalCaseStudy'
-  | 'BowTie';
+  | 'UnfoldingCaseStudy'
+  | 'BowTie'
+  | 'DynamicLabBowTie'
+  | 'MultipleTrueFalse'
+  | 'ImageBased'
+  | 'MultipleImageSelection'
+  | 'DragAndDrop'
+  | 'ExtendedResponse'
+  | 'TabularResponse'
+  | 'ShortAnswer'
+  | 'SingleChoice'
+  | number;
 
 export type NursingPathway = 'RN' | 'PN_LPN' | 'RN_Exit' | 'PN_Exit';
 
@@ -194,4 +208,109 @@ export interface ApiResponse<T> {
   message: string;
   data?: T;
   errors?: string[];
+}
+
+export interface ActiveExamOptionDto {
+  id: string;
+  optionIndex: number;
+  optionText: string;
+  displayOrder: number;
+}
+
+export interface ActiveExamQuestionDto {
+  id: string;
+  orderIndex: number;
+  stem: string;
+  questionType: QuestionType;
+  cognitiveSkill: CognitiveSkill;
+  clientNeedCategory: ClientNeedCategory;
+  contentJsonData?: string;
+  options: ActiveExamOptionDto[];
+  exhibits: QuestionExhibitDto[];
+}
+
+export interface LearnerAnswerStateDto {
+  responseJson?: string;
+  isAnswered: boolean;
+  isFlagged: boolean;
+  savedAtUtc: string;
+}
+
+export interface StartAttemptResultDto {
+  attemptId: string;
+  examId: string;
+  examTitle: string;
+  timeLimitMinutes: number;
+  remainingSeconds: number;
+  startedAtUtc: string;
+  deadlineUtc: string;
+  totalQuestions: number;
+  questions: ActiveExamQuestionDto[];
+  savedResponses: Record<string, LearnerAnswerStateDto>;
+}
+
+export interface AutosaveResponseRequest {
+  questionId: string;
+  responseJson?: string | null;
+  isFlagged: boolean;
+}
+
+export interface AutosaveResultDto {
+  questionId: string;
+  isAnswered: boolean;
+  isFlagged: boolean;
+  savedAtUtc: string;
+}
+
+export interface ReviewOptionDto {
+  id: string;
+  optionIndex: number;
+  optionText: string;
+  isCorrect: boolean;
+  specificRationale?: string;
+  wasSelected: boolean;
+}
+
+export interface ReviewQuestionDto {
+  questionId: string;
+  orderIndex: number;
+  stem: string;
+  questionType: QuestionType;
+  cognitiveSkill: CognitiveSkill;
+  clientNeedCategory: ClientNeedCategory;
+  generalRationale: string;
+  learnerResponse?: string;
+  isCorrect: boolean;
+  pointsAwarded: number;
+  maxPoints: number;
+  options: ReviewOptionDto[];
+  exhibits: QuestionExhibitDto[];
+}
+
+export interface SubmittedExamResultDto {
+  attemptId: string;
+  examId: string;
+  examTitle: string;
+  status: string;
+  startedAtUtc: string;
+  submittedAtUtc: string;
+  timeSpentSeconds: number;
+  totalQuestions: number;
+  correctQuestions: number;
+  scorePercentage: number;
+  passingScorePercentage: number;
+  passed: boolean;
+  reviewQuestions: ReviewQuestionDto[];
+}
+
+export interface ExamAttemptSummaryDto {
+  attemptId: string;
+  examId: string;
+  examTitle: string;
+  status: string;
+  startedAtUtc: string;
+  submittedAtUtc?: string;
+  scorePercentage?: number;
+  passed?: boolean;
+  totalQuestions: number;
 }

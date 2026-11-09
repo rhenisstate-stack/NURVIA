@@ -35,6 +35,11 @@ interface ExamShellProps {
   isFlagged?: boolean;
   onToggleFlag?: () => void;
   onSubmitExam?: () => void;
+  secondsRemaining?: number;
+  onTimerExpired?: () => void;
+  autosaveStatus?: "saving" | "saved" | "idle" | "error";
+  onOpenQuestionGrid?: () => void;
+  answeredCount?: number;
 }
 
 export function ExamShell({
@@ -47,19 +52,39 @@ export function ExamShell({
   isFlagged = false,
   onToggleFlag,
   onSubmitExam,
+  secondsRemaining: propSecondsRemaining,
+  onTimerExpired,
+  autosaveStatus = "idle",
+  onOpenQuestionGrid,
+  answeredCount,
 }: ExamShellProps) {
-  // Authoritative countdown timer simulation
-  const [secondsRemaining, setSecondsRemaining] = React.useState(5420); // ~1h 30m
+  // Authoritative countdown timer
+  const [internalSeconds, setInternalSeconds] = React.useState(propSecondsRemaining ?? 5420);
   const [isPaused, setIsPaused] = React.useState(false);
   const [showCalculator, setShowCalculator] = React.useState(false);
 
   React.useEffect(() => {
+    if (propSecondsRemaining !== undefined) {
+      setInternalSeconds(propSecondsRemaining);
+    }
+  }, [propSecondsRemaining]);
+
+  React.useEffect(() => {
     if (isPaused) return;
     const interval = setInterval(() => {
-      setSecondsRemaining((prev) => (prev > 0 ? prev - 1 : 0));
+      setInternalSeconds((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          onTimerExpired?.();
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
     return () => clearInterval(interval);
-  }, [isPaused]);
+  }, [isPaused, onTimerExpired]);
+
+  const secondsRemaining = internalSeconds;
 
   const formatTime = (secs: number) => {
     const hours = Math.floor(secs / 3600);
@@ -125,6 +150,46 @@ export function ExamShell({
                 {isPaused ? <Play className="w-3 h-3 text-emerald-600" /> : <Pause className="w-3 h-3" />}
               </button>
             </div>
+
+            {/* Autosave Indicator */}
+            {autosaveStatus !== "idle" && (
+              <div className="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded text-[11px] font-medium">
+                {autosaveStatus === "saving" && (
+                  <span className="flex items-center gap-1 text-amber-500 animate-pulse">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    Saving...
+                  </span>
+                )}
+                {autosaveStatus === "saved" && (
+                  <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Saved
+                  </span>
+                )}
+                {autosaveStatus === "error" && (
+                  <span className="flex items-center gap-1 text-rose-500">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    Offline
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Question Grid Drawer Trigger */}
+            {onOpenQuestionGrid && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onOpenQuestionGrid}
+                className="text-xs h-8 px-2 sm:px-3 text-foreground"
+                title="Open Question Grid"
+              >
+                <FileText className="w-3.5 h-3.5 sm:mr-1 text-brand-teal" />
+                <span className="hidden sm:inline">
+                  Grid{answeredCount !== undefined ? ` (${answeredCount}/${totalQuestions})` : ""}
+                </span>
+              </Button>
+            )}
 
             {/* Dosage Calculator Launcher */}
             <Button

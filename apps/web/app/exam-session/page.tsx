@@ -3,339 +3,671 @@
 import * as React from "react";
 import { Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { ExamShell } from "@/components/layout/exam-shell";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { initialStudySets } from "@/lib/study-sets-data";
 import {
   CheckCircle2,
   XCircle,
   HelpCircle,
-  AlertCircle,
+  AlertTriangle,
   ChevronLeft,
   ChevronRight,
   Bookmark,
   FileText,
   Activity,
-  FlaskConical,
   ClipboardList,
   Sparkles,
   Lightbulb,
+  Check,
+  RotateCcw,
+  Trophy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { nurviaApi } from "@/lib/api-client";
+import {
+  ActiveExamQuestionDto,
+  StartAttemptResultDto,
+  SubmittedExamResultDto,
+  ReviewQuestionDto,
+} from "@/lib/api-types";
+import { QuestionRendererRegistry, RendererQuestion } from "@/components/exam/renderers";
+
+// High-Yield Default Practice Set covering canonical NCLEX-RN and NextGen NGN item types
+const fallbackQuestions: RendererQuestion[] = [
+  {
+    id: "q-canonical-01",
+    orderIndex: 1,
+    stem: "A 64-year-old client admitted 48 hours ago for acute decompensated heart failure is receiving intravenous furosemide 40 mg twice daily. The nurse reviews the client's morning laboratory findings. Which clinical finding requires the nurse's immediate intervention?",
+    questionType: "SingleChoice",
+    cognitiveSkill: "AnalyzeCues",
+    clientNeedCategory: "PhysiologicalIntegrity",
+    options: [
+      { id: "opt-1a", optionIndex: 1, optionText: "Serum potassium level of 3.1 mEq/L (3.1 mmol/L)", isCorrect: true, specificRationale: "Hypokalemia pre-disposes to lethal ventricular dysrhythmias and digoxin toxicity. Requires urgent repletion." },
+      { id: "opt-1b", optionIndex: 2, optionText: "Weight loss of 1.4 kg (3.1 lb) over the last 24 hours", isCorrect: false, specificRationale: "Anticipated therapeutic response to diuretic therapy." },
+      { id: "opt-1c", optionIndex: 3, optionText: "Urine output of 2,100 mL over the previous 24 hours", isCorrect: false, specificRationale: "Indicates effective diuresis." },
+      { id: "opt-1d", optionIndex: 4, optionText: "Trace pedal edema noted bilaterally in lower extremities", isCorrect: false, specificRationale: "Marked clinical improvement from admission 3+ pitting edema." },
+    ],
+    generalRationale: "Loop diuretics such as furosemide inhibit sodium and chloride reabsorption in the ascending loop of Henle, accelerating potassium excretion. A serum potassium of 3.1 mEq/L represents critical hypokalemia requiring prompt physician notification and IV/oral potassium replacement.",
+  },
+  {
+    id: "q-canonical-02",
+    orderIndex: 2,
+    stem: "The nurse is evaluating an elderly client diagnosed with digitalis toxicity. Which clinical manifestations should the nurse identify as consistent with digoxin toxicity? Select All That Apply.",
+    questionType: "MultipleResponse",
+    cognitiveSkill: "RecognizeCues",
+    clientNeedCategory: "PhysiologicalIntegrity",
+    options: [
+      { id: "opt-2a", optionIndex: 1, optionText: "Yellow-green halos around objects and blurred vision", isCorrect: true, specificRationale: "Classic visual disturbance indicating advanced digoxin toxicity." },
+      { id: "opt-2b", optionIndex: 2, optionText: "Anorexia, nausea, and vomiting", isCorrect: true, specificRationale: "Earliest gastrointestinal signs of digitalis excess." },
+      { id: "opt-2c", optionIndex: 3, optionText: "Cardiac dysrhythmias and bradycardia", isCorrect: true, specificRationale: "Dangerous conduction defects caused by excessive vagal tone and AV block." },
+      { id: "opt-2d", optionIndex: 4, optionText: "Sudden hyperthermia and flushing", isCorrect: false, specificRationale: "Not a feature of digoxin toxicity." },
+      { id: "opt-2e", optionIndex: 5, optionText: "Hypoglycemia with severe diaphoresis", isCorrect: false, specificRationale: "Digoxin does not regulate blood glucose." },
+    ],
+    generalRationale: "Digoxin has a narrow therapeutic index (0.5–2.0 ng/mL). Early toxicity presents with GI upset (anorexia, nausea) followed by neurological/visual signs (yellow-green halos) and severe cardiac dysrhythmias.",
+  },
+  {
+    id: "q-canonical-03",
+    orderIndex: 3,
+    stem: "True or False: A nurse caring for a client with deep vein thrombosis (DVT) must vigorously massage the affected calf muscle to improve collateral venous return.",
+    questionType: "TrueFalse",
+    cognitiveSkill: "TakeActions",
+    clientNeedCategory: "SafeEffectiveCareEnvironment",
+    options: [
+      { id: "opt-3a", optionIndex: 1, optionText: "True", isCorrect: false, specificRationale: "Massaging a DVT is dangerous." },
+      { id: "opt-3b", optionIndex: 2, optionText: "False", isCorrect: true, specificRationale: "Massaging can dislodge the thrombus, causing pulmonary embolism." },
+    ],
+    generalRationale: "Massaging an extremity with suspected or confirmed deep vein thrombosis is strictly contraindicated because mechanical pressure can dislodge the clot into systemic venous circulation, producing a life-threatening pulmonary embolism.",
+  },
+  {
+    id: "q-canonical-04",
+    orderIndex: 4,
+    stem: "A client with acute hyperkalemia (serum potassium 6.8 mEq/L) is admitted to the emergency department with tall, peaked T-waves on ECG. The first medication the nurse must immediately prepare to stabilize the myocardial cell membrane is:",
+    questionType: "FillInTheBlank",
+    cognitiveSkill: "PrioritizeHypotheses",
+    clientNeedCategory: "PhysiologicalIntegrity",
+    options: [
+      { id: "opt-4a", optionIndex: 1, optionText: "Calcium Gluconate", isCorrect: true, specificRationale: "Calcium gluconate antagonizes membrane excitability without shifting potassium." },
+    ],
+    generalRationale: "Intravenous calcium gluconate does not lower serum potassium levels, but it immediately raises the cardiac threshold potential, stabilizing the myocardial cell membrane and preventing fatal ventricular dysrhythmias in severe hyperkalemia.",
+  },
+  {
+    id: "q-canonical-05",
+    orderIndex: 5,
+    stem: "A primary care provider prescribes normal saline 1,000 mL IV to infuse over 8 hours. The infusion tubing drop factor is 15 gtt/mL. The nurse calculates the flow rate to be how many drops per minute (gtt/min)? Round to the nearest whole number.",
+    questionType: "NumericCalculation",
+    cognitiveSkill: "GenerateSolutions",
+    clientNeedCategory: "PhysiologicalIntegrity",
+    options: [
+      { id: "opt-5a", optionIndex: 1, optionText: "31", isCorrect: true, specificRationale: "(1000 mL * 15 gtt/mL) / (8 * 60 min) = 15000 / 480 = 31.25 -> 31 gtt/min." },
+    ],
+    generalRationale: "Formula: Rate (gtt/min) = (Total volume in mL × Drop factor in gtt/mL) / Total time in minutes. (1,000 × 15) / 480 = 31.25. Rounding to the nearest whole number yields 31 gtt/min.",
+  },
+  {
+    id: "q-canonical-06",
+    orderIndex: 6,
+    stem: "The nurse enters a room and finds an unresponsive adult client on the floor who is pulseless and apneic. Prioritize the resuscitation actions from first (highest priority) to last.",
+    questionType: "OrderedResponse",
+    cognitiveSkill: "TakeActions",
+    clientNeedCategory: "SafeEffectiveCareEnvironment",
+    options: [
+      { id: "opt-6a", optionIndex: 1, optionText: "Call for emergency assistance and activate the rapid response / code team", isCorrect: true },
+      { id: "opt-6b", optionIndex: 2, optionText: "Retrieve the automated external defibrillator (AED)", isCorrect: true },
+      { id: "opt-6c", optionIndex: 3, optionText: "Initiate high-quality chest compressions at 100-120 per minute", isCorrect: true },
+      { id: "opt-6d", optionIndex: 4, optionText: "Deliver rescue breaths at a 30:2 compression-to-ventilation ratio", isCorrect: true },
+    ],
+    generalRationale: "According to Basic Life Support (BLS) guidelines: 1. Activate the emergency response system. 2. Request an AED. 3. Immediate initiation of high-quality chest compressions. 4. Deliver rescue ventilations.",
+  },
+  {
+    id: "q-canonical-07",
+    orderIndex: 7,
+    stem: "NextGen NGN Bow-Tie: A 52-year-old client with chronic alcohol dependence is admitted with tremors, diaphoresis, tachycardia (HR 134 bpm), and auditory hallucinations. Complete the Bow-Tie diagram by identifying the priority actions to take, the hypothesized condition, and the parameters to monitor.",
+    questionType: "BowTie",
+    cognitiveSkill: "PrioritizeHypotheses",
+    clientNeedCategory: "PhysiologicalIntegrity",
+    options: [
+      { id: "opt-7a", optionIndex: 1, optionText: "Administer prescribed IV Lorazepam (Ativan)" },
+      { id: "opt-7b", optionIndex: 2, optionText: "Implement strict seizure precautions with padded bed rails" },
+      { id: "opt-7c", optionIndex: 3, optionText: "Severe Alcohol Withdrawal / Delirium Tremens" },
+      { id: "opt-7d", optionIndex: 4, optionText: "Acute Opioid Overdose" },
+      { id: "opt-7e", optionIndex: 5, optionText: "Serial CIWA-Ar withdrawal assessment score" },
+      { id: "opt-7f", optionIndex: 6, optionText: "Continuous cardiac telemetry and seizure activity" },
+    ],
+    generalRationale: "Delirium tremens is a medical emergency occurring 48–72 hours after cessation of heavy alcohol intake. Key actions: high-dose benzodiazepines and seizure safety. Condition: Severe alcohol withdrawal. Parameters: CIWA-Ar score and telemetry.",
+  },
+];
 
 function ExamSessionContent() {
   const searchParams = useSearchParams();
-  const paramMode = searchParams?.get("mode");
-  const paramSetId = searchParams?.get("setId");
+  const router = useRouter();
 
-  const initialMode: "Review" | "Exam" | "Tutor" =
-    paramMode === "Exam" || paramMode === "Tutor" ? paramMode : "Review";
+  const attemptIdParam = searchParams?.get("attemptId");
+  const examIdParam = searchParams?.get("examId");
+  const modeParam = searchParams?.get("mode") as "Review" | "Exam" | "Tutor" | null;
 
-  const matchedSet = initialStudySets.find((s) => s.id === paramSetId || s.slug === paramSetId);
-  const examTitle = matchedSet ? matchedSet.title : "ATI RN Adult Medical-Surgical Comprehensive Practice";
+  // Session state
+  const [attemptId, setAttemptId] = React.useState<string | null>(attemptIdParam);
+  const [examTitle, setExamTitle] = React.useState<string>("ATI Comprehensive Nursing Practice Examination");
+  const [questions, setQuestions] = React.useState<RendererQuestion[]>(fallbackQuestions);
+  const [currentIndex, setCurrentIndex] = React.useState<number>(0);
+  const [answers, setAnswers] = React.useState<Record<string, string>>({});
+  const [flags, setFlags] = React.useState<Record<string, boolean>>({});
+  const [secondsRemaining, setSecondsRemaining] = React.useState<number>(5400); // 90 min default
+  const [deliveryMode, setDeliveryMode] = React.useState<"Review" | "Exam" | "Tutor">(modeParam || "Exam");
+  const [autosaveStatus, setAutosaveStatus] = React.useState<"saving" | "saved" | "idle" | "error">("idle");
+  const [isLoading, setIsLoading] = React.useState<boolean>(false);
 
-  const [selectedOption, setSelectedOption] = React.useState<number | null>(null);
+  // Review & Submit state
+  const [isSubmitModalOpen, setIsSubmitModalOpen] = React.useState<boolean>(false);
   const [isSubmitted, setIsSubmitted] = React.useState<boolean>(false);
-  const [activeTab, setActiveTab] = React.useState<"notes" | "vitals" | "labs" | "orders">("notes");
-  const [currentMode, setCurrentMode] = React.useState<"Review" | "Exam" | "Tutor">(initialMode);
-  const [isFlagged, setIsFlagged] = React.useState<boolean>(false);
-  const [showTutorHint, setShowTutorHint] = React.useState<boolean>(false);
+  const [submittedResult, setSubmittedResult] = React.useState<SubmittedExamResultDto | null>(null);
+  const [isQuestionGridOpen, setIsQuestionGridOpen] = React.useState<boolean>(false);
 
-  // High-Yield Sample Clinical Vignette Question
-  const questionData = {
-    id: "q-4091",
-    stem: "A 64-year-old client admitted 48 hours ago for acute decompensated heart failure is receiving intravenous furosemide 40 mg twice daily. The nurse reviews the client's morning assessment and laboratory findings. Which clinical finding requires the nurse's immediate intervention?",
-    options: [
-      { id: 0, text: "Serum potassium level of 3.1 mEq/L (3.1 mmol/L)", isCorrect: true },
-      { id: 1, text: "Weight loss of 1.4 kg (3.1 lb) over the last 24 hours", isCorrect: false },
-      { id: 2, text: "Urine output of 2,100 mL over the previous 24 hours", isCorrect: false },
-      { id: 3, text: "Trace pedal edema noted bilaterally in lower extremities", isCorrect: false },
-    ],
-    rationales: {
-      correctRationale:
-        "Hypokalemia (potassium < 3.5 mEq/L) is a critical adverse effect of loop diuretics like furosemide. A potassium level of 3.1 mEq/L predisposes the client to fatal cardiac dysrhythmias (e.g., ventricular fibrillation) and increases the risk of digoxin toxicity if applicable. The provider must be notified immediately for potassium repletion.",
-      distractorRationales: [
-        "Option B: Weight loss of 1.4 kg represents therapeutic fluid elimination expected with diuretic therapy.",
-        "Option C: Urine output of 2,100 mL is an anticipated therapeutic response demonstrating effective diuresis.",
-        "Option D: Trace pedal edema represents marked clinical improvement from previous 3+ pitting edema at admission.",
-      ],
-      cognitiveSkill: "Analyze Cues & Prioritize Hypotheses",
-      clientNeed: "Physiological Integrity: Pharmacological and Parenteral Therapies",
-    },
-    exhibits: {
-      notes: "Client alert and oriented x 4. Lung crackles significantly diminished in bilateral bases compared to admission. Denies shortness of breath at rest with head of bed elevated 30 degrees.",
-      vitals: "BP: 124/76 mmHg | HR: 88 bpm (irregular beats noted) | RR: 16 breaths/min | SpO2: 96% on 2 L nasal cannula | Temp: 36.8°C (98.2°F).",
-      labs: "Potassium: 3.1 mEq/L (Normal: 3.5–5.0) | Sodium: 138 mEq/L | BUN: 22 mg/dL | Serum Creatinine: 1.1 mg/dL | BNP: 410 pg/mL (trending down from 1,100).",
-      orders: "1. Furosemide 40 mg IV push Q12H.\n2. Low-sodium diet (2,000 mg/day).\n3. Daily weights before breakfast.\n4. Strict Intake & Output tracking.",
-    },
-  };
+  // Autosave debounce timer ref
+  const autosaveTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
-  const handleSelect = (idx: number) => {
-    if (isSubmitted && currentMode === "Review") return;
-    setSelectedOption(idx);
-    if (currentMode === "Review") {
-      setIsSubmitted(true);
+  // 1. Initialize attempt from API
+  React.useEffect(() => {
+    async function loadAttempt() {
+      if (attemptIdParam) {
+        setIsLoading(true);
+        const res = await nurviaApi.getActiveAttempt(attemptIdParam);
+        if (res.success && res.data) {
+          hydrateFromAttempt(res.data);
+        }
+        setIsLoading(false);
+      } else if (examIdParam) {
+        setIsLoading(true);
+        const res = await nurviaApi.startAttempt(examIdParam);
+        if (res.success && res.data) {
+          setAttemptId(res.data.attemptId);
+          hydrateFromAttempt(res.data);
+        }
+        setIsLoading(false);
+      }
+    }
+
+    loadAttempt();
+  }, [attemptIdParam, examIdParam]);
+
+  const hydrateFromAttempt = (data: StartAttemptResultDto) => {
+    setAttemptId(data.attemptId);
+    setExamTitle(data.examTitle);
+    setSecondsRemaining(data.remainingSeconds);
+
+    if (data.questions && data.questions.length > 0) {
+      const mapped: RendererQuestion[] = data.questions.map((q) => ({
+        id: q.id,
+        orderIndex: q.orderIndex,
+        stem: q.stem,
+        questionType: q.questionType,
+        cognitiveSkill: q.cognitiveSkill,
+        clientNeedCategory: q.clientNeedCategory,
+        contentJsonData: q.contentJsonData,
+        options: q.options.map((o) => ({
+          id: o.id,
+          optionIndex: o.optionIndex,
+          optionText: o.optionText,
+          displayOrder: o.displayOrder,
+        })),
+        exhibits: q.exhibits,
+      }));
+      setQuestions(mapped);
+    }
+
+    // Saved answers
+    if (data.savedResponses) {
+      const initialAnswers: Record<string, string> = {};
+      const initialFlags: Record<string, boolean> = {};
+      Object.entries(data.savedResponses).forEach(([qId, state]) => {
+        if (state.responseJson) initialAnswers[qId] = state.responseJson;
+        if (state.isFlagged) initialFlags[qId] = true;
+      });
+      setAnswers(initialAnswers);
+      setFlags(initialFlags);
     }
   };
+
+  // 2. Debounced Autosave Handler
+  const handleAnswerChange = (questionId: string, payloadJson: string) => {
+    setAnswers((prev) => ({ ...prev, [questionId]: payloadJson }));
+
+    if (!attemptId) return;
+
+    setAutosaveStatus("saving");
+    if (autosaveTimeoutRef.current) clearTimeout(autosaveTimeoutRef.current);
+
+    autosaveTimeoutRef.current = setTimeout(async () => {
+      try {
+        const isFlagged = flags[questionId] || false;
+        const res = await nurviaApi.autosaveResponse(attemptId, {
+          questionId,
+          responseJson: payloadJson,
+          isFlagged,
+        });
+
+        if (res.success) {
+          setAutosaveStatus("saved");
+        } else {
+          setAutosaveStatus("error");
+        }
+      } catch {
+        setAutosaveStatus("error");
+      }
+    }, 600);
+  };
+
+  // 3. Toggle Flag Handler
+  const handleToggleFlag = async () => {
+    const currentQ = questions[currentIndex];
+    if (!currentQ) return;
+    const currentFlag = flags[currentQ.id] || false;
+    const nextFlag = !currentFlag;
+
+    setFlags((prev) => ({ ...prev, [currentQ.id]: nextFlag }));
+
+    if (attemptId) {
+      setAutosaveStatus("saving");
+      try {
+        const ans = answers[currentQ.id] || null;
+        await nurviaApi.autosaveResponse(attemptId, {
+          questionId: currentQ.id,
+          responseJson: ans,
+          isFlagged: nextFlag,
+        });
+        setAutosaveStatus("saved");
+      } catch {
+        setAutosaveStatus("error");
+      }
+    }
+  };
+
+  // 4. Submit Examination Handler
+  const handleSubmitExam = async () => {
+    setIsSubmitModalOpen(false);
+    setIsLoading(true);
+
+    if (attemptId) {
+      try {
+        const res = await nurviaApi.submitAttempt(attemptId);
+        if (res.success && res.data) {
+          setSubmittedResult(res.data);
+          setIsSubmitted(true);
+          setDeliveryMode("Review");
+          // Merge review questions with answers and rationales
+          if (res.data.reviewQuestions && res.data.reviewQuestions.length > 0) {
+            const reviewMapped: RendererQuestion[] = res.data.reviewQuestions.map((rq) => ({
+              id: rq.questionId,
+              orderIndex: rq.orderIndex,
+              stem: rq.stem,
+              questionType: rq.questionType,
+              cognitiveSkill: rq.cognitiveSkill,
+              clientNeedCategory: rq.clientNeedCategory,
+              generalRationale: rq.generalRationale,
+              options: rq.options.map((ro) => ({
+                id: ro.id,
+                optionIndex: ro.optionIndex,
+                optionText: ro.optionText,
+                isCorrect: ro.isCorrect,
+                specificRationale: ro.specificRationale,
+                wasSelected: ro.wasSelected,
+              })),
+              exhibits: rq.exhibits,
+            }));
+            setQuestions(reviewMapped);
+          }
+        }
+      } catch (err) {
+        console.error("Submission failed", err);
+      }
+    } else {
+      // Local fallback mock submission
+      const mockResult: SubmittedExamResultDto = {
+        attemptId: "mock-attempt-local",
+        examId: "mock-exam-local",
+        examTitle,
+        status: "Graded",
+        startedAtUtc: new Date().toISOString(),
+        submittedAtUtc: new Date().toISOString(),
+        timeSpentSeconds: 1840,
+        totalQuestions: questions.length,
+        correctQuestions: Math.max(1, Math.round(questions.length * 0.85)),
+        scorePercentage: 85.0,
+        passingScorePercentage: 75.0,
+        passed: true,
+        reviewQuestions: [],
+      };
+      setSubmittedResult(mockResult);
+      setIsSubmitted(true);
+      setDeliveryMode("Review");
+    }
+
+    setIsLoading(false);
+  };
+
+  const currentQ = questions[currentIndex];
+  const isCurrentFlagged = currentQ ? Boolean(flags[currentQ.id]) : false;
+  const currentAnswer = currentQ ? answers[currentQ.id] : null;
+
+  const answeredCount = Object.keys(answers).length;
+  const unansweredCount = questions.length - answeredCount;
+  const flaggedCount = Object.values(flags).filter(Boolean).length;
 
   return (
     <ExamShell
       examTitle={examTitle}
-      totalQuestions={matchedSet ? matchedSet.questionCount : 60}
-      currentQuestion={14}
-      mode={currentMode}
-      onModeChange={setCurrentMode}
-      isFlagged={isFlagged}
-      onToggleFlag={() => setIsFlagged(!isFlagged)}
+      totalQuestions={questions.length}
+      currentQuestion={currentIndex + 1}
+      mode={deliveryMode}
+      onModeChange={setDeliveryMode}
+      isFlagged={isCurrentFlagged}
+      onToggleFlag={handleToggleFlag}
+      onSubmitExam={() => setIsSubmitModalOpen(true)}
+      secondsRemaining={secondsRemaining}
+      onTimerExpired={handleSubmitExam}
+      autosaveStatus={autosaveStatus}
+      answeredCount={answeredCount}
+      onOpenQuestionGrid={() => setIsQuestionGridOpen(true)}
     >
       <div className="space-y-6">
-        {/* Mode Switcher Tabs */}
+        {/* Post-Submission Result Hero Banner */}
+        {isSubmitted && submittedResult && (
+          <div className="p-6 rounded-2xl border border-teal-500/30 bg-surface shadow-md space-y-4 animate-in fade-in">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "w-12 h-12 rounded-xl flex items-center justify-center text-xl shrink-0",
+                  submittedResult.passed ? "bg-emerald-500/10 text-emerald-600" : "bg-rose-500/10 text-rose-600"
+                )}>
+                  {submittedResult.passed ? <Trophy className="w-6 h-6" /> : <AlertTriangle className="w-6 h-6" />}
+                </div>
+                <div>
+                  <h3 className="font-brand font-bold text-lg text-foreground">
+                    {submittedResult.passed ? "Examination Passed!" : "Remediation Recommended"}
+                  </h3>
+                  <p className="text-xs text-foreground-secondary">
+                    Your attempt has been scored deterministically. Review clinical rationales below.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <div className="text-2xl font-brand font-extrabold text-foreground">
+                    {submittedResult.scorePercentage}%
+                  </div>
+                  <div className="text-[11px] text-foreground-muted font-medium">
+                    Passing: {submittedResult.passingScorePercentage}%
+                  </div>
+                </div>
+                <Badge variant={submittedResult.passed ? "teal" : "destructive"} className="text-xs px-3 py-1">
+                  {submittedResult.passed ? "Passed" : "Needs Review"}
+                </Badge>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-foreground-secondary">
+              <div className="p-3 rounded-xl bg-surface-muted border border-border/50">
+                <span className="block text-[11px] text-foreground-muted">Total Questions</span>
+                <span className="font-bold text-sm text-foreground">{submittedResult.totalQuestions}</span>
+              </div>
+              <div className="p-3 rounded-xl bg-surface-muted border border-border/50">
+                <span className="block text-[11px] text-foreground-muted">Correct Answers</span>
+                <span className="font-bold text-sm text-emerald-600">{submittedResult.correctQuestions}</span>
+              </div>
+              <div className="p-3 rounded-xl bg-surface-muted border border-border/50">
+                <span className="block text-[11px] text-foreground-muted">Time Spent</span>
+                <span className="font-bold text-sm text-foreground">
+                  {Math.round(submittedResult.timeSpentSeconds / 60)} minutes
+                </span>
+              </div>
+              <div className="p-3 rounded-xl bg-surface-muted border border-border/50">
+                <span className="block text-[11px] text-foreground-muted">Review Mode</span>
+                <span className="font-bold text-sm text-brand-teal">Active</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Question Header Bar */}
         <div className="flex items-center justify-between border-b border-border pb-3">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-foreground-secondary">Delivery Mode:</span>
-            <div className="inline-flex rounded-lg border border-border p-1 bg-surface">
-              {(["Review", "Exam", "Tutor"] as const).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => {
-                    setCurrentMode(m);
-                    setIsSubmitted(false);
-                    setSelectedOption(null);
-                  }}
-                  className={cn(
-                    "px-3 py-1 rounded text-xs font-semibold transition-colors",
-                    currentMode === m
-                      ? "bg-brand-teal text-white shadow-xs"
-                      : "text-foreground-secondary hover:text-foreground"
-                  )}
-                >
-                  {m} Mode
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="text-xs text-foreground-muted hidden sm:block">
-            Item ID: <span className="font-mono">{questionData.id}</span>
-          </div>
-        </div>
-
-        {/* Question Canvas with Split View for Clinical Exhibits */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left Column: Electronic Health Record (EHR) Clinical Exhibits (5 cols) */}
-          <div className="lg:col-span-5 space-y-3">
-            <div className="rounded-xl border border-border bg-surface overflow-hidden shadow-sm">
-              <div className="bg-surface-muted border-b border-border px-4 py-2.5 flex items-center justify-between">
-                <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                  <ClipboardList className="w-4 h-4 text-brand-teal" /> Clinical Chart Exhibits
-                </span>
-                <Badge variant="outline" className="text-[10px]">EHR Simulator</Badge>
-              </div>
-
-              {/* Exhibit Tabs */}
-              <div className="flex border-b border-border text-xs font-semibold overflow-x-auto">
-                <button
-                  onClick={() => setActiveTab("notes")}
-                  className={cn(
-                    "px-3.5 py-2.5 flex items-center gap-1.5 border-b-2 transition-colors whitespace-nowrap",
-                    activeTab === "notes"
-                      ? "border-brand-teal text-brand-teal bg-surface"
-                      : "border-transparent text-foreground-secondary hover:text-foreground"
-                  )}
-                >
-                  <FileText className="w-3.5 h-3.5" /> Notes
-                </button>
-                <button
-                  onClick={() => setActiveTab("vitals")}
-                  className={cn(
-                    "px-3.5 py-2.5 flex items-center gap-1.5 border-b-2 transition-colors whitespace-nowrap",
-                    activeTab === "vitals"
-                      ? "border-brand-teal text-brand-teal bg-surface"
-                      : "border-transparent text-foreground-secondary hover:text-foreground"
-                  )}
-                >
-                  <Activity className="w-3.5 h-3.5" /> Vital Signs
-                </button>
-                <button
-                  onClick={() => setActiveTab("labs")}
-                  className={cn(
-                    "px-3.5 py-2.5 flex items-center gap-1.5 border-b-2 transition-colors whitespace-nowrap",
-                    activeTab === "labs"
-                      ? "border-brand-teal text-brand-teal bg-surface"
-                      : "border-transparent text-foreground-secondary hover:text-foreground"
-                  )}
-                >
-                  <FlaskConical className="w-3.5 h-3.5" /> Lab Results
-                </button>
-                <button
-                  onClick={() => setActiveTab("orders")}
-                  className={cn(
-                    "px-3.5 py-2.5 flex items-center gap-1.5 border-b-2 transition-colors whitespace-nowrap",
-                    activeTab === "orders"
-                      ? "border-brand-teal text-brand-teal bg-surface"
-                      : "border-transparent text-foreground-secondary hover:text-foreground"
-                  )}
-                >
-                  <ClipboardList className="w-3.5 h-3.5" /> Orders
-                </button>
-              </div>
-
-              {/* Exhibit Body Content */}
-              <div className="p-4 text-xs font-mono leading-relaxed bg-background/50 min-h-[180px] whitespace-pre-line text-foreground-secondary">
-                {questionData.exhibits[activeTab]}
-              </div>
-            </div>
-
-            {/* Cognitive Skills Guidance Chip */}
-            <div className="p-3.5 rounded-xl border border-border bg-surface text-xs space-y-1">
-              <div className="font-bold text-brand-teal text-[11px] uppercase tracking-wider flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5" /> {questionData.rationales.cognitiveSkill}
-              </div>
-              <div className="text-foreground-secondary text-[11px]">
-                Client Need: {questionData.rationales.clientNeed}
-              </div>
-            </div>
-
-            {/* Tutor Mode Hint Accordion */}
-            {currentMode === "Tutor" && (
-              <div className="p-3.5 rounded-xl border border-brand-teal/30 bg-teal-500/5 text-xs space-y-2">
-                <button
-                  onClick={() => setShowTutorHint(!showTutorHint)}
-                  className="w-full flex items-center justify-between text-brand-teal font-semibold text-xs"
-                >
-                  <span className="flex items-center gap-1.5">
-                    <Lightbulb className="w-3.5 h-3.5" />
-                    <span>Need a Socratic Hint?</span>
-                  </span>
-                  <span>{showTutorHint ? "Hide Hint" : "Show Hint"}</span>
-                </button>
-                {showTutorHint && (
-                  <p className="text-foreground-secondary pt-1 leading-relaxed border-t border-brand-teal/20 animate-in fade-in">
-                    Focus on the laboratory panel. Loop diuretics waste potassium in the ascending loop of Henle. What cardiac rhythm disturbances occur when serum potassium dips below 3.5 mEq/L?
-                  </p>
-                )}
-              </div>
+            <Badge variant="outline" className="text-xs font-mono">
+              Item {currentIndex + 1} of {questions.length}
+            </Badge>
+            {isCurrentFlagged && (
+              <Badge variant="destructive" className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
+                <Bookmark className="w-3 h-3 mr-1 fill-amber-500" /> Flagged
+              </Badge>
             )}
           </div>
 
-          {/* Right Column: Question Stem, Options, and Rationale (7 cols) */}
-          <div className="lg:col-span-7 space-y-5">
-            <Card className="p-6 space-y-5">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs text-foreground-muted">
-                  <span>Single Choice · High Yield Item</span>
-                  <Badge variant="outline">Clinical Judgment Vignette</Badge>
-                </div>
-                <h2 className="font-brand text-base sm:text-lg font-bold text-foreground leading-relaxed">
-                  {questionData.stem}
-                </h2>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsQuestionGridOpen(true)}
+              className="text-xs font-semibold text-brand-teal hover:underline flex items-center gap-1"
+            >
+              <ClipboardList className="w-3.5 h-3.5" />
+              <span>Question List ({answeredCount}/{questions.length})</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Question Stem & Active Renderer Canvas */}
+        {currentQ ? (
+          <Card className="p-6 space-y-6">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-xs text-foreground-muted">
+                <span className="font-semibold text-brand-teal">
+                  Canonical Type: {String(currentQ.questionType)}
+                </span>
+                {currentQ.cognitiveSkill && (
+                  <Badge variant="outline" className="text-[10px]">
+                    <Sparkles className="w-3 h-3 mr-1 text-brand-teal" />
+                    {String(currentQ.cognitiveSkill)}
+                  </Badge>
+                )}
               </div>
 
-              {/* Options */}
-              <div className="space-y-3">
-                {questionData.options.map((opt, idx) => {
-                  const isSelected = selectedOption === idx;
-                  const isSubmittedReview = isSubmitted && currentMode === "Review";
+              <h2 className="font-brand text-base sm:text-lg font-bold text-foreground leading-relaxed">
+                {currentQ.stem}
+              </h2>
+            </div>
 
-                  let optionClass =
-                    "border-border bg-background hover:bg-surface-muted text-foreground";
-                  if (isSelected) {
-                    optionClass = "border-brand-teal bg-brand-teal/10 text-foreground ring-1 ring-brand-teal";
-                  }
-                  if (isSubmittedReview) {
-                    if (opt.isCorrect) {
-                      optionClass =
-                        "border-emerald-500 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100 ring-1 ring-emerald-500";
-                    } else if (isSelected && !opt.isCorrect) {
-                      optionClass =
-                        "border-rose-500 bg-rose-500/10 text-rose-950 dark:text-rose-100 ring-1 ring-rose-500";
-                    }
-                  }
+            {/* Modular Renderer Registry */}
+            <div className="pt-2">
+              <QuestionRendererRegistry
+                question={currentQ}
+                value={currentAnswer}
+                onChange={(val) => handleAnswerChange(currentQ.id, val)}
+                disabled={isSubmitted}
+                isReview={isSubmitted || deliveryMode === "Review"}
+              />
+            </div>
+          </Card>
+        ) : (
+          <div className="p-12 text-center text-xs text-foreground-muted">
+            No questions available for this session.
+          </div>
+        )}
 
-                  return (
-                    <button
-                      key={opt.id}
-                      onClick={() => handleSelect(idx)}
-                      className={cn(
-                        "w-full text-left p-4 rounded-xl border text-xs sm:text-sm font-medium transition-all flex items-start gap-3",
-                        optionClass
-                      )}
-                    >
-                      <span className="w-6 h-6 rounded-full border border-border bg-surface text-xs font-bold flex items-center justify-center shrink-0">
-                        {String.fromCharCode(65 + idx)}
-                      </span>
-                      <span className="flex-1 leading-snug pt-0.5">{opt.text}</span>
-                      {isSubmittedReview && (
-                        <span className="shrink-0 pt-0.5">
-                          {opt.isCorrect ? (
-                            <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                          ) : isSelected ? (
-                            <XCircle className="w-5 h-5 text-rose-500" />
-                          ) : null}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
+        {/* Question Stepper Navigation Footer */}
+        <div className="flex items-center justify-between pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={currentIndex === 0}
+            onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
+            className="text-xs gap-1"
+          >
+            <ChevronLeft className="w-4 h-4" /> Previous Item
+          </Button>
+
+          <span className="text-xs font-medium text-foreground-muted">
+            Question {currentIndex + 1} of {questions.length}
+          </span>
+
+          <Button
+            size="sm"
+            disabled={currentIndex === questions.length - 1}
+            onClick={() => setCurrentIndex((prev) => Math.min(questions.length - 1, prev + 1))}
+            className="text-xs gap-1 bg-brand-navy hover:bg-brand-navyDeep text-white dark:bg-brand-teal"
+          >
+            Next Item <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Question Grid Modal / Drawer */}
+      {isQuestionGridOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="w-full max-w-2xl rounded-2xl border border-border bg-surface p-6 shadow-xl space-y-5">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div>
+                <h3 className="font-brand font-bold text-base text-foreground">Examination Question Navigator</h3>
+                <p className="text-xs text-foreground-secondary">
+                  Jump directly to any item. Review answered and flagged items before submission.
+                </p>
               </div>
+              <button
+                onClick={() => setIsQuestionGridOpen(false)}
+                className="text-foreground-secondary hover:text-foreground text-sm font-bold p-1"
+              >
+                ✕
+              </button>
+            </div>
 
-              {/* Actions in Exam Mode */}
-              {currentMode === "Exam" && (
-                <div className="pt-3 border-t border-border flex items-center justify-between">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={selectedOption === null}
-                    onClick={() => setIsSubmitted(true)}
+            <div className="flex items-center gap-4 text-xs">
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded bg-teal-500/20 border border-brand-teal" />
+                <span>Answered ({answeredCount})</span>
+              </span>
+              <span className="flex-1 flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded bg-surface-muted border border-border" />
+                <span>Unanswered ({unansweredCount})</span>
+              </span>
+              <span className="flex items-center gap-1.5 text-amber-600">
+                <Bookmark className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                <span>Flagged ({flaggedCount})</span>
+              </span>
+            </div>
+
+            {/* Questions Grid */}
+            <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2 max-h-72 overflow-y-auto p-1">
+              {questions.map((q, idx) => {
+                const isAns = Boolean(answers[q.id]);
+                const isFlg = Boolean(flags[q.id]);
+                const isCurr = idx === currentIndex;
+
+                return (
+                  <button
+                    key={q.id}
+                    onClick={() => {
+                      setCurrentIndex(idx);
+                      setIsQuestionGridOpen(false);
+                    }}
+                    className={cn(
+                      "h-10 rounded-lg text-xs font-bold transition-all relative flex items-center justify-center border",
+                      isAns
+                        ? "bg-teal-500/15 border-brand-teal text-brand-teal"
+                        : "bg-surface-muted border-border text-foreground-secondary hover:bg-surface",
+                      isCurr && "ring-2 ring-foreground",
+                      isFlg && "border-amber-500 text-amber-700 dark:text-amber-400"
+                    )}
                   >
-                    Confirm Answer Selection
-                  </Button>
-                  <span className="text-xs text-foreground-muted">Rationales shown upon exam completion</span>
-                </div>
-              )}
+                    {idx + 1}
+                    {isFlg && (
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-500" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
 
-              {/* Rationale Display in Review & Tutor Modes */}
-              {isSubmitted && (currentMode === "Review" || currentMode === "Tutor") && (
-                <div className="p-4 rounded-xl bg-teal-500/10 border border-teal-500/30 text-xs leading-relaxed space-y-3 animate-in fade-in">
-                  <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-brand-teal">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span>Evidence-Based Clinical Rationale</span>
-                  </div>
-                  <p className="text-foreground">{questionData.rationales.correctRationale}</p>
-
-                  <div className="pt-2 border-t border-teal-500/20 space-y-1">
-                    <span className="font-semibold text-foreground block">Distractor Explanations:</span>
-                    {questionData.rationales.distractorRationales.map((d, i) => (
-                      <p key={i} className="text-foreground-secondary text-[11px]">{d}</p>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </Card>
-
-            {/* Bottom Question Stepper Footer */}
-            <div className="flex items-center justify-between text-xs pt-2">
-              <Button variant="ghost" size="sm" className="text-xs gap-1">
-                <ChevronLeft className="w-4 h-4" /> Previous Item
-              </Button>
-              <span className="text-foreground-muted font-medium">Question 14 of 60</span>
-              <Button size="sm" className="text-xs gap-1 bg-brand-navy hover:bg-brand-navyDeep text-white dark:bg-brand-teal">
-                Next Item <ChevronRight className="w-4 h-4" />
+            <div className="pt-2 border-t border-border flex justify-end">
+              <Button size="sm" onClick={() => setIsQuestionGridOpen(false)} className="text-xs">
+                Resume Exam
               </Button>
             </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Submit Confirmation Modal */}
+      {isSubmitModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-brand font-bold text-base text-foreground">Finish Examination?</h3>
+                <p className="text-xs text-foreground-secondary">
+                  Please review your submission status.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-surface-muted border border-border text-xs space-y-2">
+              <div className="flex justify-between">
+                <span className="text-foreground-secondary">Total Questions:</span>
+                <span className="font-bold text-foreground">{questions.length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-foreground-secondary">Answered:</span>
+                <span className="font-bold text-emerald-600">{answeredCount}</span>
+              </div>
+              {unansweredCount > 0 && (
+                <div className="flex justify-between font-semibold text-rose-500">
+                  <span>Unanswered:</span>
+                  <span>{unansweredCount}</span>
+                </div>
+              )}
+              {flaggedCount > 0 && (
+                <div className="flex justify-between text-amber-600 font-medium">
+                  <span>Flagged for Review:</span>
+                  <span>{flaggedCount}</span>
+                </div>
+              )}
+            </div>
+
+            {unansweredCount > 0 && (
+              <p className="text-xs text-rose-500 font-medium">
+                Warning: You have {unansweredCount} unanswered questions. Unanswered items will receive zero points.
+              </p>
+            )}
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsSubmitModalOpen(false)}
+                className="text-xs"
+              >
+                Return to Exam
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleSubmitExam}
+                className="text-xs"
+              >
+                Confirm & Submit
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </ExamShell>
   );
 }
 
 export default function ExamSessionPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-xs text-foreground-muted">Loading exam session...</div>}>
+    <Suspense fallback={<div className="p-8 text-center text-xs text-foreground-muted">Loading NURVIA examination session...</div>}>
       <ExamSessionContent />
     </Suspense>
   );

@@ -1,12 +1,13 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using Nurvia.Application.Attempts;
 using Nurvia.Application.Common;
 using Nurvia.Application.Exams;
+using Nurvia.Application.Interfaces;
 using Nurvia.Application.Questions;
-using Nurvia.Application.Security;
 using Nurvia.Application.Services;
 using Nurvia.Domain.Attempts;
 using Nurvia.Domain.Enums;
+using Nurvia.Domain.Exceptions;
 using Nurvia.Domain.Exams;
 using Nurvia.Domain.Questions;
 using Nurvia.Infrastructure.Persistence;
@@ -38,89 +39,139 @@ public class AttemptLifecycleTests : IAsyncLifetime
 
         if (_createdAttemptIds.Any())
         {
-            var attempts = await context.ExamAttempts.Where(a => _createdAttemptIds.Contains(a.Id)).ToListAsync();
-            context.ExamAttempts.RemoveRange(attempts);
+            var attemptIds = _createdAttemptIds.ToArray();
+            await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM \"AttemptResponses\" WHERE \"ExamAttemptId\" = ANY(@p0)", (object)attemptIds);
+            await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM \"ExamAttempts\" WHERE \"Id\" = ANY(@p0)", (object)attemptIds);
         }
 
         if (_createdExamIds.Any())
         {
-            var exams = await context.Exams.Where(e => _createdExamIds.Contains(e.Id)).ToListAsync();
-            context.Exams.RemoveRange(exams);
+            var examIds = _createdExamIds.ToArray();
+            await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM \"ExamQuestions\" WHERE \"ExamVersionId\" IN (SELECT \"Id\" FROM \"ExamVersions\" WHERE \"ExamId\" = ANY(@p0))", (object)examIds);
+            await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM \"ExamBlueprints\" WHERE \"ExamVersionId\" IN (SELECT \"Id\" FROM \"ExamVersions\" WHERE \"ExamId\" = ANY(@p0))", (object)examIds);
+            await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM \"ExamVersions\" WHERE \"ExamId\" = ANY(@p0)", (object)examIds);
+            await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM \"Exams\" WHERE \"Id\" = ANY(@p0)", (object)examIds);
         }
 
         if (_createdQuestionIds.Any())
         {
-            var questions = await context.Questions.Where(q => _createdQuestionIds.Contains(q.Id)).ToListAsync();
-            context.Questions.RemoveRange(questions);
+            var questionIds = _createdQuestionIds.ToArray();
+            await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM \"QuestionOptions\" WHERE \"QuestionVersionId\" IN (SELECT \"Id\" FROM \"QuestionVersions\" WHERE \"QuestionId\" = ANY(@p0))", (object)questionIds);
+            await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM \"QuestionExhibits\" WHERE \"QuestionVersionId\" IN (SELECT \"Id\" FROM \"QuestionVersions\" WHERE \"QuestionId\" = ANY(@p0))", (object)questionIds);
+            await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM \"QuestionReviews\" WHERE \"QuestionId\" = ANY(@p0)", (object)questionIds);
+            await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM \"QuestionVersions\" WHERE \"QuestionId\" = ANY(@p0)", (object)questionIds);
+            await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM \"Questions\" WHERE \"Id\" = ANY(@p0)", (object)questionIds);
         }
-
-        await context.SaveChangesAsync();
     }
 
-    private async Task<(Guid ExamId, Guid Question1Id, Guid Question2Id, int Q1CorrectOptionId, int Q2CorrectOptionId)> SeedPublishedExamWithQuestionsAsync(NurviaDbContext context)
+    private async Task<(Guid ExamId, Guid Question1Id, Guid Question2Id, Guid Q1CorrectOptionId, List<Guid> Q2CorrectOptionIds)> SeedPublishedExamWithQuestionsAsync(NurviaDbContext context)
     {
-        // 1. Create two test questions
-        var code1 = $"Q1-{Guid.NewGuid():N}".Substring(0, 16);
-        var q1 = new Question(code1, NursingPathway.RN, ExamCategory.NCLEX_RN, "Cardiology", "ECG", DifficultyLevel.Intermediate, "Author1");
-        var v1 = new QuestionVersion(q1.Id, 1, "What is the normal PR interval range?", QuestionType.SingleChoice, "Author1")
-        {
-            Status = ContentStatus.Published,
-            GeneralRationale = "Normal PR interval is 0.12 to 0.20 seconds."
-        };
-        v1.Options.Add(new QuestionOption(1, "0.06 - 0.10 seconds", false, "Too short", 1));
-        v1.Options.Add(new QuestionOption(2, "0.12 - 0.20 seconds", true, "Correct PR duration", 2));
-        v1.Options.Add(new QuestionOption(3, "0.22 - 0.30 seconds", false, "Indicates heart block", 3));
-        q1.Versions.Add(v1);
-        context.Questions.Add(q1);
-        _createdQuestionIds.Add(q1.Id);
+        var audit = new AuditService(context);
+        var questionService = new QuestionService(context, audit);
+        var examService = new ExamService(context, audit);
 
-        var code2 = $"Q2-{Guid.NewGuid():N}".Substring(0, 16);
-        var q2 = new Question(code2, NursingPathway.RN, ExamCategory.NCLEX_RN, "Pharmacology", "Digoxin", DifficultyLevel.Advanced, "Author1");
-        var v2 = new QuestionVersion(q2.Id, 1, "Which symptoms indicate Digoxin toxicity?", QuestionType.MultipleResponse, "Author1")
+        // 1. Create and Publish Question 1 (SingleChoice)
+        var q1Code = $"Q1-{Guid.NewGuid():N}".Substring(0, 16);
+        var q1Dto = await questionService.CreateDraftAsync(new CreateQuestionRequest
         {
-            Status = ContentStatus.Published,
-            GeneralRationale = "Digoxin toxicity causes visual disturbances and nausea/vomiting."
-        };
-        v2.Options.Add(new QuestionOption(10, "Yellow-green halos around lights", true, "Classic visual halo sign", 1));
-        v2.Options.Add(new QuestionOption(11, "Anorexia and nausea", true, "Early gastrointestinal toxicity symptom", 2));
-        v2.Options.Add(new QuestionOption(12, "Hyperglycemia", false, "Not related to digoxin toxicity", 3));
-        q2.Versions.Add(v2);
-        context.Questions.Add(q2);
-        _createdQuestionIds.Add(q2.Id);
+            Code = q1Code,
+            Pathway = NursingPathway.RN,
+            Category = ExamCategory.ATI,
+            Subject = "Cardiology",
+            Topic = "ECG",
+            Difficulty = DifficultyLevel.Intermediate,
+            QuestionType = QuestionType.SingleChoice,
+            Stem = "What is the normal PR interval range?",
+            GeneralRationale = "Normal PR interval is 0.12 to 0.20 seconds.",
+            Options = new List<CreateOptionRequest>
+            {
+                new() { OptionIndex = 1, OptionText = "0.06 - 0.10 seconds", IsCorrect = false, SpecificRationale = "Too short" },
+                new() { OptionIndex = 2, OptionText = "0.12 - 0.20 seconds", IsCorrect = true, SpecificRationale = "Correct PR duration" },
+                new() { OptionIndex = 3, OptionText = "0.22 - 0.30 seconds", IsCorrect = false, SpecificRationale = "Indicates heart block" }
+            }
+        }, "Author1");
+        _createdQuestionIds.Add(q1Dto.Id);
 
-        // 2. Create Published Exam
+        await questionService.SubmitForReviewAsync(q1Dto.Id, "Author1");
+        await questionService.ReviewQuestionAsync(q1Dto.Id, new QuestionReviewRequest { Decision = ReviewDecision.Approved, Comments = "LGTM" }, "rev-1", "Dr. Reviewer");
+        var pubQ1 = await questionService.PublishQuestionAsync(q1Dto.Id, "Publisher");
+        var q1CorrectOptionId = pubQ1.CurrentVersion!.Options.First(o => o.IsCorrect).Id;
+
+        // 2. Create and Publish Question 2 (MultipleResponse)
+        var q2Code = $"Q2-{Guid.NewGuid():N}".Substring(0, 16);
+        var q2Dto = await questionService.CreateDraftAsync(new CreateQuestionRequest
+        {
+            Code = q2Code,
+            Pathway = NursingPathway.RN,
+            Category = ExamCategory.ATI,
+            Subject = "Pharmacology",
+            Topic = "Digoxin",
+            Difficulty = DifficultyLevel.Advanced,
+            QuestionType = QuestionType.MultipleResponse,
+            Stem = "Which symptoms indicate Digoxin toxicity?",
+            GeneralRationale = "Digoxin toxicity causes visual disturbances and nausea/vomiting.",
+            Options = new List<CreateOptionRequest>
+            {
+                new() { OptionIndex = 1, OptionText = "Yellow-green halos around lights", IsCorrect = true, SpecificRationale = "Classic visual halo sign" },
+                new() { OptionIndex = 2, OptionText = "Anorexia and nausea", IsCorrect = true, SpecificRationale = "Early gastrointestinal toxicity symptom" },
+                new() { OptionIndex = 3, OptionText = "Hyperglycemia", IsCorrect = false, SpecificRationale = "Not related to digoxin toxicity" }
+            }
+        }, "Author1");
+        _createdQuestionIds.Add(q2Dto.Id);
+
+        await questionService.SubmitForReviewAsync(q2Dto.Id, "Author1");
+        await questionService.ReviewQuestionAsync(q2Dto.Id, new QuestionReviewRequest { Decision = ReviewDecision.Approved, Comments = "LGTM" }, "rev-2", "Dr. Reviewer");
+        var pubQ2 = await questionService.PublishQuestionAsync(q2Dto.Id, "Publisher");
+        var q2CorrectOptionIds = pubQ2.CurrentVersion!.Options.Where(o => o.IsCorrect).Select(o => o.Id).ToList();
+
+        // 3. Create and Publish Exam with both questions
         var examCode = $"EX-{Guid.NewGuid():N}".Substring(0, 16);
-        var exam = new Exam(examCode, NursingPathway.RN, ExamCategory.NCLEX_RN, "Cardio-Pharm Benchmark", "Assessment", "Author1");
-        var examVersion = new ExamVersion(exam.Id, 1, "Cardio-Pharm Benchmark Exam", 60, 75.0m, "Author1")
+        var examDto = await examService.CreateExamAsync(new CreateExamRequest
         {
-            Status = ExamPublishStatus.Published,
-            PublishedAtUtc = DateTime.UtcNow
-        };
-        examVersion.Questions.Add(new ExamQuestion(examVersion.Id, q1.Id, 1, 1.0m));
-        examVersion.Questions.Add(new ExamQuestion(examVersion.Id, q2.Id, 2, 2.0m));
-        exam.Versions.Add(examVersion);
+            Code = examCode,
+            Title = "Cardio-Pharm Benchmark Exam",
+            Description = "Assessment Description",
+            Pathway = NursingPathway.RN,
+            Category = ExamCategory.ATI,
+            TargetQuestionCount = 2,
+            TimeLimitMinutes = 60,
+            PassingScorePercentage = 75.0m,
+            InitialQuestionIds = new List<Guid> { q1Dto.Id, q2Dto.Id }
+        }, "Author1");
+        _createdExamIds.Add(examDto.Id);
 
-        context.Exams.Add(exam);
-        await context.SaveChangesAsync();
-        _createdExamIds.Add(exam.Id);
+        await examService.SubmitForReviewAsync(examDto.Id, "Author1");
+        await examService.ApproveExamAsync(examDto.Id, "Dean", "Approved blueprint");
+        await examService.PublishExamAsync(examDto.Id, "Publisher");
 
-        return (exam.Id, q1.Id, q2.Id, 2, 10);
+        context.ChangeTracker.Clear();
+
+        return (examDto.Id, q1Dto.Id, q2Dto.Id, q1CorrectOptionId, q2CorrectOptionIds);
     }
 
     [Fact]
     public async Task StartAttempt_ConcealsAnswerKeysAndCalculatesRemainingTime()
     {
         await using var context = CreateDbContext();
-        var (examId, q1Id, q2Id, _, _) = await SeedPublishedExamWithQuestionsAsync(context);
+        var (examId, _, _, _, _) = await SeedPublishedExamWithQuestionsAsync(context);
 
-        var learnerUser = new CurrentUser("learner-123", "Jane Doe", "jane@example.com", "Learner");
-        var service = new ExamAttemptService(context, learnerUser);
+        var service = new ExamAttemptService(context);
 
-        var attemptDto = await service.StartAttemptAsync(examId);
+        var attemptDto = await service.StartAttemptAsync(examId, "learner-123", "Jane Doe");
         _createdAttemptIds.Add(attemptDto.AttemptId);
 
-        Assert.Equal("Jane Doe", attemptDto.LearnerName);
-        Assert.Equal(ExamAttemptStatus.InProgress, attemptDto.Status);
+        Assert.Equal("Cardio-Pharm Benchmark Exam", attemptDto.ExamTitle);
         Assert.Equal(2, attemptDto.TotalQuestions);
         Assert.True(attemptDto.RemainingSeconds > 3500 && attemptDto.RemainingSeconds <= 3600); // 60 minutes = 3600s
         Assert.Equal(2, attemptDto.Questions.Count);
@@ -132,9 +183,9 @@ public class AttemptLifecycleTests : IAsyncLifetime
             Assert.NotEmpty(q.Options);
             foreach (var opt in q.Options)
             {
-                // ActiveExamOptionDto must NOT contain IsCorrect or Rationale fields
-                Assert.True(opt.OrderIndex > 0);
-                Assert.NotEmpty(opt.Text);
+                // ActiveExamOptionDto has Id, OptionIndex, OptionText, DisplayOrder - NO IsCorrect, NO Rationale
+                Assert.True(opt.OptionIndex > 0);
+                Assert.NotEmpty(opt.OptionText);
             }
         }
     }
@@ -143,26 +194,25 @@ public class AttemptLifecycleTests : IAsyncLifetime
     public async Task SaveResponse_UpdatesLearnerAnswerAndFlagState()
     {
         await using var context = CreateDbContext();
-        var (examId, q1Id, _, _, _) = await SeedPublishedExamWithQuestionsAsync(context);
+        var (examId, q1Id, _, q1CorrectOptionId, _) = await SeedPublishedExamWithQuestionsAsync(context);
 
-        var learnerUser = new CurrentUser("learner-456", "John Smith", "john@example.com", "Learner");
-        var service = new ExamAttemptService(context, learnerUser);
-
-        var attempt = await service.StartAttemptAsync(examId);
+        var service = new ExamAttemptService(context);
+        var attempt = await service.StartAttemptAsync(examId, "learner-456", "John Smith");
         _createdAttemptIds.Add(attempt.AttemptId);
 
-        var saveResult = await service.SaveResponseAsync(attempt.AttemptId, new SaveResponseDto(
-            q1Id,
-            SelectedOptionId: 2,
-            SelectedOptionIds: null,
-            TextResponse: null,
-            NumericResponse: null,
-            IsFlagged: true
-        ));
+        var responsePayload = JsonSerializer.Serialize(new { SelectedOptionId = q1CorrectOptionId });
+        var autosaveReq = new AutosaveResponseRequest
+        {
+            QuestionId = q1Id,
+            ResponseJson = responsePayload,
+            IsFlagged = true
+        };
 
-        Assert.True(saveResult.Success);
+        var saveResult = await service.AutosaveResponseAsync(attempt.AttemptId, autosaveReq, "learner-456");
+
         Assert.True(saveResult.IsFlagged);
         Assert.True(saveResult.IsAnswered);
+        Assert.Equal(q1Id, saveResult.QuestionId);
 
         // Verify in database
         var responseInDb = await context.AttemptResponses
@@ -171,7 +221,7 @@ public class AttemptLifecycleTests : IAsyncLifetime
         Assert.NotNull(responseInDb);
         Assert.True(responseInDb.IsFlagged);
         Assert.True(responseInDb.IsAnswered);
-        Assert.Contains("\"SelectedOptionId\":2", responseInDb.ResponseJson);
+        Assert.Contains(q1CorrectOptionId.ToString(), responseInDb.ResponseJson);
     }
 
     [Fact]
@@ -180,86 +230,81 @@ public class AttemptLifecycleTests : IAsyncLifetime
         await using var context = CreateDbContext();
         var (examId, q1Id, _, _, _) = await SeedPublishedExamWithQuestionsAsync(context);
 
-        var learnerAlice = new CurrentUser("learner-alice", "Alice", "alice@example.com", "Learner");
-        var learnerBob = new CurrentUser("learner-bob", "Bob", "bob@example.com", "Learner");
+        var service = new ExamAttemptService(context);
 
-        var aliceService = new ExamAttemptService(context, learnerAlice);
-        var bobService = new ExamAttemptService(context, learnerBob);
-
-        var aliceAttempt = await aliceService.StartAttemptAsync(examId);
+        var aliceAttempt = await service.StartAttemptAsync(examId, "learner-alice", "Alice");
         _createdAttemptIds.Add(aliceAttempt.AttemptId);
 
-        // Bob tries to get Alice's active attempt
+        // Bob tries to get Alice's active attempt -> throws UnauthorizedAccessException
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            bobService.GetActiveAttemptAsync(aliceAttempt.AttemptId));
+            service.GetActiveAttemptAsync(aliceAttempt.AttemptId, "learner-bob"));
 
-        // Bob tries to save an answer to Alice's attempt
+        // Bob tries to autosave an answer to Alice's attempt -> throws UnauthorizedAccessException
+        var autosaveReq = new AutosaveResponseRequest
+        {
+            QuestionId = q1Id,
+            ResponseJson = "{}",
+            IsFlagged = false
+        };
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            bobService.SaveResponseAsync(aliceAttempt.AttemptId, new SaveResponseDto(q1Id, 1, null, null, null, false)));
+            service.AutosaveResponseAsync(aliceAttempt.AttemptId, autosaveReq, "learner-bob"));
 
-        // Bob tries to submit Alice's attempt
+        // Bob tries to submit Alice's attempt -> throws UnauthorizedAccessException
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            bobService.SubmitAttemptAsync(aliceAttempt.AttemptId));
+            service.SubmitAttemptAsync(aliceAttempt.AttemptId, "learner-bob"));
     }
 
     [Fact]
     public async Task SubmitAttempt_CalculatesDeterministicScore_AndReturnsComprehensiveReview()
     {
         await using var context = CreateDbContext();
-        var (examId, q1Id, q2Id, q1CorrectOption, _) = await SeedPublishedExamWithQuestionsAsync(context);
+        var (examId, q1Id, q2Id, q1CorrectOptionId, q2CorrectOptionIds) = await SeedPublishedExamWithQuestionsAsync(context);
 
-        var learnerUser = new CurrentUser("learner-scoring", "Scoring Student", "student@example.com", "Learner");
-        var service = new ExamAttemptService(context, learnerUser);
-
-        var attempt = await service.StartAttemptAsync(examId);
+        var service = new ExamAttemptService(context);
+        var attempt = await service.StartAttemptAsync(examId, "learner-scoring", "Scoring Student");
         _createdAttemptIds.Add(attempt.AttemptId);
 
-        // 1. Answer Q1 correctly (Single Choice, Option 2, worth 1.0 point)
-        await service.SaveResponseAsync(attempt.AttemptId, new SaveResponseDto(
-            q1Id,
-            SelectedOptionId: q1CorrectOption,
-            SelectedOptionIds: null,
-            TextResponse: null,
-            NumericResponse: null,
-            IsFlagged: false
-        ));
+        // 1. Answer Q1 correctly (SingleChoice, Option 2, 1.0 point)
+        await service.AutosaveResponseAsync(attempt.AttemptId, new AutosaveResponseRequest
+        {
+            QuestionId = q1Id,
+            ResponseJson = JsonSerializer.Serialize(new { SelectedOptionId = q1CorrectOptionId }),
+            IsFlagged = false
+        }, "learner-scoring");
 
-        // 2. Answer Q2 partially or incorrectly (Multiple Response, select only 10 when 10 and 11 are required, worth 2.0 points)
-        await service.SaveResponseAsync(attempt.AttemptId, new SaveResponseDto(
-            q2Id,
-            SelectedOptionId: null,
-            SelectedOptionIds: new List<int> { 10 },
-            TextResponse: null,
-            NumericResponse: null,
-            IsFlagged: false
-        ));
+        // 2. Answer Q2 partially or incorrectly (MultipleResponse, select only 1 option when 2 are required)
+        await service.AutosaveResponseAsync(attempt.AttemptId, new AutosaveResponseRequest
+        {
+            QuestionId = q2Id,
+            ResponseJson = JsonSerializer.Serialize(new { SelectedOptionIds = new List<Guid> { q2CorrectOptionIds[0] } }),
+            IsFlagged = false
+        }, "learner-scoring");
 
         // 3. Submit Attempt
-        var submitResult = await service.SubmitAttemptAsync(attempt.AttemptId);
+        var submitResult = await service.SubmitAttemptAsync(attempt.AttemptId, "learner-scoring");
 
         Assert.Equal(attempt.AttemptId, submitResult.AttemptId);
-        Assert.Equal(ExamAttemptStatus.Submitted, submitResult.Status);
+        Assert.Equal("Graded", submitResult.Status);
         Assert.Equal(2, submitResult.TotalQuestions);
         Assert.Equal(1, submitResult.CorrectQuestions); // Only Q1 is fully correct
-        // Score: 1.0 out of 3.0 total points = 33.33%
-        Assert.Equal(33.33m, submitResult.ScorePercentage);
-        Assert.False(submitResult.Passed); // Passing is 75%
+        // Score: 1 out of 2 questions correct = 50.0%
+        Assert.Equal(50.0m, submitResult.ScorePercentage);
+        Assert.False(submitResult.Passed); // Passing score is 75%
 
-        // 4. Retrieve Full Review and verify rationales and answer keys are now exposed
-        var review = await service.GetAttemptReviewAsync(attempt.AttemptId);
+        // 4. Retrieve Full Review and verify rationales and answer keys are now revealed
+        var review = await service.GetAttemptReviewAsync(attempt.AttemptId, "learner-scoring");
 
         Assert.NotNull(review);
         Assert.Equal(submitResult.ScorePercentage, review.ScorePercentage);
-        Assert.Equal(2, review.Questions.Count);
+        Assert.Equal(2, review.ReviewQuestions.Count);
 
-        var q1Review = review.Questions.First(q => q.QuestionId == q1Id);
+        var q1Review = review.ReviewQuestions.First(q => q.QuestionId == q1Id);
         Assert.True(q1Review.IsCorrect);
         Assert.Equal(1.0m, q1Review.PointsAwarded);
         Assert.Equal("Normal PR interval is 0.12 to 0.20 seconds.", q1Review.GeneralRationale);
-        Assert.Equal(2, q1Review.SelectedOptionId);
-        Assert.Contains(q1Review.Options, o => o.Id == 2 && o.IsCorrect);
+        Assert.Contains(q1Review.Options, o => o.Id == q1CorrectOptionId && o.IsCorrect && o.WasSelected);
 
-        var q2Review = review.Questions.First(q => q.QuestionId == q2Id);
+        var q2Review = review.ReviewQuestions.First(q => q.QuestionId == q2Id);
         Assert.False(q2Review.IsCorrect);
         Assert.Equal(0.0m, q2Review.PointsAwarded);
         Assert.Equal("Digoxin toxicity causes visual disturbances and nausea/vomiting.", q2Review.GeneralRationale);
@@ -269,25 +314,21 @@ public class AttemptLifecycleTests : IAsyncLifetime
     public async Task SubmitAttempt_IsIdempotent_DoesNotMutateOnRepeatedSubmissions()
     {
         await using var context = CreateDbContext();
-        var (examId, q1Id, _, q1CorrectOption, _) = await SeedPublishedExamWithQuestionsAsync(context);
+        var (examId, q1Id, _, q1CorrectOptionId, _) = await SeedPublishedExamWithQuestionsAsync(context);
 
-        var learnerUser = new CurrentUser("learner-idempotent", "Idempotent Student", "idem@example.com", "Learner");
-        var service = new ExamAttemptService(context, learnerUser);
-
-        var attempt = await service.StartAttemptAsync(examId);
+        var service = new ExamAttemptService(context);
+        var attempt = await service.StartAttemptAsync(examId, "learner-idempotent", "Idempotent Student");
         _createdAttemptIds.Add(attempt.AttemptId);
 
-        await service.SaveResponseAsync(attempt.AttemptId, new SaveResponseDto(
-            q1Id,
-            SelectedOptionId: q1CorrectOption,
-            SelectedOptionIds: null,
-            TextResponse: null,
-            NumericResponse: null,
-            IsFlagged: false
-        ));
+        await service.AutosaveResponseAsync(attempt.AttemptId, new AutosaveResponseRequest
+        {
+            QuestionId = q1Id,
+            ResponseJson = JsonSerializer.Serialize(new { SelectedOptionId = q1CorrectOptionId }),
+            IsFlagged = false
+        }, "learner-idempotent");
 
-        var firstSubmit = await service.SubmitAttemptAsync(attempt.AttemptId);
-        var secondSubmit = await service.SubmitAttemptAsync(attempt.AttemptId);
+        var firstSubmit = await service.SubmitAttemptAsync(attempt.AttemptId, "learner-idempotent");
+        var secondSubmit = await service.SubmitAttemptAsync(attempt.AttemptId, "learner-idempotent");
 
         Assert.Equal(firstSubmit.ScorePercentage, secondSubmit.ScorePercentage);
         Assert.Equal(firstSubmit.Status, secondSubmit.Status);

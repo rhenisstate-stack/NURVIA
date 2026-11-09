@@ -4,17 +4,24 @@ import {
   QuestionDto,
   ExamDto,
   QuestionVersionDto,
+  StartAttemptResultDto,
+  AutosaveResponseRequest,
+  AutosaveResultDto,
+  SubmittedExamResultDto,
+  ExamAttemptSummaryDto,
 } from './api-types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5055';
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
-  const headers = {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('nurvia_token') : null;
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'X-User-Role': 'Administrator',
-    'X-User-Name': 'Curriculum Director Elena Vance',
-    'X-User-Id': 'usr-admin-01',
-    ...options.headers,
+    'X-User-Role': 'Learner',
+    'X-User-Name': 'Jane Doe, SN',
+    'X-User-Id': 'usr-learner-01',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(options.headers as Record<string, string>),
   };
 
   try {
@@ -162,5 +169,37 @@ export const nurviaApi = {
   async getAuditLogs(params?: Record<string, any>): Promise<ApiResponse<PagedResult<any>>> {
     const query = new URLSearchParams(params || {}).toString();
     return request<PagedResult<any>>(`/api/audit-logs${query ? `?${query}` : ''}`);
+  },
+
+  // Exam Attempts (Learner Experience)
+  async startAttempt(examId: string): Promise<ApiResponse<StartAttemptResultDto>> {
+    return request<StartAttemptResultDto>(`/api/attempts/start/${examId}`, {
+      method: 'POST',
+    });
+  },
+
+  async getActiveAttempt(attemptId: string): Promise<ApiResponse<StartAttemptResultDto>> {
+    return request<StartAttemptResultDto>(`/api/attempts/${attemptId}`);
+  },
+
+  async autosaveResponse(attemptId: string, payload: AutosaveResponseRequest): Promise<ApiResponse<AutosaveResultDto>> {
+    return request<AutosaveResultDto>(`/api/attempts/${attemptId}/responses`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async submitAttempt(attemptId: string): Promise<ApiResponse<SubmittedExamResultDto>> {
+    return request<SubmittedExamResultDto>(`/api/attempts/${attemptId}/submit`, {
+      method: 'POST',
+    });
+  },
+
+  async getAttemptReview(attemptId: string): Promise<ApiResponse<SubmittedExamResultDto>> {
+    return request<SubmittedExamResultDto>(`/api/attempts/${attemptId}/review`);
+  },
+
+  async getAttemptHistory(): Promise<ApiResponse<ExamAttemptSummaryDto[]>> {
+    return request<ExamAttemptSummaryDto[]>('/api/attempts/history');
   },
 };

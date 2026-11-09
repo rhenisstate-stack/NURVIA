@@ -279,47 +279,27 @@ public class ExamAttemptService : IExamAttemptService
                 case QuestionType.SingleChoice:
                 case QuestionType.TrueFalse:
                 case QuestionType.ImageBased:
-                    // Either integer index or string
-                    int selectedIndex = -1;
-                    if (int.TryParse(responseJson, out var parsedIndex))
-                    {
-                        selectedIndex = parsedIndex;
-                    }
-                    else
-                    {
-                        using var doc = JsonDocument.Parse(responseJson);
-                        if (doc.RootElement.ValueKind == JsonValueKind.Number)
-                            selectedIndex = doc.RootElement.GetInt32();
-                        else if (doc.RootElement.ValueKind == JsonValueKind.String)
-                        {
-                            var strVal = doc.RootElement.GetString()?.Trim();
-                            var opt = qv.Options.FirstOrDefault(o => o.OptionText.Equals(strVal, StringComparison.OrdinalIgnoreCase));
-                            return opt?.IsCorrect == true;
-                        }
-                    }
-
-                    var selectedOption = qv.Options.FirstOrDefault(o => o.OptionIndex == selectedIndex);
-                    return selectedOption?.IsCorrect == true;
+                    var selectedOpt = FindSelectedOption(qv.Options, responseJson);
+                    return selectedOpt?.IsCorrect == true;
 
                 case QuestionType.MultipleResponse: // SATA
-                    var chosenIndices = new HashSet<int>();
-                    using (var sataDoc = JsonDocument.Parse(responseJson))
-                    {
-                        if (sataDoc.RootElement.ValueKind == JsonValueKind.Array)
-                        {
-                            foreach (var item in sataDoc.RootElement.EnumerateArray())
-                            {
-                                if (item.ValueKind == JsonValueKind.Number)
-                                    chosenIndices.Add(item.GetInt32());
-                            }
-                        }
-                    }
-
-                    var correctIndices = qv.Options.Where(o => o.IsCorrect).Select(o => o.OptionIndex).ToHashSet();
-                    return chosenIndices.SetEquals(correctIndices);
+                    var chosenOpts = FindSelectedOptions(qv.Options, responseJson);
+                    var correctOpts = qv.Options.Where(o => o.IsCorrect).Select(o => o.Id).ToHashSet();
+                    var chosenIds = chosenOpts.Select(o => o.Id).ToHashSet();
+                    return chosenIds.Count > 0 && chosenIds.SetEquals(correctOpts);
 
                 case QuestionType.NumericCalculation:
                     var trimmedResponse = responseJson.Trim('\"', ' ', '\'');
+                    if (trimmedResponse.StartsWith("{"))
+                    {
+                        using var numDoc = JsonDocument.Parse(trimmedResponse);
+                        if (numDoc.RootElement.TryGetProperty("NumericResponse", out var prop) ||
+                            numDoc.RootElement.TryGetProperty("numericResponse", out prop) ||
+                            numDoc.RootElement.TryGetProperty("value", out prop))
+                        {
+                            trimmedResponse = prop.ToString().Trim('\"', ' ', '\'');
+                        }
+                    }
                     var targetOption = qv.Options.FirstOrDefault(o => o.IsCorrect)?.OptionText?.Trim();
                     if (targetOption != null && decimal.TryParse(targetOption, out var targetNum) && decimal.TryParse(trimmedResponse, out var candidateNum))
                     {
@@ -330,6 +310,16 @@ public class ExamAttemptService : IExamAttemptService
                 case QuestionType.Cloze:
                 case QuestionType.ShortAnswer:
                     var textResponse = responseJson.Trim('\"', ' ', '\'').ToLowerInvariant();
+                    if (textResponse.StartsWith("{"))
+                    {
+                        using var txtDoc = JsonDocument.Parse(textResponse);
+                        if (txtDoc.RootElement.TryGetProperty("TextResponse", out var tprop) ||
+                            txtDoc.RootElement.TryGetProperty("textResponse", out tprop) ||
+                            txtDoc.RootElement.TryGetProperty("value", out tprop))
+                        {
+                            textResponse = tprop.GetString()?.Trim().ToLowerInvariant() ?? "";
+                        }
+                    }
                     return qv.Options.Any(o => o.IsCorrect && o.OptionText.Trim().ToLowerInvariant() == textResponse);
 
                 default:
@@ -448,7 +438,7 @@ public class ExamAttemptService : IExamAttemptService
                     OptionText = o.OptionText,
                     IsCorrect = o.IsCorrect,
                     SpecificRationale = o.SpecificRationale,
-                    WasSelected = IsOptionSelected(o.OptionIndex, resp.ResponseJson, qv.QuestionType)
+                    WasSelected = IsOptionSelected(o, resp.ResponseJson, qv.QuestionType)
                 }).ToList(),
                 Exhibits = qv.Exhibits.OrderBy(e => e.DisplayOrder).Select(e => new QuestionExhibitDto
                 {
@@ -483,32 +473,146 @@ public class ExamAttemptService : IExamAttemptService
         };
     }
 
-    private static bool IsOptionSelected(int optionIndex, string? responseJson, QuestionType type)
+    private static QuestionOption? FindSelectedOption(IEnumerable<QuestionOption> options, string responseJson)
+    {
+        var trimmed = responseJson.Trim();
+
+        // 1. Direct integer (OptionIndex)
+        if (int.TryParse(trimmed, out var intIdx))
+            return options.FirstOrDefault(o => o.OptionIndex == intIdx);
+
+        // 2. Direct Guid (Option ID)
+        if (Guid.TryParse(trimmed.Trim('\"'), out var guidId))
+            return options.FirstOrDefault(o => o.Id == guidId);
+
+        // 3. JSON Document
+        using var doc = JsonDocument.Parse(trimmed);
+        if (doc.RootElement.ValueKind == JsonValueKind.Number)
+        {
+            var idx = doc.RootElement.GetInt32();
+            return options.FirstOrDefault(o => o.OptionIndex == idx);
+        }
+
+        if (doc.RootElement.ValueKind == JsonValueKind.String)
+        {
+            var str = doc.RootElement.GetString()?.Trim();
+            if (Guid.TryParse(str, out var g))
+                return options.FirstOrDefault(o => o.Id == g);
+            if (int.TryParse(str, out var parsedIdx))
+                return options.FirstOrDefault(o => o.OptionIndex == parsedIdx);
+            return options.FirstOrDefault(o => string.Equals(o.OptionText, str, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (doc.RootElement.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var propName in new[] { "SelectedOptionId", "selectedOptionId", "OptionId", "optionId" })
+            {
+                if (doc.RootElement.TryGetProperty(propName, out var p))
+                {
+                    if (p.ValueKind == JsonValueKind.String && Guid.TryParse(p.GetString(), out var g))
+                        return options.FirstOrDefault(o => o.Id == g);
+                    if (p.ValueKind == JsonValueKind.Number)
+                    {
+                        var idx = p.GetInt32();
+                        return options.FirstOrDefault(o => o.OptionIndex == idx);
+                    }
+                }
+            }
+
+            foreach (var propName in new[] { "OptionIndex", "optionIndex", "SelectedOptionIndex", "selectedOptionIndex", "value", "Value" })
+            {
+                if (doc.RootElement.TryGetProperty(propName, out var p))
+                {
+                    if (p.ValueKind == JsonValueKind.Number)
+                    {
+                        var idx = p.GetInt32();
+                        return options.FirstOrDefault(o => o.OptionIndex == idx);
+                    }
+                    if (p.ValueKind == JsonValueKind.String && int.TryParse(p.GetString(), out var parsedIdx))
+                        return options.FirstOrDefault(o => o.OptionIndex == parsedIdx);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static List<QuestionOption> FindSelectedOptions(IEnumerable<QuestionOption> options, string responseJson)
+    {
+        var result = new List<QuestionOption>();
+        var trimmed = responseJson.Trim();
+
+        using var doc = JsonDocument.Parse(trimmed);
+        JsonElement arrayEl = default;
+
+        if (doc.RootElement.ValueKind == JsonValueKind.Array)
+        {
+            arrayEl = doc.RootElement;
+        }
+        else if (doc.RootElement.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var propName in new[] { "SelectedOptionIds", "selectedOptionIds", "OptionIds", "optionIds", "SelectedIndices", "selectedIndices", "values", "Values" })
+            {
+                if (doc.RootElement.TryGetProperty(propName, out var p) && p.ValueKind == JsonValueKind.Array)
+                {
+                    arrayEl = p;
+                    break;
+                }
+            }
+        }
+
+        if (arrayEl.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in arrayEl.EnumerateArray())
+            {
+                if (item.ValueKind == JsonValueKind.Number)
+                {
+                    var idx = item.GetInt32();
+                    var opt = options.FirstOrDefault(o => o.OptionIndex == idx);
+                    if (opt != null) result.Add(opt);
+                }
+                else if (item.ValueKind == JsonValueKind.String)
+                {
+                    var str = item.GetString()?.Trim();
+                    if (Guid.TryParse(str, out var g))
+                    {
+                        var opt = options.FirstOrDefault(o => o.Id == g);
+                        if (opt != null) result.Add(opt);
+                    }
+                    else if (int.TryParse(str, out var idx))
+                    {
+                        var opt = options.FirstOrDefault(o => o.OptionIndex == idx);
+                        if (opt != null) result.Add(opt);
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
+
+    private static bool IsOptionSelected(QuestionOption option, string? responseJson, QuestionType type)
     {
         if (string.IsNullOrWhiteSpace(responseJson))
             return false;
 
         try
         {
-            if (int.TryParse(responseJson, out var singleIdx))
-                return singleIdx == optionIndex;
-
-            using var doc = JsonDocument.Parse(responseJson);
-            if (doc.RootElement.ValueKind == JsonValueKind.Number)
-                return doc.RootElement.GetInt32() == optionIndex;
-
-            if (doc.RootElement.ValueKind == JsonValueKind.Array)
+            if (type == QuestionType.MultipleResponse)
             {
-                foreach (var item in doc.RootElement.EnumerateArray())
-                {
-                    if (item.ValueKind == JsonValueKind.Number && item.GetInt32() == optionIndex)
-                        return true;
-                }
+                var chosen = FindSelectedOptions(new[] { option }, responseJson);
+                return chosen.Any(o => o.Id == option.Id);
+            }
+            else
+            {
+                var chosen = FindSelectedOption(new[] { option }, responseJson);
+                return chosen?.Id == option.Id;
             }
         }
-        catch { }
-
-        return false;
+        catch
+        {
+            return false;
+        }
     }
 
     private static void VerifyLearnerOwnership(ExamAttempt attempt, string learnerId)
@@ -518,7 +622,7 @@ public class ExamAttemptService : IExamAttemptService
             !string.Equals(learnerId, "usr-admin-01", StringComparison.OrdinalIgnoreCase) &&
             !string.Equals(learnerId, "usr-superadmin-01", StringComparison.OrdinalIgnoreCase))
         {
-            throw new DomainException("Access denied: You do not own this examination attempt.");
+            throw new UnauthorizedAccessException("Access denied: You do not own this examination attempt.");
         }
     }
 }
