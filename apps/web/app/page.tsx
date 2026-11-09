@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PracticeQuestionPreview } from "@/components/home/practice-question-preview";
-import { StudentPassTicker } from "@/components/home/student-pass-ticker";
+import { StudentTestimonialCarousel } from "@/components/home/student-testimonial-carousel";
 import { StudySetPreviewModal } from "@/components/home/study-set-preview-modal";
 import { FloatingStudyChat } from "@/components/home/floating-study-chat";
 import {
@@ -170,8 +170,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 2. SHARED BY STUDENTS AFTER EXAM DAY (Ticker matching media_1794209744015_1f706ca1.jpg) */}
-      <StudentPassTicker />
+      {/* 2. SHARED BY STUDENTS AFTER EXAM DAY (Automatic Rotating Testimonial Carousel) */}
+      <StudentTestimonialCarousel />
 
       {/* 3. FIND YOUR NEXT STUDY SET (Featured Cards matching media_1794209744015_1f706ca1.jpg) */}
       <section className="py-16 sm:py-20 bg-background">

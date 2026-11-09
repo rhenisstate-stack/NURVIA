@@ -53,6 +53,7 @@ const adminNavigation: AdminNavGroup[] = [
     title: "CONTENT MANAGEMENT",
     items: [
       { name: "Question Bank", href: "/admin/questions", icon: FileQuestion, badge: "12,450" },
+      { name: "Review Queue", href: "/admin/reviews", icon: BookCheck, badge: "Review" },
       { name: "Question Type Registry", href: "/admin/question-types", icon: Database },
       { name: "Exam Builder & Studio", href: "/admin/exams", icon: BookCheck, badge: "84" },
       { name: "Curriculum Taxonomy", href: "/admin/taxonomy", icon: FolderTree },

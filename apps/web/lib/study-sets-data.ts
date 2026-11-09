@@ -24,6 +24,18 @@ export interface StudentPassRecord {
   badgeVariant: "emerald" | "teal" | "blue";
 }
 
+export interface StudentTestimonial {
+  id: string;
+  displayName: string;
+  examTrack: "NCLEX-RN" | "NCLEX-PN" | "ATI" | "HESI";
+  resultStatus: "Passed" | "Completed";
+  testimonial: string;
+  examDate?: string;
+  isVerified: boolean;
+  avatarUrl?: string;
+  scoreOrLevel?: string;
+}
+
 export interface StudySetItem {
   id: string;
   title: string;
@@ -209,6 +221,98 @@ export const studentPassRecords: StudentPassRecord[] = [
     date: "28 April 2026",
     status: "HESI - 900+ COMPLETED",
     badgeVariant: "blue",
+  },
+];
+
+// Illustrative Sample Testimonials for the Automatic Carousel (Phase D)
+export const sampleStudentTestimonials: StudentTestimonial[] = [
+  {
+    id: "test-01",
+    displayName: "Octavio O.",
+    examTrack: "NCLEX-PN",
+    resultStatus: "Passed",
+    scoreOrLevel: "First Attempt",
+    examDate: "April 2026",
+    isVerified: true,
+    testimonial:
+      "The NGN case study rationales taught me how to recognize clinical cues instead of second-guessing. The interface felt identical to exam day.",
+  },
+  {
+    id: "test-02",
+    displayName: "Brittany P.",
+    examTrack: "NCLEX-RN",
+    resultStatus: "Passed",
+    scoreOrLevel: "85 Questions",
+    examDate: "April 2026",
+    isVerified: true,
+    testimonial:
+      "NURVIA's prioritization breakdowns in Med-Surg and Pharmacology were the exact difference-maker I needed. Shut off at 85 questions!",
+  },
+  {
+    id: "test-03",
+    displayName: "Hershe Ann M.",
+    examTrack: "NCLEX-PN",
+    resultStatus: "Passed",
+    scoreOrLevel: "Passed with Confidence",
+    examDate: "April 2026",
+    isVerified: true,
+    testimonial:
+      "The Socratic tutor mode forced me to understand why each distractor was clinically unsafe. Walked into testing center calm and prepared.",
+  },
+  {
+    id: "test-04",
+    displayName: "Marcus D.",
+    examTrack: "ATI",
+    resultStatus: "Completed",
+    scoreOrLevel: "Level 3 · 94.6% Predictor",
+    examDate: "April 2026",
+    isVerified: true,
+    testimonial:
+      "Scored Level 3 on my Comprehensive Predictor. The ATI-focused clinical judgment scenarios mirror the exact difficulty of proctored finals.",
+  },
+  {
+    id: "test-05",
+    displayName: "Isabella T.",
+    examTrack: "NCLEX-RN",
+    resultStatus: "Passed",
+    scoreOrLevel: "Passed First Try",
+    examDate: "April 2026",
+    isVerified: true,
+    testimonial:
+      "The dosage calculation modules and fluid/electrolyte guides eliminated my test anxiety. The step-by-step rationales are unmatched.",
+  },
+  {
+    id: "test-06",
+    displayName: "Aaliyah K.",
+    examTrack: "HESI",
+    resultStatus: "Completed",
+    scoreOrLevel: "Score: 982 · Exit Exam",
+    examDate: "April 2026",
+    isVerified: true,
+    testimonial:
+      "Scored 982 on my HESI Exit! The pharmacology rationales break down high-risk mechanisms so you understand the physiological safety net.",
+  },
+  {
+    id: "test-07",
+    displayName: "Daniel R.",
+    examTrack: "NCLEX-RN",
+    resultStatus: "Passed",
+    scoreOrLevel: "85 Questions",
+    examDate: "May 2026",
+    isVerified: true,
+    testimonial:
+      "Passed in 85 questions. The question formats matched the real NGN test screen perfectly. Best investment in nursing school.",
+  },
+  {
+    id: "test-08",
+    displayName: "Maya S.",
+    examTrack: "NCLEX-PN",
+    resultStatus: "Passed",
+    scoreOrLevel: "First Attempt Pass",
+    examDate: "May 2026",
+    isVerified: true,
+    testimonial:
+      "Practicing with timed simulation mode built the stamina and time-management pacing I needed. Could not have done it without NURVIA.",
   },
 ];
 
