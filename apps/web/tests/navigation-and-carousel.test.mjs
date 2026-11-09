@@ -25,9 +25,12 @@ function test(name, fn) {
 }
 
 // 1. Route Registry Tests
-test('1. Centralized Route Registry defines all 9 approved public routes', async () => {
+test('1. Centralized Route Registry defines the approved public and authentication routes', async () => {
   const routesFile = fs.readFileSync(path.join(webRoot, 'lib', 'routes.ts'), 'utf8');
   assert(routesFile.includes('home: "/"'), 'Home route missing');
+  assert(routesFile.includes('signIn: "/sign-in"'), 'Sign-in route missing');
+  assert(routesFile.includes('signUp: "/sign-up"'), 'Sign-up route missing');
+  assert(routesFile.includes('accessDenied: "/access-denied"'), 'Access-denied route missing');
   assert(routesFile.includes('exams: "/exams"'), 'Exams route missing');
   assert(routesFile.includes('study: "/study"'), 'Study route missing');
   assert(routesFile.includes('carePlans: "/care-plans"'), 'Care Plans route missing');
@@ -90,10 +93,13 @@ test('4. Carousel component implements automatic rotation, pause-on-hover, pause
 });
 
 // 5. Verification of All 47 App Page Files On Disk
-test('5. Verify all 47 routes have concrete page.tsx files on disk', () => {
+test('5. Verify all 51 routes have concrete page.tsx files on disk', () => {
   const expectedPages = [
     'app/page.tsx',
     'app/not-found.tsx',
+    'app/sign-in/page.tsx',
+    'app/sign-up/page.tsx',
+    'app/access-denied/page.tsx',
     'app/exams/page.tsx',
     'app/study/page.tsx',
     'app/care-plans/page.tsx',
@@ -103,6 +109,7 @@ test('5. Verify all 47 routes have concrete page.tsx files on disk', () => {
     'app/nclex/page.tsx',
     'app/teas/page.tsx',
     'app/exam-session/page.tsx',
+    'app/learner/attempts/[id]/page.tsx',
     'app/design-system/page.tsx',
     'app/learner/page.tsx',
     'app/learner/account/page.tsx',

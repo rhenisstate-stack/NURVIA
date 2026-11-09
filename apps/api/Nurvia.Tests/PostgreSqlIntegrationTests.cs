@@ -134,6 +134,24 @@ public class PostgreSqlIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task BootstrapSuperadmin_IsOneTimeAndDoesNotEscalateAnExistingAccount()
+    {
+        await using var context = CreateDbContext();
+        var authService = new AuthService(context, new Pbkdf2PasswordHasher());
+        var email = $"admin-{Guid.NewGuid():N}@example.test";
+
+        Assert.True(await authService.BootstrapSuperadminAsync(
+            "Bootstrap Admin", email, "NursingConfidence-2026!", CancellationToken.None));
+
+        var account = await context.UserAccounts.SingleAsync(user => user.NormalizedEmail == email.ToUpperInvariant());
+        _createdUserIds.Add(account.Id);
+        Assert.Equal("Superadmin", account.Role);
+        Assert.False(await authService.BootstrapSuperadminAsync(
+            "Different Admin", email, "AnotherPassword-2026!", CancellationToken.None));
+        Assert.Equal("Superadmin", account.Role);
+    }
+
+    [Fact]
     public async Task QuestionAndOptions_PersistenceAndRetrieval_PreservesIntegrity()
     {
         await using var context = CreateDbContext();
