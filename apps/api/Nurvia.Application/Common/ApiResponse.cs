@@ -15,6 +15,12 @@ public class ApiResponse<T>
 
     public static ApiResponse<T> Fail(List<string> errors, string message = "Validation errors occurred") =>
         new ApiResponse<T> { Success = false, Message = message, Errors = errors };
+
+    public static ApiResponse<T> Error(string error, string message = "Operation failed") =>
+        Fail(error, message);
+
+    public static ApiResponse<T> Error(List<string> errors, string message = "Validation errors occurred") =>
+        Fail(errors, message);
 }
 
 public class PagedResult<T>

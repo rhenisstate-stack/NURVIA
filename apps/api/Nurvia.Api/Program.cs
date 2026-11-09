@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Microsoft.OpenApi.Models;
 using Nurvia.Infrastructure;
+using Nurvia.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -91,5 +92,17 @@ app.MapGet("/api/catalogue/summary", () => Results.Ok(new
 }))
 .WithName("GetCatalogueSummary")
 .WithOpenApi();
+
+// Automatically seed initial clinical content if database is empty
+try
+{
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<NurviaDbContext>();
+    await DatabaseSeeder.SeedAsync(dbContext);
+}
+catch (Exception ex)
+{
+    app.Logger.LogWarning(ex, "Database seeding skipped or encountered non-fatal connection issue.");
+}
 
 app.Run();
