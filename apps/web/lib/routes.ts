@@ -6,6 +6,9 @@
 export const ROUTES = {
   // Public Approved 9-Item Navigation
   home: "/",
+  signIn: "/sign-in",
+  signUp: "/sign-up",
+  accessDenied: "/access-denied",
   exams: "/exams",
   study: "/study",
   carePlans: "/care-plans",

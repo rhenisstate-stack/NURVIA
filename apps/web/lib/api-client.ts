@@ -9,6 +9,7 @@ import {
   AutosaveResultDto,
   SubmittedExamResultDto,
   ExamAttemptSummaryDto,
+  AuthUserDto,
 } from './api-types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5055';
@@ -57,9 +58,9 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
     const json = await res.json() as ApiResponse<T>;
     if (!res.ok && json.success) {
-      return { success: false, message: `Request failed (${res.status}).` };
+      return { success: false, message: `Request failed (${res.status}).`, statusCode: res.status };
     }
-    return json;
+    return { ...json, statusCode: res.status };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown network error';
     return {

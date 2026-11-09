@@ -6,7 +6,6 @@ import { PublicShell } from "@/components/layout/public-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { PracticeQuestionPreview } from "@/components/home/practice-question-preview";
 import { StudentTestimonialCarousel } from "@/components/home/student-testimonial-carousel";
 import { StudySetPreviewModal } from "@/components/home/study-set-preview-modal";
 import { FloatingStudyChat } from "@/components/home/floating-study-chat";
@@ -36,11 +35,19 @@ import {
   FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/components/auth/auth-provider";
 
 export default function HomePage() {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [selectedCategory, setSelectedCategory] = React.useState<string>("All");
   const [previewingSet, setPreviewingSet] = React.useState<StudySetItem | null>(null);
+  const { status, user } = useAuth();
+  const practiceHref = status === "authenticated"
+    ? "/learner/custom-practice"
+    : "/sign-in?returnTo=%2Flearner%2Fcustom-practice";
+  const startHref = status === "authenticated"
+    ? "/learner/exams"
+    : "/sign-up?returnTo=%2Flearner%2Fexams";
 
   const categories = [
     "All",
@@ -90,81 +97,75 @@ export default function HomePage() {
 
   return (
     <PublicShell>
-      {/* 1. HERO SECTION matching screenshot media_1794209744176_69086185.jpg */}
-      <section className="relative overflow-hidden pt-10 pb-16 md:pt-16 md:pb-24 bg-gradient-to-b from-surface/80 via-background to-background">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center">
-            {/* Left Column: Headline, Supporting copy, CTAs, Social Proof */}
-            <div className="lg:col-span-6 space-y-6 text-left">
-              {/* Eyebrow with flanking divider lines */}
-              <div className="inline-flex items-center gap-2">
-                <span className="h-px w-6 bg-border-strong hidden sm:block" />
-                <span className="text-xs font-bold uppercase tracking-widest text-brand-teal dark:text-teal-400">
-                  BUILT FOR NURSING SCHOOL EXAM DAYS
-                </span>
-                <span className="h-px w-6 bg-border-strong hidden sm:block" />
-              </div>
-
-              {/* Main Headline */}
-              <h1 className="font-brand text-4xl sm:text-5xl lg:text-[54px] font-extrabold tracking-tight text-foreground leading-[1.12]">
-                Turn Practice Into{" "}
-                <span className="text-brand-teal dark:text-teal-400">ATI</span> and{" "}
-                <span className="text-brand-navy dark:text-teal-300">HESI</span> Readiness
-              </h1>
-
-              {/* Supporting Copy */}
-              <p className="font-ui text-base sm:text-lg text-foreground-secondary leading-relaxed max-w-xl">
-                Work through ATI, HESI, and exit-exam practice at your own pace.
-                Learn from clear rationales, build comfort with NGN formats, and
-                choose the study mode that fits today.
-              </p>
-
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
-                <a
-                  href="#study-sets"
-                  className="w-full sm:w-auto"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    document.getElementById("study-sets")?.scrollIntoView({ behavior: "smooth" });
-                  }}
+      <section className="relative isolate overflow-hidden bg-[#0B1D33] text-white">
+        <div aria-hidden="true" className="absolute inset-0 bg-[radial-gradient(ellipse_at_75%_35%,rgba(13,148,136,0.30),transparent_48%),linear-gradient(110deg,#0B1D33_8%,#142B4A_72%,#0B1D33)]" />
+        <div aria-hidden="true" className="absolute inset-y-0 right-0 hidden w-[54%] border-l border-white/10 bg-white/[0.025] lg:block" />
+        <div className="relative mx-auto grid min-h-[560px] max-w-7xl items-center gap-12 px-4 py-16 sm:px-6 md:py-20 lg:grid-cols-12 lg:px-8">
+          <div className="space-y-6 lg:col-span-6">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-teal-300">
+              Nursing exam preparation, reimagined
+            </p>
+            <h1 className="max-w-2xl font-brand text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
+              Your Path to Nursing Confidence.
+            </h1>
+            <p className="max-w-xl text-base leading-relaxed text-slate-200 sm:text-lg">
+              Build clinical confidence through focused practice, realistic nursing assessments, and meaningful performance insights designed to help you prepare with purpose.
+            </p>
+            <div className="flex flex-col gap-3 pt-1 sm:flex-row">
+              <Link href={startHref}>
+                <Button size="lg" className="h-12 w-full gap-2 bg-brand-teal px-7 text-white hover:bg-brand-tealDark sm:w-auto">
+                  Start Practicing <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+              <Link href="/exams">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="h-12 w-full border-2 border-white/80 bg-white/5 px-7 text-white hover:border-white hover:bg-white/15 hover:text-white focus-visible:ring-white sm:w-auto"
                 >
-                  <Button
-                    size="lg"
-                    className="w-full sm:w-auto text-sm sm:text-base h-12 px-7 gap-2 bg-brand-navy hover:bg-brand-navyDeep text-white dark:bg-brand-teal dark:hover:bg-brand-tealDark shadow-md"
-                  >
-                    <span>Try a Practice Set</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </a>
-                <Link href="/exams" className="w-full sm:w-auto">
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className="w-full sm:w-auto text-sm sm:text-base h-12 px-7 hover:bg-surface-muted"
-                  >
-                    Explore the Exam Library
-                  </Button>
-                </Link>
-              </div>
-
-              {/* Social Proof Line */}
-              <div className="pt-4 flex items-center gap-2 text-xs sm:text-sm text-foreground-secondary font-medium">
-                <div className="flex items-center text-amber-500">
-                  <Star className="w-4 h-4 fill-amber-500" />
-                  <Star className="w-4 h-4 fill-amber-500" />
-                  <Star className="w-4 h-4 fill-amber-500" />
-                  <Star className="w-4 h-4 fill-amber-500" />
-                  <Star className="w-4 h-4 fill-amber-500" />
-                </div>
-                <span className="font-bold text-foreground">4.9/5</span>
-                <span className="text-foreground-muted">shared by 2,000+ nursing students</span>
-              </div>
+                  Explore Exams
+                </Button>
+              </Link>
             </div>
+            <Link
+              href={practiceHref}
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-teal-200/50 bg-teal-300/10 px-4 py-2 text-sm font-semibold text-teal-100 transition-colors hover:bg-teal-300/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-200 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B1D33]"
+            >
+              <Sparkles className="h-4 w-4" aria-hidden="true" />
+              Quick Practice
+              {status === "authenticated" && user?.role === "Learner" && <span className="sr-only">, open custom practice</span>}
+            </Link>
+          </div>
 
-            {/* Right Column: Interactive Practice-Question Preview Card */}
-            <div className="lg:col-span-6 w-full">
-              <PracticeQuestionPreview />
+          <div className="lg:col-span-6">
+            <div className="rounded-3xl border border-white/15 bg-slate-950/45 p-5 shadow-2xl backdrop-blur-sm sm:p-7">
+              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-teal-200">The learner journey</p>
+                  <p className="mt-1 text-sm text-slate-300">A focused path from practice to insight</p>
+                </div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-400/15 text-teal-200">
+                  <GraduationCap className="h-5 w-5" aria-hidden="true" />
+                </div>
+              </div>
+              <ol className="mt-5 space-y-3">
+                {[
+                  ["01", "Choose an exam", "Find a published assessment for your pathway."],
+                  ["02", "Practice with purpose", "Work through a persisted attempt at your pace."],
+                  ["03", "Review your result", "Use your submitted performance to plan next steps."],
+                ].map(([step, title, description]) => (
+                  <li key={step} className="flex gap-4 rounded-xl border border-white/10 bg-white/[0.035] p-4">
+                    <span className="font-mono text-sm font-bold text-teal-300">{step}</span>
+                    <div>
+                      <p className="text-sm font-semibold text-white">{title}</p>
+                      <p className="mt-1 text-xs leading-relaxed text-slate-300">{description}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              <p className="mt-4 text-[11px] text-slate-400">
+                Product journey overview · interactive exam data is available after sign-in.
+              </p>
             </div>
           </div>
         </div>

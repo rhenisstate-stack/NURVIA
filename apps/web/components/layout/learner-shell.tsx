@@ -41,6 +41,7 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/components/auth/auth-provider";
 
 interface NavSubItem {
   name: string;
@@ -164,6 +165,18 @@ export function LearnerShell({ children }: { children: React.ReactNode }) {
   const [topSearch, setTopSearch] = React.useState("");
   const router = useRouter();
   const pathname = usePathname();
+  const { status, user, error } = useAuth();
+
+  React.useEffect(() => {
+    if (status === "unauthenticated") {
+      const returnTo = typeof window === "undefined"
+        ? pathname
+        : `${pathname}${window.location.search}`;
+      router.replace(`/sign-in?returnTo=${encodeURIComponent(returnTo)}`);
+    } else if (status === "authenticated" && user?.role !== "Learner") {
+      router.replace("/access-denied");
+    }
+  }, [status, user, pathname, router]);
 
   const toggleSubmenu = (itemName: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -180,6 +193,25 @@ export function LearnerShell({ children }: { children: React.ReactNode }) {
       router.push(`/learner/library?q=${encodeURIComponent(topSearch.trim())}`);
     }
   };
+
+  if (status === "loading" || status === "unauthenticated" ||
+      (status === "authenticated" && user?.role !== "Learner")) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background px-6 text-sm text-foreground-secondary" aria-live="polite">
+        {status === "loading" ? "Checking your session…" : "Redirecting to the appropriate page…"}
+      </main>
+    );
+  }
+
+  if (status === "error") {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background px-6">
+        <p role="alert" className="max-w-md text-center text-sm text-rose-700 dark:text-rose-300">
+          {error || "Unable to verify your sign-in. Refresh the page or try again."}
+        </p>
+      </main>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground flex">

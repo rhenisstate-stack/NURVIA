@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Logo } from "@/components/brand/logo";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ import {
   Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/components/auth/auth-provider";
 
 interface AdminNavGroup {
   title: string;
@@ -80,6 +81,36 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+  const { status, user, error } = useAuth();
+  const staffRoles = ["Author", "Reviewer", "Publisher", "Administrator", "Superadmin"];
+
+  React.useEffect(() => {
+    if (status === "unauthenticated") {
+      router.replace(`/sign-in?returnTo=${encodeURIComponent(pathname)}`);
+    } else if (status === "authenticated" && (!user || !staffRoles.includes(user.role))) {
+      router.replace("/access-denied");
+    }
+  }, [status, user, pathname, router]);
+
+  if (status === "loading" || status === "unauthenticated" ||
+      (status === "authenticated" && (!user || !staffRoles.includes(user.role)))) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background px-6 text-sm text-foreground-secondary" aria-live="polite">
+        {status === "loading" ? "Checking your session…" : "Redirecting to the appropriate page…"}
+      </main>
+    );
+  }
+
+  if (status === "error") {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background px-6">
+        <p role="alert" className="max-w-md text-center text-sm text-rose-700 dark:text-rose-300">
+          {error || "Unable to verify your sign-in. Refresh the page or try again."}
+        </p>
+      </main>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">

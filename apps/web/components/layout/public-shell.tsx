@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ROUTES } from "@/lib/routes";
+import { useAuth } from "@/components/auth/auth-provider";
 
 interface PublicNavItem {
   name: string;
@@ -41,7 +42,22 @@ interface PublicShellProps {
 export function PublicShell({ children }: PublicShellProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [scrolled, setScrolled] = React.useState(false);
+  const [authError, setAuthError] = React.useState<string | null>(null);
   const pathname = usePathname();
+  const router = useRouter();
+  const { status, user, signOut } = useAuth();
+
+  async function handleSignOut() {
+    setAuthError(null);
+    const response = await signOut();
+    if (!response.success) {
+      setAuthError(response.message || "Unable to sign out. Please try again.");
+      return;
+    }
+
+    setMobileMenuOpen(false);
+    router.replace("/");
+  }
 
   // Scroll detection for sticky header treatment
   React.useEffect(() => {
@@ -81,9 +97,6 @@ export function PublicShell({ children }: PublicShellProps) {
           NURVIA — Your Path to Nursing Confidence. Next-Gen NCLEX, ATI & HESI preparation.
         </span>
         <span className="sm:hidden">NURVIA — Nursing Confidence</span>
-        <Link href="/learner" className="underline hover:text-teal-300 font-semibold ml-1">
-          Enter Learner Dashboard →
-        </Link>
       </div>
 
       {/* Main Public Header with exact 9 approved items (Direct Links, No Dropdowns) */}
@@ -129,11 +142,31 @@ export function PublicShell({ children }: PublicShellProps) {
           {/* Right Header Controls */}
           <div className="flex items-center gap-2 sm:gap-3">
             <ThemeToggle />
-            <Link href="/learner">
-              <Button variant="outline" size="sm" className="hidden sm:inline-flex text-xs h-9">
-                Sign In
-              </Button>
-            </Link>
+            {status === "authenticated" && user ? (
+              <>
+                <Link href={user.role === "Learner" ? "/learner" : "/admin"}>
+                  <Button variant="outline" size="sm" className="hidden sm:inline-flex text-xs h-9">
+                    {user.role === "Learner" ? "My Account" : "Workspace"}
+                  </Button>
+                </Link>
+                <Button type="button" variant="ghost" size="sm" className="hidden sm:inline-flex text-xs h-9" onClick={handleSignOut}>
+                  Sign Out
+                </Button>
+              </>
+            ) : (
+              <>
+                <Link href={ROUTES.signIn}>
+                  <Button variant="outline" size="sm" className="hidden sm:inline-flex text-xs h-9">
+                    Sign In
+                  </Button>
+                </Link>
+                <Link href={ROUTES.signUp}>
+                  <Button size="sm" className="hidden sm:inline-flex text-xs h-9">
+                    Sign Up
+                  </Button>
+                </Link>
+              </>
+            )}
             <Link href="/exams">
               <Button size="sm" className="text-xs h-9 bg-brand-navy hover:bg-brand-navyDeep text-white dark:bg-brand-teal dark:hover:bg-brand-tealDeep">
                 Explore Exams
@@ -213,11 +246,26 @@ export function PublicShell({ children }: PublicShellProps) {
 
             {/* Mobile Footer Links */}
             <div className="pt-6 border-t border-border space-y-3">
-              <Link href="/learner" onClick={() => setMobileMenuOpen(false)}>
-                <Button className="w-full text-xs bg-brand-navy hover:bg-brand-navyDeep text-white dark:bg-brand-teal">
-                  Learner Dashboard
-                </Button>
-              </Link>
+              {status === "authenticated" && user ? (
+                <>
+                  <Link href={user.role === "Learner" ? "/learner" : "/admin"} onClick={() => setMobileMenuOpen(false)}>
+                    <Button className="w-full text-xs">
+                      {user.role === "Learner" ? "My Account" : "Workspace"}
+                    </Button>
+                  </Link>
+                  <Button type="button" variant="outline" className="w-full text-xs" onClick={handleSignOut}>Sign Out</Button>
+                </>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <Link href={ROUTES.signIn} onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="outline" className="w-full text-xs">Sign In</Button>
+                  </Link>
+                  <Link href={ROUTES.signUp} onClick={() => setMobileMenuOpen(false)}>
+                    <Button className="w-full text-xs">Sign Up</Button>
+                  </Link>
+                </div>
+              )}
+              {authError && <p role="alert" className="text-xs text-rose-700 dark:text-rose-300">{authError}</p>}
               <div className="flex items-center justify-between text-xs text-foreground-muted pt-2">
                 <span>NURVIA Platform</span>
                 <ThemeToggle />
@@ -288,7 +336,6 @@ export function PublicShell({ children }: PublicShellProps) {
                 <li><Link href="/learner" className="hover:text-primary">Learner Dashboard</Link></li>
                 <li><Link href="/learner/library" className="hover:text-primary">Study Library</Link></li>
                 <li><Link href="/exam-session" className="hover:text-primary">Exam Experience Shell</Link></li>
-                <li><Link href="/admin" className="hover:text-primary">Admin Studio Shell</Link></li>
                 <li><Link href="/design-system" className="hover:text-primary">Design System Showcase</Link></li>
               </ul>
             </div>
