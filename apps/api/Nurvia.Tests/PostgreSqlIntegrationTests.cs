@@ -80,6 +80,8 @@ public class PostgreSqlIntegrationTests : IAsyncLifetime
         Assert.Contains("ExamVersions", tables);
         Assert.Contains("ExamQuestions", tables);
         Assert.Contains("ExamBlueprints", tables);
+        Assert.Contains("ExamAttempts", tables);
+        Assert.Contains("AttemptResponses", tables);
         Assert.Contains("AuditLogs", tables);
     }
 
