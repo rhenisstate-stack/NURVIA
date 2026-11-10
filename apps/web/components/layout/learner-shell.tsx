@@ -174,7 +174,7 @@ export function LearnerShell({ children }: { children: React.ReactNode }) {
         ? pathname
         : `${pathname}${window.location.search}`;
       router.replace(`/sign-in?returnTo=${encodeURIComponent(returnTo)}`);
-    } else if (status === "authenticated" && user?.role !== "Learner" && user?.role !== "Superadmin") {
+    } else if (status === "authenticated" && user && user.role !== "Learner" && user.role !== "Superadmin") {
       router.replace("/access-denied");
     }
   }, [status, user, pathname, router]);
