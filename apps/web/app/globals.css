@@ -10,10 +10,12 @@
   --brand-navy-deep: #0B1D33;
 
   /* Hero accent (approved landing-hero reference: magenta-berry highlights/CTAs;
-     no existing brand token covers this hue, so it is tokenised once here) */
-  --accent: #9D174D;
-  --accent-hover: #831843;
-  --accent-highlight: #BE185D;
+     no existing brand token covers this hue, so it is tokenised once here.
+     Stored as RGB triplets so Tailwind opacity modifiers (e.g. bg-accent/70)
+     can compose with it.) */
+  --accent: 157 23 77;
+  --accent-hover: 131 24 67;
+  --accent-highlight: 190 24 93;
 
   /* Light Theme Surfaces & Colors */
   --background: #F4F7F9;
@@ -70,9 +72,9 @@
   --primary-foreground: #0B1220;
 
   /* Dark-mode hero accent (same hue, lifted for contrast on dark surfaces) */
-  --accent: #DB2777;
-  --accent-hover: #BE185D;
-  --accent-highlight: #F472B6;
+  --accent: 219 39 119;
+  --accent-hover: 190 24 93;
+  --accent-highlight: 244 114 182;
 
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.2);
   --shadow-md: 0 4px 12px rgb(0 0 0 / 0.35);

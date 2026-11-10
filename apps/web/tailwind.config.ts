@@ -18,9 +18,9 @@ const config: Config = {
           navyDeep: "#0B1D33",
         },
         accent: {
-          DEFAULT: "var(--accent)",
-          hover: "var(--accent-hover)",
-          highlight: "var(--accent-highlight)",
+          DEFAULT: "rgb(var(--accent) / <alpha-value>)",
+          hover: "rgb(var(--accent-hover) / <alpha-value>)",
+          highlight: "rgb(var(--accent-highlight) / <alpha-value>)",
         },
         background: "var(--background)",
         surface: {

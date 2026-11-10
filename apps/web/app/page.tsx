@@ -116,7 +116,7 @@ export default function HomePage() {
         <div className="relative z-10 mx-auto max-w-7xl px-4 pb-14 pt-10 sm:px-6 sm:pb-16 sm:pt-14 lg:px-8 lg:pb-20 lg:pt-20">
           <div className="grid items-center gap-12 md:gap-10 lg:grid-cols-12 lg:gap-12">
             <div className="min-w-0 space-y-7 lg:col-span-7">
-              <p className="flex items-center gap-3 text-[13px] font-bold uppercase tracking-[0.22em] text-accent-highlight dark:text-accent-highlight">
+              <p className="flex items-center gap-3 text-[13px] font-bold uppercase tracking-[0.22em] text-accent-highlight">
                 <span aria-hidden="true" className="h-px w-10 bg-accent/70" />
                 Built for nursing school exam days
                 <span aria-hidden="true" className="h-px w-5 bg-accent/30" />
