@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import Link from "next/link";
@@ -47,7 +47,7 @@ export function StudySetPreviewModal({ studySet, onClose }: StudySetPreviewModal
             <div className="flex items-center gap-2">
               <Badge variant="teal">{studySet.category}</Badge>
               <Badge variant="outline">
-                {studySet.examTrack} · {studySet.pathway}
+                {studySet.examTrack} Â· {studySet.pathway}
               </Badge>
             </div>
             <h2 className="font-brand text-xl font-bold text-foreground">
@@ -75,7 +75,7 @@ export function StudySetPreviewModal({ studySet, onClose }: StudySetPreviewModal
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
             <div className="p-3 rounded-lg border border-border bg-background">
               <span className="text-foreground-muted block text-[11px]">Practice Focus</span>
-              <strong className="text-foreground">{studySet.examTrack} · {studySet.pathway}</strong>
+              <strong className="text-foreground">{studySet.examTrack} Â· {studySet.pathway}</strong>
             </div>
             <div className="p-3 rounded-lg border border-border bg-background">
               <span className="text-foreground-muted block text-[11px]">Exam Format</span>
@@ -145,7 +145,7 @@ export function StudySetPreviewModal({ studySet, onClose }: StudySetPreviewModal
 
               {/* Rationale */}
               {selectedIdx !== null && (
-                <div className="p-3 rounded-lg bg-teal-500/10 border border-teal-500/20 text-xs text-foreground leading-relaxed animate-in fade-in">
+                <div className="p-3 rounded-lg bg-brand-teal/10 border border-brand-teal/20 text-xs text-foreground leading-relaxed animate-in fade-in">
                   <div className="font-bold text-brand-teal text-[11px] uppercase tracking-wider mb-1 flex items-center gap-1">
                     <BookOpen className="w-3.5 h-3.5" /> Clinical Rationale Breakdown
                   </div>

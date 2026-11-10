@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import {
@@ -174,7 +174,7 @@ export function StudentTestimonialCarousel({
                 </span>
               </div>
               <p className="text-[11px] text-foreground-muted">
-                Student-submitted licensure & exit exam outcomes · Updated continuously
+                Student-submitted licensure & exit exam outcomes Â· Updated continuously
               </p>
             </div>
           </div>
@@ -187,7 +187,7 @@ export function StudentTestimonialCarousel({
                 isHovered || isFocused ? "bg-amber-500" : "bg-brand-teal animate-pulse"
               )} />
               <span>{isHovered || isFocused ? "Paused on Hover" : "Auto Rotating"}</span>
-              <span className="text-border mx-1">•</span>
+              <span className="text-border mx-1">â€¢</span>
               <span>{currentIndex + 1} of {totalItems}</span>
             </span>
           </div>
@@ -232,7 +232,7 @@ export function StudentTestimonialCarousel({
                     {/* Top Row: Track Badge, Status Badge & Score */}
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-brand font-bold text-xs px-2.5 py-0.5 rounded-md bg-brand-navy/10 dark:bg-brand-teal/15 text-brand-navy dark:text-teal-300 border border-brand-navy/20 dark:border-teal-500/30">
+                        <span className="font-brand font-bold text-xs px-2.5 py-0.5 rounded-md bg-brand-navy/10 dark:bg-brand-teal/15 text-brand-navy dark:text-teal-300 border border-brand-navy/20 dark:border-brand-teal/30">
                           {item.examTrack}
                         </span>
                         {item.scoreOrLevel && (

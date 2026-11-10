@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import { LearnerShell } from "@/components/layout/learner-shell";
@@ -34,7 +34,7 @@ export default function CalculatorsPage() {
           <div className="flex items-center justify-between border-b border-border pb-3">
             <div>
               <CardTitle className="text-base">IV Drop Rate Calculator (gtt/min)</CardTitle>
-              <CardDescription className="text-xs">Formula: (Volume in mL × Drop Factor) ÷ Time in minutes</CardDescription>
+              <CardDescription className="text-xs">Formula: (Volume in mL Ã— Drop Factor) Ã· Time in minutes</CardDescription>
             </div>
             <Badge variant="outline">Gravity Infusion</Badge>
           </div>
@@ -74,7 +74,7 @@ export default function CalculatorsPage() {
           </div>
 
           {/* Results Box */}
-          <div className="p-4 rounded-xl bg-teal-500/10 border border-teal-500/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="p-4 rounded-xl bg-brand-teal/10 border border-brand-teal/20 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
               <span className="text-xs font-bold text-brand-teal uppercase tracking-wider block">Calculated Infusion Rate</span>
               <div className="text-2xl font-bold font-brand text-foreground">
@@ -87,7 +87,7 @@ export default function CalculatorsPage() {
 
             <div className="text-xs text-foreground-secondary p-2.5 rounded-lg bg-surface border border-border sm:max-w-xs">
               <span className="font-semibold text-foreground block">Worked Formula:</span>
-              ({volume} mL × {dropFactor}) ÷ ({timeHours} × 60 min) = {dripRate} gtt/min
+              ({volume} mL Ã— {dropFactor}) Ã· ({timeHours} Ã— 60 min) = {dripRate} gtt/min
             </div>
           </div>
         </Card>

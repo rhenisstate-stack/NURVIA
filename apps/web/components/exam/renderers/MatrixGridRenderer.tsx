@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import { QuestionRendererProps } from "./types";
@@ -83,7 +83,7 @@ export function MatrixGridRenderer({
       </div>
 
       {isReview && question.generalRationale && (
-        <div className="p-4 rounded-xl bg-teal-500/10 border border-teal-500/20 text-xs text-foreground-secondary space-y-1">
+        <div className="p-4 rounded-xl bg-brand-teal/10 border border-brand-teal/20 text-xs text-foreground-secondary space-y-1">
           <div className="font-bold text-brand-teal flex items-center gap-1.5">
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             <span>Matrix Evaluation Rationale</span>

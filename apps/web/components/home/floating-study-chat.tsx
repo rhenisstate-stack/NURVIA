@@ -81,7 +81,7 @@ export function FloatingStudyChat() {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg transition-all transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-emerald-400 font-semibold text-xs"
+        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full bg-brand-teal hover:bg-brand-tealDark text-white shadow-lg transition-all transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-brand-teal/70 font-semibold text-xs"
         aria-label="Open Clinical Study Chat"
       >
         <MessageSquare className="w-4 h-4 fill-white" />

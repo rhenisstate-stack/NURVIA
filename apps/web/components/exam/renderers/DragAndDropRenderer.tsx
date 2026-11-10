@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import { QuestionRendererProps } from "./types";
@@ -45,8 +45,8 @@ export function DragAndDropRenderer({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Bucket A */}
-        <div className="rounded-xl border border-teal-500/30 bg-teal-500/5 p-4 space-y-3">
-          <div className="flex items-center justify-between pb-2 border-b border-teal-500/20">
+        <div className="rounded-xl border border-brand-teal/30 bg-brand-teal/5 p-4 space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-brand-teal/20">
             <span className="font-brand font-bold text-xs text-brand-teal uppercase tracking-wide">
               {bucketA}
             </span>
@@ -108,7 +108,7 @@ export function DragAndDropRenderer({
       </div>
 
       {isReview && question.generalRationale && (
-        <div className="p-4 rounded-xl bg-teal-500/10 border border-teal-500/20 text-xs text-foreground-secondary space-y-1">
+        <div className="p-4 rounded-xl bg-brand-teal/10 border border-brand-teal/20 text-xs text-foreground-secondary space-y-1">
           <div className="font-bold text-brand-teal flex items-center gap-1.5">
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             <span>Classification Rationale</span>

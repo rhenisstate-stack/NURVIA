@@ -32,16 +32,16 @@ export default function DesignSystemShowcasePage() {
   const [btnLoading, setBtnLoading] = React.useState(false);
 
   const colorSwatches = [
-    { name: "Midnight Navy", hex: "#142B4A", token: "--brand-navy", text: "text-white", bg: "bg-[#142B4A]" },
-    { name: "Intelligent Teal", hex: "#0D9488", token: "--brand-teal", text: "text-white", bg: "bg-[#0D9488]" },
-    { name: "Deep Teal", hex: "#0F766E", token: "--brand-teal-dark", text: "text-white", bg: "bg-[#0F766E]" },
-    { name: "Deep Navy (Dark)", hex: "#0B1D33", token: "--brand-navy-deep", text: "text-white", bg: "bg-[#0B1D33]" },
-    { name: "Soft Cloud (Canvas)", hex: "#F4F7F9", token: "--background", text: "text-slate-800", bg: "bg-[#F4F7F9]" },
-    { name: "Slate (Secondary)", hex: "#64748B", token: "--text-secondary", text: "text-white", bg: "bg-[#64748B]" },
-    { name: "Success Green", hex: "#15803D", token: "--success", text: "text-white", bg: "bg-[#15803D]" },
-    { name: "Warning Amber", hex: "#D97706", token: "--warning", text: "text-white", bg: "bg-[#D97706]" },
-    { name: "Error Red", hex: "#DC2626", token: "--error", text: "text-white", bg: "bg-[#DC2626]" },
-    { name: "Info Blue", hex: "#2563EB", token: "--info", text: "text-white", bg: "bg-[#2563EB]" },
+    { name: "Crisp Eucalyptus Slate", hex: "#F4F7F6", token: "--background", text: "text-slate-800", bg: "bg-[#F4F7F6]" },
+    { name: "Deep Slate Blue", hex: "#1E293B", token: "--brand-navy / --foreground", text: "text-white", bg: "bg-[#1E293B]" },
+    { name: "Deep Sea Teal", hex: "#0A5C66", token: "--primary / --brand-teal", text: "text-white", bg: "bg-[#0A5C66]" },
+    { name: "Deep Sea Teal (Hover)", hex: "#084A52", token: "--primary-hover / --brand-teal-dark", text: "text-white", bg: "bg-[#084A52]" },
+    { name: "Slate Mist (Secondary)", hex: "#E2E8F0", token: "--secondary-surface", text: "text-slate-800", bg: "bg-[#E2E8F0]" },
+    { name: "Warm Ochre Gold (Accent)", hex: "#D97706", token: "--warning / --accent", text: "text-white", bg: "bg-[#D97706]" },
+    { name: "Fresh Mint Green (Success)", hex: "#059669", token: "--success / --correct-answer", text: "text-white", bg: "bg-[#059669]" },
+    { name: "Accessible Red (Error)", hex: "#BE123C", token: "--error / --incorrect-answer", text: "text-white", bg: "bg-[#BE123C]" },
+    { name: "Informational Teal", hex: "#0A5C66", token: "--info", text: "text-white", bg: "bg-[#0A5C66]" },
+    { name: "Subtle Border", hex: "#D8E2DF", token: "--border", text: "text-slate-800", bg: "bg-[#D8E2DF]" },
   ];
 
   return (

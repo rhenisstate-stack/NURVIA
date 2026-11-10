@@ -119,7 +119,7 @@ export default function AdminDashboardPage() {
           <Card className="p-5">
             <div className="flex items-center justify-between text-xs text-foreground-muted mb-2 font-medium">
               <span>Published Exams</span>
-              <BookCheck className="w-4 h-4 text-blue-600" />
+              <BookCheck className="w-4 h-4 text-brand-teal" />
             </div>
             <div className="text-2xl font-bold font-brand text-foreground">84</div>
             <p className="text-[11px] text-foreground-secondary mt-1">
@@ -130,7 +130,7 @@ export default function AdminDashboardPage() {
           <Card className="p-5">
             <div className="flex items-center justify-between text-xs text-foreground-muted mb-2 font-medium">
               <span>Active Learners</span>
-              <Users2 className="w-4 h-4 text-purple-600" />
+              <Users2 className="w-4 h-4 text-brand-teal" />
             </div>
             <div className="text-2xl font-bold font-brand text-foreground">3,890</div>
             <p className="text-[11px] text-foreground-secondary mt-1">

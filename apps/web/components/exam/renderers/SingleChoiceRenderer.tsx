@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import { QuestionRendererProps } from "./types";
@@ -39,7 +39,7 @@ export function SingleChoiceRenderer({
         let borderClass = "border-border bg-background hover:bg-surface-muted text-foreground";
 
         if (isSelected) {
-          borderClass = "border-brand-teal bg-teal-500/10 text-foreground ring-1 ring-brand-teal font-medium";
+          borderClass = "border-brand-teal bg-brand-teal/10 text-foreground ring-1 ring-brand-teal font-medium";
         }
 
         if (isReview) {
@@ -88,7 +88,7 @@ export function SingleChoiceRenderer({
       })}
 
       {isReview && question.generalRationale && (
-        <div className="mt-4 p-4 rounded-xl border border-brand-teal/30 bg-teal-500/5 space-y-1 text-xs">
+        <div className="mt-4 p-4 rounded-xl border border-brand-teal/30 bg-brand-teal/5 space-y-1 text-xs">
           <div className="font-bold text-brand-teal flex items-center gap-1.5">
             <span>Overall Clinical Rationale</span>
           </div>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import { QuestionRendererProps } from "./types";
@@ -50,7 +50,7 @@ export function TrueFalseRenderer({
         let borderClass = "border-border bg-background hover:bg-surface-muted text-foreground";
 
         if (isSelected) {
-          borderClass = "border-brand-teal bg-teal-500/10 text-foreground ring-2 ring-brand-teal";
+          borderClass = "border-brand-teal bg-brand-teal/10 text-foreground ring-2 ring-brand-teal";
         }
 
         if (isReview) {

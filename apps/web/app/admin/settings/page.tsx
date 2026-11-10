@@ -68,7 +68,7 @@ export default function AdminSettingsPage() {
           {/* AI Tutor Engine Settings */}
           <Card className="p-6 space-y-4">
             <div className="flex items-center gap-2.5">
-              <Cpu className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+              <Cpu className="w-5 h-5 text-brand-teal" />
               <h3 className="font-brand text-lg font-bold text-foreground">
                 AI Clinical Tutor Configuration
               </h3>

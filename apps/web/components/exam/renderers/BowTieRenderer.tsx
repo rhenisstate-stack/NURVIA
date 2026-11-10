@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import { QuestionRendererProps } from "./types";
@@ -100,7 +100,7 @@ export function BowTieRenderer({
                   className={cn(
                     "w-full text-left p-3 rounded-lg border text-xs transition-all",
                     isSelected
-                      ? "border-brand-teal bg-teal-500/10 text-foreground font-semibold ring-1 ring-brand-teal"
+                      ? "border-brand-teal bg-brand-teal/10 text-foreground font-semibold ring-1 ring-brand-teal"
                       : "border-border bg-surface hover:bg-surface-muted text-foreground-secondary"
                   )}
                 >
@@ -112,7 +112,7 @@ export function BowTieRenderer({
         </div>
 
         {/* Center: Potential Condition (Pick 1) */}
-        <div className="space-y-3 rounded-xl border-2 border-brand-teal/40 bg-teal-500/5 p-4 flex flex-col justify-between">
+        <div className="space-y-3 rounded-xl border-2 border-brand-teal/40 bg-brand-teal/5 p-4 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-3">
               <span className="font-brand font-bold text-xs text-brand-teal uppercase tracking-wider">
@@ -167,7 +167,7 @@ export function BowTieRenderer({
                   className={cn(
                     "w-full text-left p-3 rounded-lg border text-xs transition-all",
                     isSelected
-                      ? "border-brand-teal bg-teal-500/10 text-foreground font-semibold ring-1 ring-brand-teal"
+                      ? "border-brand-teal bg-brand-teal/10 text-foreground font-semibold ring-1 ring-brand-teal"
                       : "border-border bg-surface hover:bg-surface-muted text-foreground-secondary"
                   )}
                 >
@@ -180,7 +180,7 @@ export function BowTieRenderer({
       </div>
 
       {isReview && question.generalRationale && (
-        <div className="p-4 rounded-xl bg-teal-500/10 border border-teal-500/20 text-xs text-foreground-secondary space-y-1">
+        <div className="p-4 rounded-xl bg-brand-teal/10 border border-brand-teal/20 text-xs text-foreground-secondary space-y-1">
           <div className="font-bold text-brand-teal flex items-center gap-1.5">
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             <span>Bow-Tie Clinical Judgment Rationale</span>

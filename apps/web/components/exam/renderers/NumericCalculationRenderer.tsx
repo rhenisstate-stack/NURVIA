@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import { QuestionRendererProps } from "./types";
@@ -47,7 +47,7 @@ export function NumericCalculationRenderer({
       <div className="space-y-2">
         <label className="text-xs font-semibold text-foreground-secondary flex items-center justify-between">
           <span>Calculated Dosage / Value:</span>
-          <Badge variant="outline" className="text-[10px] font-mono">Precision: ±0.01</Badge>
+          <Badge variant="outline" className="text-[10px] font-mono">Precision: Â±0.01</Badge>
         </label>
         <div className="relative">
           <Input
@@ -66,7 +66,7 @@ export function NumericCalculationRenderer({
       </div>
 
       {isReview && correctOption && (
-        <div className="p-4 rounded-xl bg-teal-500/10 border border-teal-500/20 text-xs space-y-1">
+        <div className="p-4 rounded-xl bg-brand-teal/10 border border-brand-teal/20 text-xs space-y-1">
           <div className="flex items-center gap-2 font-bold text-emerald-600">
             <CheckCircle2 className="w-4 h-4" />
             <span>Target Calculation:</span>

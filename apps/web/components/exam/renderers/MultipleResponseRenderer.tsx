@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import { QuestionRendererProps } from "./types";
@@ -40,7 +40,7 @@ export function MultipleResponseRenderer({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 text-xs font-semibold text-brand-teal bg-teal-500/10 border border-teal-500/20 px-3 py-2 rounded-lg">
+      <div className="flex items-center gap-2 text-xs font-semibold text-brand-teal bg-brand-teal/10 border border-brand-teal/20 px-3 py-2 rounded-lg">
         <Info className="w-4 h-4 shrink-0" />
         <span>Select All That Apply (SATA). One, multiple, or all options may be correct.</span>
       </div>
@@ -51,7 +51,7 @@ export function MultipleResponseRenderer({
           let borderClass = "border-border bg-background hover:bg-surface-muted text-foreground";
 
           if (isSelected) {
-            borderClass = "border-brand-teal bg-teal-500/10 text-foreground ring-1 ring-brand-teal font-medium";
+            borderClass = "border-brand-teal bg-brand-teal/10 text-foreground ring-1 ring-brand-teal font-medium";
           }
 
           if (isReview) {
@@ -105,7 +105,7 @@ export function MultipleResponseRenderer({
       </div>
 
       {isReview && question.generalRationale && (
-        <div className="mt-4 p-4 rounded-xl border border-brand-teal/30 bg-teal-500/5 space-y-1 text-xs">
+        <div className="mt-4 p-4 rounded-xl border border-brand-teal/30 bg-brand-teal/5 space-y-1 text-xs">
           <div className="font-bold text-brand-teal flex items-center gap-1.5">
             <span>Overall Clinical Rationale</span>
           </div>

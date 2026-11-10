@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import Link from "next/link";
@@ -97,7 +97,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       (status === "authenticated" && (!user || !staffRoles.includes(user.role)))) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-background px-6 text-sm text-foreground-secondary" aria-live="polite">
-        {status === "loading" ? "Checking your session…" : "Redirecting to the appropriate page…"}
+        {status === "loading" ? "Checking your sessionâ€¦" : "Redirecting to the appropriate pageâ€¦"}
       </main>
     );
   }
@@ -222,7 +222,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             </Button>
             <div className="flex items-center gap-2 text-xs">
               <span className="font-semibold text-foreground">Management Console</span>
-              <span className="text-border">•</span>
+              <span className="text-border">â€¢</span>
               <Badge variant="teal" className="text-[10px]">
                 SUPERADMIN ACCESS
               </Badge>
@@ -235,7 +235,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-3">
             <ThemeToggle />
             <div className="flex items-center gap-2 pl-2 border-l border-border text-xs">
-              <div className="w-7 h-7 rounded-full bg-teal-600 text-white font-bold flex items-center justify-center text-xs">
+              <div className="w-7 h-7 rounded-full bg-brand-teal text-white font-bold flex items-center justify-center text-xs">
                 SA
               </div>
               <span className="hidden sm:inline font-semibold">Admin Workspace</span>

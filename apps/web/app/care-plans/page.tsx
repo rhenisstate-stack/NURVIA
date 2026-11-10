@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import Link from "next/link";
@@ -81,7 +81,7 @@ const sampleCarePlans: CarePlan[] = [
     diagnosis: "Impaired Gas Exchange related to bronchospasm, mucosal edema, and increased secretions",
     relatedTo: "Hyperreactive airway response triggered by viral upper respiratory tract infection",
     outcomes: [
-      "Client achieves SpO2 ≥ 95% on room air with decrease in accessory muscle retractions",
+      "Client achieves SpO2 â‰¥ 95% on room air with decrease in accessory muscle retractions",
       "Respiratory rate returns to baseline within pediatric age-adjusted norms",
     ],
     interventionsCount: 6,
@@ -258,7 +258,7 @@ export default function CarePlansPage() {
                   onClick={() => setSelectedPlan(null)}
                   className="rounded-full h-8 w-8 p-0"
                 >
-                  ✕
+                  âœ•
                 </Button>
               </div>
 
@@ -287,7 +287,7 @@ export default function CarePlansPage() {
                   <h4 className="font-bold text-foreground uppercase tracking-wider text-[11px] text-brand-teal">
                     Core Nursing Interventions & Rationales (NIC)
                   </h4>
-                  <div className="mt-1 p-3 rounded-lg bg-teal-500/10 border border-teal-500/20 space-y-2">
+                  <div className="mt-1 p-3 rounded-lg bg-brand-teal/10 border border-brand-teal/20 space-y-2">
                     <p className="font-semibold text-foreground">
                       <strong>Intervention:</strong> {selectedPlan.previewIntervention}
                     </p>

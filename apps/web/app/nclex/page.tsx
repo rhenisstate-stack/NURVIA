@@ -146,11 +146,11 @@ export default function NclexPage() {
               {/* PN Card */}
               <div className="rounded-2xl border border-border bg-surface p-8 space-y-6 hover:border-brand-teal/50 shadow-xs transition-all">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-xl bg-brand-teal/10 text-brand-teal flex items-center justify-center">
                     <Stethoscope className="w-6 h-6" />
                   </div>
                   <div>
-                    <Badge variant="outline" className="mb-1 text-purple-600 border-purple-500/30">Practical Nurse</Badge>
+                    <Badge variant="outline" className="mb-1 text-brand-teal border-brand-teal/30">Practical Nurse</Badge>
                     <h3 className="font-brand text-2xl font-bold text-foreground">
                       NCLEX-PN Pathway
                     </h3>

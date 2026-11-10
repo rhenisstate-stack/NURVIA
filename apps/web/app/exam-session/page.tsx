@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import { Suspense } from "react";
@@ -293,11 +293,11 @@ function ExamSessionContent() {
   const flaggedCount = Object.values(flags).filter(Boolean).length;
 
   if (status !== "authenticated" || user?.role !== "Learner") {
-    return <main className="flex min-h-screen items-center justify-center px-6 text-sm text-foreground-secondary" aria-live="polite">Checking your learner access…</main>;
+    return <main className="flex min-h-screen items-center justify-center px-6 text-sm text-foreground-secondary" aria-live="polite">Checking your learner accessâ€¦</main>;
   }
 
   if (isLoading) {
-    return <main className="flex min-h-screen items-center justify-center px-6 text-sm text-foreground-secondary" aria-live="polite">Loading your saved examination…</main>;
+    return <main className="flex min-h-screen items-center justify-center px-6 text-sm text-foreground-secondary" aria-live="polite">Loading your saved examinationâ€¦</main>;
   }
 
   if (loadError && !attemptId && !questions.length) {
@@ -329,7 +329,7 @@ function ExamSessionContent() {
       <div className="space-y-6">
         {/* Post-Submission Result Hero Banner */}
         {isSubmitted && submittedResult && (
-          <div className="p-6 rounded-2xl border border-teal-500/30 bg-surface shadow-md space-y-4 animate-in fade-in">
+          <div className="p-6 rounded-2xl border border-brand-teal/30 bg-surface shadow-md space-y-4 animate-in fade-in">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
               <div className="flex items-center gap-3">
                 <div className={cn(
@@ -490,13 +490,13 @@ function ExamSessionContent() {
                 onClick={() => setIsQuestionGridOpen(false)}
                 className="text-foreground-secondary hover:text-foreground text-sm font-bold p-1"
               >
-                ✕
+                âœ•
               </button>
             </div>
 
             <div className="flex items-center gap-4 text-xs">
               <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded bg-teal-500/20 border border-brand-teal" />
+                <span className="w-3 h-3 rounded bg-brand-teal/20 border border-brand-teal" />
                 <span>Answered ({answeredCount})</span>
               </span>
               <span className="flex-1 flex items-center gap-1.5">
@@ -526,7 +526,7 @@ function ExamSessionContent() {
                     className={cn(
                       "h-10 rounded-lg text-xs font-bold transition-all relative flex items-center justify-center border",
                       isAns
-                        ? "bg-teal-500/15 border-brand-teal text-brand-teal"
+                        ? "bg-brand-teal/15 border-brand-teal text-brand-teal"
                         : "bg-surface-muted border-border text-foreground-secondary hover:bg-surface",
                       isCurr && "ring-2 ring-foreground",
                       isFlg && "border-amber-500 text-amber-700 dark:text-amber-400"
