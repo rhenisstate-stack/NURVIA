@@ -9,14 +9,26 @@ import { nurviaApi } from "@/lib/api-client";
 import type { ExamDto } from "@/lib/api-types";
 
 const pathways = ["RN", "PN_LPN", "RN_Exit", "PN_Exit"] as const;
+type PracticePathway = (typeof pathways)[number];
+
+function isPracticePathway(value: string | null): value is PracticePathway {
+  return value !== null && (pathways as readonly string[]).includes(value);
+}
 
 export default function CustomPracticePage() {
-  const [pathway, setPathway] = React.useState<(typeof pathways)[number]>("RN");
+  // The pathway can be preselected via `?pathway=` (e.g. from the home-page Quick Practice panel).
+  const [pathway, setPathway] = React.useState<PracticePathway | null>(null);
   const [exams, setExams] = React.useState<ExamDto[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("pathway");
+    setPathway(isPracticePathway(requested) ? requested : "RN");
+  }, []);
+
+  React.useEffect(() => {
+    if (!pathway) return;
     let active = true;
     setLoading(true);
     setError(null);
@@ -50,7 +62,10 @@ export default function CustomPracticePage() {
               type="button"
               variant={pathway === item ? "primary" : "outline"}
               aria-pressed={pathway === item}
-              onClick={() => setPathway(item)}
+              onClick={() => {
+                setPathway(item);
+                window.history.replaceState(null, "", `?pathway=${encodeURIComponent(item)}`);
+              }}
             >
               {item.replace("_", " ")}
             </Button>

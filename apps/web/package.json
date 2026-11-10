@@ -9,7 +9,7 @@
                     "build":  "next build",
                     "start":  "next start",
                     "lint":  "next lint",
-                    "test":  "node tests/navigation-and-carousel.test.mjs \u0026\u0026 node tests/learning-integration.test.mjs \u0026\u0026 node tests/question-renderers.test.mjs",
+                    "test":  "node tests/navigation-and-carousel.test.mjs \u0026\u0026 node tests/learning-integration.test.mjs \u0026\u0026 node tests/question-renderers.test.mjs \u0026\u0026 node tests/hero-redesign.test.mjs",
                     "test:e2e":  "playwright test",
                     "test:e2e headed":  "playwright test --headed"
                 },

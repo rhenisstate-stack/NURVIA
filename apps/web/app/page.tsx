@@ -3,11 +3,14 @@
 import * as React from "react";
 import Link from "next/link";
 import { PublicShell } from "@/components/layout/public-shell";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { StudentTestimonialCarousel } from "@/components/home/student-testimonial-carousel";
 import { FloatingStudyChat } from "@/components/home/floating-study-chat";
+import { HeroQuickPractice } from "@/components/home/hero-quick-practice";
+import { HeroVideoPanel } from "@/components/home/hero-video-panel";
+import { ROUTES } from "@/lib/routes";
 import {
   initialStudySets,
   StudySetItem,
@@ -20,7 +23,6 @@ import {
   Clock,
   Compass,
   FileCheck2,
-  GraduationCap,
   HeartPulse,
   Layers,
   Search,
@@ -52,11 +54,6 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [selectedCategory, setSelectedCategory] = React.useState<string>("All");
   const { status, user } = useAuth();
-  const practiceHref = status === "authenticated" && user?.role === "Learner"
-    ? "/learner/custom-practice"
-    : status === "authenticated"
-      ? "/access-denied"
-    : "/sign-in?returnTo=%2Flearner%2Fcustom-practice";
   const startHref = status === "authenticated" && user?.role === "Learner"
     ? "/learner/exams"
     : status === "authenticated"
@@ -111,76 +108,64 @@ export default function HomePage() {
 
   return (
     <PublicShell>
-      <section className="relative isolate overflow-hidden bg-[#0B1D33] text-white">
-        <div aria-hidden="true" className="absolute inset-0 bg-[radial-gradient(ellipse_at_75%_35%,rgba(13,148,136,0.30),transparent_48%),linear-gradient(110deg,#0B1D33_8%,#142B4A_72%,#0B1D33)]" />
-        <div aria-hidden="true" className="absolute inset-y-0 right-0 hidden w-[54%] border-l border-white/10 bg-white/[0.025] lg:block" />
-        <div className="relative mx-auto grid min-h-[560px] max-w-7xl items-center gap-12 px-4 py-16 sm:px-6 md:py-20 lg:grid-cols-12 lg:px-8">
-          <div className="space-y-6 lg:col-span-6">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-teal-300">
-              Nursing exam preparation, reimagined
-            </p>
-            <h1 className="max-w-2xl font-brand text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
-              Your Path to Nursing Confidence.
-            </h1>
-            <p className="max-w-xl text-base leading-relaxed text-slate-200 sm:text-lg">
-              Build clinical confidence through focused practice, realistic nursing assessments, and meaningful performance insights designed to help you prepare with purpose.
-            </p>
-            <div className="flex flex-col gap-3 pt-1 sm:flex-row">
-              <Link href={startHref}>
-                <Button size="lg" className="h-12 w-full gap-2 bg-brand-teal px-7 text-white hover:bg-brand-tealDark sm:w-auto">
-                  Start Practicing <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-              <Link href="/exams">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="h-12 w-full border-2 border-white/80 bg-white/5 px-7 text-white hover:border-white hover:bg-white/15 hover:text-white focus-visible:ring-white sm:w-auto"
+      {/* 1. HERO — messaging + Quick Practice side by side, product video panel below */}
+      <section aria-labelledby="hero-heading" className="relative isolate overflow-hidden border-b border-border/70 bg-background">
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_85%_0%,rgba(13,148,136,0.14),transparent_55%),radial-gradient(ellipse_at_0%_100%,rgba(20,43,74,0.07),transparent_50%)] dark:bg-[radial-gradient(ellipse_at_85%_0%,rgba(45,212,191,0.12),transparent_55%),radial-gradient(ellipse_at_0%_100%,rgba(11,29,51,0.6),transparent_50%)]" />
+        <div className="mx-auto max-w-7xl px-4 pb-14 pt-10 sm:px-6 sm:pb-16 sm:pt-14 lg:px-8 lg:pb-20 lg:pt-20">
+          <div className="grid items-center gap-10 md:grid-cols-2 md:gap-8 lg:grid-cols-12 lg:gap-14">
+            <div className="min-w-0 space-y-6 lg:col-span-7">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-tealDark dark:text-teal-300">
+                Nursing exam preparation, reimagined
+              </p>
+              <h1
+                id="hero-heading"
+                className="max-w-2xl font-brand text-4xl font-extrabold leading-[1.08] tracking-tight text-brand-navy dark:text-white sm:text-5xl md:text-[2.75rem] lg:text-[3.5rem] xl:text-6xl"
+              >
+                Your Path to Nursing Confidence.
+              </h1>
+              <p className="max-w-xl text-base leading-relaxed text-foreground-secondary sm:text-lg">
+                Build clinical confidence through focused practice, realistic nursing assessments, and meaningful performance insights designed to help you prepare with purpose.
+              </p>
+              <div className="flex flex-col gap-3 pt-1 min-[480px]:flex-row md:flex-col lg:flex-row">
+                <Link
+                  href={startHref}
+                  className={buttonVariants({
+                    size: "lg",
+                    className:
+                      "h-14 w-full gap-2 rounded-lg bg-brand-teal px-7 text-[1.1875rem] font-bold text-white shadow-md hover:bg-brand-tealDark focus-visible:ring-offset-background dark:bg-brand-teal dark:text-white dark:hover:bg-brand-tealDark min-[480px]:w-auto md:w-full lg:w-auto lg:min-w-[220px]",
+                  })}
+                >
+                  Start Practicing <ArrowRight className="h-5 w-5" aria-hidden="true" />
+                </Link>
+                <Link
+                  href={ROUTES.exams}
+                  className={buttonVariants({
+                    variant: "outline",
+                    size: "lg",
+                    className:
+                      "h-14 w-full rounded-lg border-2 border-brand-navy bg-transparent px-7 text-[1.1875rem] font-bold text-brand-navy hover:bg-brand-navy hover:text-white focus-visible:ring-offset-background dark:border-slate-200 dark:text-white dark:hover:border-white dark:hover:bg-white dark:hover:text-brand-navyDeep min-[480px]:w-auto md:w-full lg:w-auto lg:min-w-[220px]",
+                  })}
                 >
                   Explore Exams
-                </Button>
-              </Link>
-            </div>
-            <Link
-              href={practiceHref}
-              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-teal-200/50 bg-teal-300/10 px-4 py-2 text-sm font-semibold text-teal-100 transition-colors hover:bg-teal-300/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-200 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B1D33]"
-            >
-              <Sparkles className="h-4 w-4" aria-hidden="true" />
-              Quick Practice
-              {status === "authenticated" && user?.role === "Learner" && <span className="sr-only">, open published exams</span>}
-            </Link>
-          </div>
-
-          <div className="lg:col-span-6">
-            <div className="rounded-3xl border border-white/15 bg-slate-950/45 p-5 shadow-2xl backdrop-blur-sm sm:p-7">
-              <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-teal-200">The learner journey</p>
-                  <p className="mt-1 text-sm text-slate-300">A focused path from practice to insight</p>
-                </div>
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-400/15 text-teal-200">
-                  <GraduationCap className="h-5 w-5" aria-hidden="true" />
-                </div>
+                </Link>
               </div>
-              <ol className="mt-5 space-y-3">
-                {[
-                  ["01", "Choose an exam", "Find a published assessment for your pathway."],
-                  ["02", "Practice with purpose", "Work through a persisted attempt at your pace."],
-                  ["03", "Review your result", "Use your submitted performance to plan next steps."],
-                ].map(([step, title, description]) => (
-                  <li key={step} className="flex gap-4 rounded-xl border border-white/10 bg-white/[0.035] p-4">
-                    <span className="font-mono text-sm font-bold text-teal-300">{step}</span>
-                    <div>
-                      <p className="text-sm font-semibold text-white">{title}</p>
-                      <p className="mt-1 text-xs leading-relaxed text-slate-300">{description}</p>
-                    </div>
+              <ul className="flex flex-wrap gap-x-5 gap-y-2 pt-1 text-sm text-foreground-secondary" aria-label="What you get">
+                {["RN & PN pathways", "Autosaved attempts", "Result insights"].map((item) => (
+                  <li key={item} className="flex items-center gap-1.5">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-brand-teal dark:text-teal-300" aria-hidden="true" />
+                    {item}
                   </li>
                 ))}
-              </ol>
-              <p className="mt-4 text-[11px] text-slate-400">
-                Product journey overview · interactive exam data is available after sign-in.
-              </p>
+              </ul>
             </div>
+
+            <div className="min-w-0 lg:col-span-5">
+              <HeroQuickPractice />
+            </div>
+          </div>
+
+          <div className="mt-12 lg:mt-16">
+            <HeroVideoPanel />
           </div>
         </div>
       </section>
