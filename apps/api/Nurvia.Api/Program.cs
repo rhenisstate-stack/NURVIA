@@ -32,7 +32,10 @@ builder.Services.AddSingleton<IJwtService, JwtService>();
 builder.Services.AddAuthentication("Bearer")
     .AddScheme<AuthenticationSchemeOptions, JwtBearerAuthenticationHandler>("Bearer", null);
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("Superadmin", policy => policy.RequireRole("Superadmin"));
+});
 builder.Services.AddAntiforgery(options =>
 {
     options.HeaderName = "X-CSRF-TOKEN";
