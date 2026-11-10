@@ -2,43 +2,58 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * NURVIA — Clinical Precision design system
+ * One authoritative token definition. Every brand color in the app resolves
+ * through these variables (directly or through the documented legacy aliases
+ * --brand-* further down, which point at the same values).
+ */
 :root {
-  /* Brand Primitives */
-  --brand-navy: #142B4A;
-  --brand-teal: #0D9488;
-  --brand-teal-dark: #0F766E;
-  --brand-navy-deep: #0B1D33;
-
-  /* Hero accent (approved landing-hero reference: magenta-berry highlights/CTAs;
-     no existing brand token covers this hue, so it is tokenised once here.
-     Stored as RGB triplets so Tailwind opacity modifiers (e.g. bg-accent/70)
-     can compose with it.) */
-  --accent: 157 23 77;
-  --accent-hover: 131 24 67;
-  --accent-highlight: 190 24 93;
-
-  /* Light Theme Surfaces & Colors */
-  --background: #F4F7F9;
-  --surface: #FFFFFF;
-  --surface-muted: #EEF3F6;
+  /* Base surfaces */
+  --background: #F4F7F6;           /* Crisp Eucalyptus Slate — dominant background */
+  --foreground: #1E293B;           /* Deep Slate Blue — primary typography */
+  --surface: #FFFFFF;              /* Pure White — cards, question containers */
+  --surface-muted: #EDF2F0;        /* Muted eucalyptus panel background */
   --surface-elevated: #FFFFFF;
-  --text-primary: #142B4A;
-  --text-secondary: #64748B;
-  --text-muted: #94A3B8;
-  --border: #E2E8F0;
-  --border-strong: #CBD5E1;
-  
-  --primary: #0D9488;
-  --primary-hover: #0F766E;
-  --primary-foreground: #FFFFFF;
-
-  /* Semantic Feedback */
-  --success: #15803D;
-  --warning: #D97706;
-  --error: #DC2626;
-  --info: #2563EB;
+  --secondary-surface: #E2E8F0;    /* Slate Mist — neutral secondary controls */
 
   /* Typography */
+  --text-primary: #1E293B;         /* Deep Slate Blue */
+  --text-secondary: #475569;       /* Supporting secondary text */
+  --text-muted: #64748B;           /* Muted labels */
+
+  /* Structure */
+  --border: #D8E2DF;               /* Subtle eucalyptus-tinted border */
+  --border-strong: #B6C3BE;        /* Derived stronger border for emphasis */
+  --input: #D8E2DF;
+  --ring: #0A5C66;
+
+  /* Brand action */
+  --primary: #0A5C66;              /* Deep Sea Teal — primary buttons, links, active states */
+  --primary-hover: #084A52;        /* Darker teal for hover/active */
+  --primary-foreground: #FFFFFF;
+  --text-on-hover: #E8F4F4;
+
+  /* Semantic feedback */
+  --success: #059669;              /* Fresh Mint Green — correct answers, progress, save confirmations */
+  --warning: #D97706;              /* Warm Ochre Gold — bookmarks, flags, review-required */
+  --error: #BE123C;                /* Documented accessible red (AA on white) */
+  --info: #0A5C66;                 /* Informational guidance uses Deep Sea Teal (per spec) */
+
+  /* Examination-specific tokens */
+  --correct-answer: #059669;
+  --correct-answer-soft: #E8F5EF;
+  --incorrect-answer: #BE123C;
+  --incorrect-answer-soft: #FBEBEE;
+  --bookmarked-question: #D97706;
+  --bookmarked-question-soft: #FBEFE0;
+  --unanswered-question: #94A3A7;
+  --answered-question: #0A5C66;
+  --answer-saved: #059669;
+  --answer-saving: #64748B;
+  --answer-save-failed: #BE123C;
+
+  /* Typography (fonts unchanged — approved Plus Jakarta Sans / Inter pairing) */
   --font-brand: "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-ui: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
@@ -49,32 +64,72 @@
   --radius-xl: 18px;
   --radius-2xl: 24px;
 
-  /* Shadows */
+  /* Shadows — restrained candle on Clinical Precision surfaces */
   --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.05);
   --shadow-md: 0 4px 12px rgb(15 23 42 / 0.08);
   --shadow-lg: 0 12px 32px rgb(15 23 42 / 0.12);
 }
 
+/*
+ * Legacy aliases. Scores of components reference --brand-* token names, so
+ * these aliases now resolve to Clinical Precision. They are documented as
+ * deprecated names for the canonical tokens above and must not be extended
+ * with new colors.
+ */
+:root {
+  --brand-navy: #1E293B;           /* alias of --foreground (Deep Slate Blue) */
+  --brand-teal: #0A5C66;           /* alias of --primary (Deep Sea Teal) */
+  --brand-teal-dark: #084A52;      /* alias of --primary-hover */
+  --brand-navy-deep: #17212B;      /* deepest slate text emphasis */
+  --accent: #D97706;               /* Warm Ochre Gold (attention/review accents) */
+  --accent-hover: #B45309;         /* Accessible ochre for small text */
+}
+
 .dark {
-  /* Dark Theme Surfaces & Colors */
+  /* Base surfaces — deepened slate; same structural hierarchy as light mode */
   --background: #0B1220;
+  --foreground: #F8FAFC;
   --surface: #111C2E;
   --surface-muted: #18263B;
   --surface-elevated: #1B2B42;
+  --secondary-surface: #27364A;
+
   --text-primary: #F8FAFC;
   --text-secondary: #CBD5E1;
   --text-muted: #94A3B8;
+
   --border: #27364A;
   --border-strong: #3B4C63;
-  
-  --primary: #2DD4BF;
+  --input: #3B4C63;
+  --ring: #2DD4BF;
+
+  --primary: #2DD4BF;              /* documented dark-mode variant of Deep Sea Teal */
   --primary-hover: #5EEAD4;
   --primary-foreground: #0B1220;
 
-  /* Dark-mode hero accent (same hue, lifted for contrast on dark surfaces) */
-  --accent: 219 39 119;
-  --accent-hover: 190 24 93;
-  --accent-highlight: 244 114 182;
+  --success: #34D399;
+  --warning: #F59E0B;
+  --error: #FB7185;
+  --info: #2DD4BF;
+
+  --correct-answer: #34D399;
+  --correct-answer-soft: #0C2620;
+  --incorrect-answer: #FB7185;
+  --incorrect-answer-soft: #2A1017;
+  --bookmarked-question: #F59E0B;
+  --bookmarked-question-soft: #2C220C;
+  --unanswered-question: #94A3B8;
+  --answered-question: #2DD4BF;
+  --answer-saved: #34D399;
+  --answer-saving: #94A3B8;
+  --answer-save-failed: #FB7185;
+
+  --brand-navy: #F8FAFC;
+  --brand-teal: #2DD4BF;
+  --brand-teal-dark: #5EEAD4;
+  --brand-navy-deep: #0B1220;
+  --accent: #F59E0B;               /* dark-mode Warm Ochre Gold */
+  --accent-hover: #FBBF24;
 
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.2);
   --shadow-md: 0 4px 12px rgb(0 0 0 / 0.35);
