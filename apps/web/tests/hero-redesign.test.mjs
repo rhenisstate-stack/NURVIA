@@ -37,7 +37,7 @@ test('1. Hero reproduces the approved reference copy and hierarchy', () => {
   for (const copy of [
     'Built for nursing school exam days',
     'Turn Practice Into',
-    'and <span className="text-accent-highlight">HESI</span> Readiness',
+    'and <span className="text-brand-teal">HESI</span> Readiness',
     'Work through ATI, HESI, and exit-exam practice at your own pace. Learn from clear rationales, build comfort with NGN formats, and choose the study mode that fits today.',
     'Try a Practice Set',
     'Explore the Exam Library',
@@ -73,10 +73,10 @@ test('3. Background video layer: decorative, muted, responsive, gated, reduced-m
   }
 });
 
-test('4. Hero CTAs: rose primary + outlined secondary pill over real routes', () => {
+test('4. Hero CTAs: Deep Sea Teal primary + outlined secondary pill over real routes', () => {
   assert(hero.includes('href={startHref}'), 'Try a Practice Set must use the auth-aware start route');
   assert(hero.includes('href={ROUTES.exams}'), 'Explore the Exam Library must link to /exams');
-  assert(hero.includes('bg-accent') && hero.includes('hover:bg-accent-hover'), 'Primary CTA must use the reference rose accent');
+  assert(hero.includes('bg-primary') && hero.includes('hover:bg-primary-hover'), 'Primary CTA must use the Deep Sea Teal brand action');
   assert(/rounded-full/.test(hero), 'Reference pill-shaped CTAs missing');
   assert(!/<Link[^>]*>\s*<Button/.test(hero), 'Hero CTAs must not nest <button> inside <a>');
 });
@@ -86,7 +86,7 @@ test('5. Quick Practice card matches the reference and stays functional', () => 
   assert(quickPractice.includes('heroPracticeQuestions'), 'Card must render the real sample-question data');
   assert(questionsData.includes('A nurse is caring for a client who has been prescribed warfarin'), 'Reference default question (warfarin pharmacology) missing');
   assert(questionsData.includes('Learn-as-you-go mode') && questionsData.includes('PHARMACOLOGY') || questionsData.includes('topic: "PHARMACOLOGY"'), 'Reference chips missing');
-  assert(quickPractice.includes('from-accent from-45%'), 'Reference top accent strip missing');
+  assert(quickPractice.includes('from-brand-teal from-45%'), 'Reference top accent strip missing');
   assert(quickPractice.includes('Keep Going'), 'Reference Keep Going action missing');
   assert(quickPractice.includes('role="radiogroup"') && quickPractice.includes('aria-checked'), 'Accessible option selection missing');
   // Answers/rationales must only be revealed after a selection (learn-as-you-go)

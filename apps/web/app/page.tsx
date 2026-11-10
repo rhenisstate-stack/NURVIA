@@ -244,14 +244,14 @@ export default function HomePage() {
             <div className="rounded-2xl border border-border/80 bg-surface p-7 sm:p-8 flex flex-col justify-between space-y-6 shadow-xs hover:border-brand-teal/50 transition-all">
               <div className="space-y-4">
                 <div className="flex items-center gap-3.5">
-                  <div className="w-12 h-12 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-xl bg-brand-teal/10 text-brand-teal flex items-center justify-center">
                     <HeartPulse className="w-6 h-6" />
                   </div>
                   <div>
                     <h3 className="font-brand text-2xl font-bold text-foreground">
                       HESI & Exit Exams
                     </h3>
-                    <p className="text-xs font-semibold text-purple-600 dark:text-purple-400">
+                    <p className="text-xs font-semibold text-brand-teal">
                       Specialty and exit-exam practice
                     </p>
                   </div>
@@ -359,7 +359,7 @@ export default function HomePage() {
                 <div className="space-y-3">
                   {/* Card Header: Category pill & Free badge */}
                   <div className="flex items-center justify-between">
-                    <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/20">
+                    <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-brand-teal/10 text-brand-teal border border-brand-teal/20">
                       {set.category}
                     </span>
                     <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
@@ -542,7 +542,7 @@ export default function HomePage() {
                 <p className="text-foreground-secondary leading-relaxed bg-surface p-3.5 rounded-xl border border-border/60">
                   Patient presents with sudden-onset sharp pleuritic chest pain, tachypnea, and SpO2 88% on room air. Heart rate is 118 bpm, regular. Diminished breath sounds at right base.
                 </p>
-                <div className="p-3.5 rounded-xl bg-teal-500/10 border border-teal-500/20 text-teal-900 dark:text-teal-100">
+                <div className="p-3.5 rounded-xl bg-brand-teal/10 border border-brand-teal/20 text-foreground dark:text-slate-100">
                   <strong className="block mb-1 text-brand-teal font-bold">Clinical Rationale Preview:</strong>
                   Recognize sudden dyspnea, tachycardia, and pleuritic pain in an orthopedic surgical patient as high suspicion for acute Pulmonary Embolism (PE). Immediate priority: apply high-flow oxygen, elevate head of bed, and notify surgical/rapid response team.
                 </div>

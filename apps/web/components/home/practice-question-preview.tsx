@@ -118,17 +118,17 @@ export function PracticeQuestionPreview() {
     <section
       aria-label="Quick Practice"
       data-testid="hero-quick-practice"
-      className="relative rounded-lg border border-border/80 bg-surface shadow-lg shadow-rose-950/10 overflow-hidden transition-all duration-200 dark:bg-surface"
+      className="relative rounded-lg border border-border/80 bg-surface shadow-lg shadow-slate-900/10 overflow-hidden transition-all duration-200 dark:bg-surface"
     >
       {/* Reference-matched accent strip hugging the top-left edge of the card */}
       <div
         aria-hidden="true"
-        className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-accent from-45% via-accent/25 to-transparent"
+        className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand-teal from-45% via-brand-teal/25 to-transparent"
       />
       <div className="p-5 sm:p-6 pb-4 border-b border-border/60">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-accent text-white flex items-center justify-center">
+            <div className="w-9 h-9 rounded-lg bg-brand-teal text-white flex items-center justify-center">
               <HeartPulse className="w-5 h-5" />
             </div>
             <div>
@@ -145,7 +145,7 @@ export function PracticeQuestionPreview() {
             type="button"
             onClick={() => setIsTimerRunning(!isTimerRunning)}
             title={isTimerRunning ? "Click to pause timer" : "Click to resume timer"}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-muted border border-border text-foreground-secondary text-xs font-mono font-medium hover:border-accent/40 transition-colors"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-muted border border-border text-foreground-secondary text-xs font-mono font-medium hover:border-brand-teal/50 transition-colors"
           >
             <Clock className="w-3.5 h-3.5 text-foreground-muted" />
             <span>{formatTimer(seconds)}</span>
@@ -154,7 +154,7 @@ export function PracticeQuestionPreview() {
 
         {/* Eyebrow tags */}
         <div className="flex flex-wrap items-center gap-2 mt-4">
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/25 text-[11px] font-semibold">
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-brand-teal/10 text-brand-teal dark:text-teal-300 border border-brand-teal/25 text-[11px] font-semibold">
             <Sparkles className="w-3 h-3" />
             {currentQ.modeBadge}
           </span>
@@ -214,7 +214,7 @@ export function PracticeQuestionPreview() {
                       aria-checked={isSelected}
                       onClick={() => handleSelectOption(idx)}
                       className={cn(
-                        "w-full text-left p-3.5 sm:p-4 rounded-lg border transition-all flex items-start gap-3.5 group focus:outline-none focus:ring-2 focus:ring-accent/70",
+                        "w-full text-left p-3.5 sm:p-4 rounded-lg border transition-all flex items-start gap-3.5 group focus:outline-none focus:ring-2 focus:ring-brand-teal/70",
                         optionStyle
                       )}
                     >
@@ -337,7 +337,7 @@ export function PracticeQuestionPreview() {
                   className={cn(
                     "h-2 rounded-full transition-all duration-200",
                     currentIndex === idx
-                      ? "w-6 bg-accent"
+                      ? "w-6 bg-brand-teal"
                       : "w-2 bg-border-strong hover:bg-foreground-muted"
                   )}
                 />
@@ -348,7 +348,7 @@ export function PracticeQuestionPreview() {
             <Button
               size="sm"
               onClick={handleNext}
-              className="text-xs font-semibold h-8 px-4 gap-1 rounded-full bg-accent hover:bg-accent-hover text-white"
+              className="text-xs font-semibold h-8 px-4 gap-1 rounded-full bg-brand-teal hover:bg-brand-tealDark text-white"
             >
               <span>{currentIndex === heroPracticeQuestions.length - 1 ? "Finish" : "Keep Going"}</span>
               <ArrowRight className="w-3.5 h-3.5 ml-0.5" />

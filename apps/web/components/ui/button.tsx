@@ -28,7 +28,7 @@ const variantStyles = {
   ghost:
     "text-foreground hover:bg-surface-muted hover:text-foreground dark:hover:bg-surface-muted",
   destructive:
-    "bg-semantic-error text-white hover:bg-red-700 shadow-sm focus-visible:ring-red-500",
+    "bg-semantic-error text-white hover:bg-rose-800 shadow-sm focus-visible:ring-rose-700",
   link: "text-primary underline-offset-4 hover:underline p-0 h-auto font-medium",
 };
 
