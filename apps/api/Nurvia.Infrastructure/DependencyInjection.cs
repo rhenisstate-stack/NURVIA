@@ -12,8 +12,13 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("DefaultConnection")
-            ?? "Host=localhost;Port=5432;Database=nurvia_db;Username=nurvia_user;Password=nurvia_secure_password_dev2026!";
+        var connectionString = configuration.GetConnectionString("DefaultConnection");
+        
+        // Ensure a connection string is provided
+        if (string.IsNullOrEmpty(connectionString))
+        {
+            throw new InvalidOperationException("No database connection string found. Please configure a connection string for the current environment.");
+        }
 
         services.AddDbContext<NurviaDbContext>(options =>
             options.UseNpgsql(connectionString, b => b.MigrationsAssembly(typeof(NurviaDbContext).Assembly.FullName)));

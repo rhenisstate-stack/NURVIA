@@ -10,20 +10,92 @@ using Nurvia.Domain.Exceptions;
 using Nurvia.Domain.Exams;
 using Nurvia.Domain.Questions;
 using Nurvia.Infrastructure.Persistence;
+using Npgsql;
+using System.ComponentModel.DataAnnotations;
+using System.Data.Common;
 using Xunit;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Nurvia.Tests;
 
 public class PostgreSqlIntegrationTests : IAsyncLifetime
 {
     private readonly Xunit.Abstractions.ITestOutputHelper _output;
+    private readonly string _connectionString;
+    private static bool _validationPerformed = false;
 
     public PostgreSqlIntegrationTests(Xunit.Abstractions.ITestOutputHelper output)
     {
         _output = output;
+        _connectionString = LoadTestConnectionString();
+        ValidateTestEnvironmentAndDatabase();
     }
 
-    private const string ConnectionString = "Host=localhost;Port=5432;Database=nurvia_db;Username=nurvia_user;Password=nurvia_secure_password_dev2026!;Include Error Detail=true";
+    private string LoadTestConnectionString()
+    {
+        // Load configuration from test environment
+        var builder = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.Test.json", optional: false, reloadOnChange: true)
+            .AddEnvironmentVariables();
+            
+        var configuration = builder.Build();
+        var connectionString = configuration.GetConnectionString("DefaultConnection");
+        
+        if (string.IsNullOrEmpty(connectionString))
+        {
+            throw new InvalidOperationException("Test database connection string not found in configuration.");
+        }
+        
+        return connectionString;
+    }
+
+    private void ValidateTestEnvironmentAndDatabase()
+    {
+        // Ensure validation happens only once
+        if (_validationPerformed) return;
+        _validationPerformed = true;
+
+        // 1. Validate that we're running in Test environment
+        var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT");
+        if (string.IsNullOrEmpty(environment) || environment != "Test")
+        {
+            throw new InvalidOperationException("Tests must be run with DOTNET_ENVIRONMENT=Test");
+        }
+
+        // 2. Validate database name is exactly "nurvia_test"
+        var builder = new NpgsqlConnectionStringBuilder(_connectionString);
+        if (builder.Database != "nurvia_test")
+        {
+            throw new InvalidOperationException($"Test environment must use 'nurvia_test' database. Current database: {builder.Database}");
+        }
+
+        // 3. Validate that we're NOT using development database
+        if (builder.Database == "nurvia_db")
+        {
+            throw new InvalidOperationException("Test environment cannot use development database 'nurvia_db'");
+        }
+
+        // 4. Validate that we're NOT using production database (simple heuristic)
+        if (builder.Database.Contains("production") || builder.Database.Contains("prod"))
+        {
+            throw new InvalidOperationException("Test environment cannot use production database");
+        }
+
+        // 5. Validate connection string format
+        if (string.IsNullOrEmpty(builder.Host) || builder.Port <= 0)
+        {
+            throw new InvalidOperationException("Invalid database connection string: missing host or port");
+        }
+
+        // 6. Validate that we're not connecting to production host
+        if (builder.Host == "prod-db.nurvia.com" || builder.Host == "production-db.nurvia.com")
+        {
+            throw new InvalidOperationException("Test environment cannot connect to production database host");
+        }
+    }
+
     private readonly List<Guid> _createdQuestionIds = new();
     private readonly List<Guid> _createdExamIds = new();
     private readonly List<Guid> _createdUserIds = new();
@@ -31,7 +103,7 @@ public class PostgreSqlIntegrationTests : IAsyncLifetime
     private NurviaDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<NurviaDbContext>()
-            .UseNpgsql(ConnectionString)
+            .UseNpgsql(_connectionString)
             .EnableSensitiveDataLogging()
             .LogTo(_output.WriteLine, Microsoft.Extensions.Logging.LogLevel.Information)
             .Options;
