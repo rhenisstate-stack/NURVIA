@@ -116,20 +116,20 @@ export default function HomePage() {
         <div className="relative z-10 mx-auto max-w-7xl px-4 pb-14 pt-10 sm:px-6 sm:pb-16 sm:pt-14 lg:px-8 lg:pb-20 lg:pt-20">
           <div className="grid items-center gap-12 md:gap-10 lg:grid-cols-12 lg:gap-12">
             <div className="min-w-0 space-y-7 lg:col-span-7">
-              <p className="flex items-center gap-3 text-[13px] font-bold uppercase tracking-[0.22em] text-accent-highlight">
-                <span aria-hidden="true" className="h-px w-10 bg-accent/70" />
+              <p className="flex items-center gap-3 text-[13px] font-bold uppercase tracking-[0.22em] text-brand-teal">
+                <span aria-hidden="true" className="h-px w-10 bg-brand-teal/70" />
                 Built for nursing school exam days
-                <span aria-hidden="true" className="h-px w-5 bg-accent/30" />
+                <span aria-hidden="true" className="h-px w-5 bg-brand-teal/30" />
               </p>
               <h1
                 id="hero-heading"
                 className="font-brand text-[2.75rem] font-extrabold leading-[1.06] tracking-tight text-foreground sm:text-5xl lg:text-[3.5rem] xl:text-[3.75rem]"
               >
                 <span className="block">
-                  Turn Practice Into <span className="text-accent-highlight">ATI</span>
+                  Turn Practice Into <span className="text-brand-teal">ATI</span>
                 </span>
                 <span className="block">
-                  and <span className="text-accent-highlight">HESI</span> Readiness
+                  and <span className="text-brand-teal">HESI</span> Readiness
                 </span>
               </h1>
               <p className="max-w-lg text-base leading-relaxed text-foreground-secondary sm:text-lg">

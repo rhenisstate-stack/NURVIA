@@ -41,7 +41,7 @@ export function HeroBackgroundVideo() {
       <div
         aria-hidden="true"
         data-testid="hero-background-fallback"
-        className="absolute inset-0 -z-10 bg-[linear-gradient(150deg,#FAF3F6_0%,#F6EEF2_45%,#F2F3EC_100%)] dark:bg-[linear-gradient(150deg,#0B1220_0%,#0E1B30_55%,#0B1D33_100%)]"
+        className="absolute inset-0 -z-10 bg-[linear-gradient(150deg,#F4F7F6_0%,#EDF2F0_45%,#E9EFEC_100%)] dark:bg-[linear-gradient(150deg,#0B1220_0%,#0E1B30_55%,#0B1D33_100%)]"
       />
     );
   }
@@ -67,8 +67,8 @@ function videoLayer(asset: ApprovedHeroVideo, onFailed: () => void) {
         ))}
       </video>
       {/* Restrained light scrim: keeps headline/Quick Practice contrast high
-          while letting the ambient motion show through, per the reference. */}
-      <div className="absolute inset-0 bg-[linear-gradient(150deg,rgba(250,243,246,0.88)_0%,rgba(246,238,242,0.74)_50%,rgba(242,243,236,0.7)_100%)] dark:bg-[linear-gradient(150deg,rgba(11,18,32,0.88)_0%,rgba(14,27,48,0.8)_50%,rgba(11,29,51,0.78)_100%)]" />
+          while letting the ambient motion show through — Clinical Precision wash. */}
+      <div className="absolute inset-0 bg-[linear-gradient(150deg,rgba(244,247,246,0.88)_0%,rgba(237,242,240,0.74)_50%,rgba(233,239,236,0.7)_100%)] dark:bg-[linear-gradient(150deg,rgba(11,18,32,0.88)_0%,rgba(14,27,48,0.8)_50%,rgba(11,29,51,0.78)_100%)]" />
     </div>
   );
 }
