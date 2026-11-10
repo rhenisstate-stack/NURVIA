@@ -11,12 +11,12 @@ export function SuperadminSwitcher() {
   
   return (
     <div className="flex items-center gap-2 mt-4">
-      <Button asChild variant="outline" size="sm">
-        <Link href="/admin">Admin Dashboard</Link>
-      </Button>
-      <Button asChild variant="outline" size="sm">
-        <Link href="/learner">Learner Dashboard</Link>
-      </Button>
+      <Link href="/admin">
+        <Button variant="outline" size="sm">Admin Dashboard</Button>
+      </Link>
+      <Link href="/learner">
+        <Button variant="outline" size="sm">Learner Dashboard</Button>
+      </Link>
     </div>
   );
 }
