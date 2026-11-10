@@ -80,16 +80,16 @@ test('5. Learner Quick Practice page honours the requested pathway', () => {
 });
 
 test('6. Video panel: approved-asset gate, explicit placeholder, fallback, reduced motion, efficient loading', () => {
-  assert(media.includes('status: "pending"'), 'No approved video exists, so the manifest must remain pending');
   assert(videoPanel.includes('hero-video-placeholder') && videoPanel.includes('approved video pending'), 'Explicit placeholder missing');
   assert(videoPanel.includes('prefers-reduced-motion'), 'Reduced-motion handling missing');
   assert(videoPanel.includes('preload="none"') && videoPanel.includes('IntersectionObserver'), 'Lazy loading / in-view playback missing');
   assert(videoPanel.includes('controls') && videoPanel.includes('muted') && videoPanel.includes('playsInline'), 'Video playback attributes missing');
   assert(videoPanel.includes('aspect-video') && videoPanel.includes('rounded-2xl'), 'Aspect ratio / rounded design-system container missing');
   assert(/onError=\{onFailed\}/.test(videoPanel) && videoPanel.includes('variant={approved ? "failed" : "pending"}'), 'Playback failure fallback missing');
-  const publicDir = path.join(webRoot, 'public', 'brand', 'hero');
-  if (media.includes('status: "approved"')) {
-    assert(fs.existsSync(publicDir), 'Approved manifest requires assets under public/brand/hero');
+  const manifestStatus = media.match(/export const heroVideo: HeroVideoConfig = \{\s*status: "(\w+)"/)?.[1];
+  assert(['pending', 'approved'].includes(manifestStatus), `heroVideo manifest status not found or unknown: ${manifestStatus}`);
+  if (manifestStatus === 'approved') {
+    assert(fs.existsSync(path.join(webRoot, 'public', 'brand', 'hero')), 'Approved manifest requires assets under public/brand/hero');
   }
 });
 

@@ -35,16 +35,22 @@ test.describe("Complete authenticated learner journey", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Your Path to Nursing Confidence." })).toBeVisible();
     await expect(page.getByText("Nursing exam preparation, reimagined", { exact: false })).toBeVisible();
     await expect(page.getByText("Build clinical confidence through focused practice", { exact: false })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Quick Practice/ })).toBeVisible();
+    const quickPractice = page.getByRole("region", { name: "Quick Practice" });
+    await expect(quickPractice).toBeVisible();
+    await expect(quickPractice.getByRole("button", { name: /Begin Quick Practice/ })).toBeVisible();
 
     const startLink = page.getByRole("link", { name: /Start Practicing/ }).first();
     await expect(startLink).toBeVisible();
     await expect(startLink).toHaveAttribute("href", /\/sign-up/);
 
-    const exploreButton = page.getByRole("main").getByRole("button", { name: "Explore Exams" });
-    await expect(exploreButton).toBeVisible();
+    const exploreLink = page.getByRole("main").getByRole("link", { name: "Explore Exams" });
+    await expect(exploreLink).toBeVisible();
+    await expect(exploreLink).toHaveAttribute("href", "/exams");
     // Secondary CTA stroke must be visible at rest
-    await expect(exploreButton).toHaveClass(/border-2/);
+    await expect(exploreLink).toHaveClass(/border-2/);
+
+    // Product video panel sits below the hero columns, never behind the copy
+    await expect(page.getByRole("region", { name: "See the learner journey" })).toBeVisible();
 
     // Navbar auth links open dedicated pages
     await expect(page.getByRole("link", { name: "Sign In" }).first()).toBeVisible();
@@ -57,8 +63,19 @@ test.describe("Complete authenticated learner journey", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1, name: "Your Path to Nursing Confidence." })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Quick Practice/ })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Quick Practice" })).toBeVisible();
     await shot(page, "01b-hero-mobile");
+  });
+
+  test("Step 1c — Quick Practice validates and routes the selected pathway", async ({ page }) => {
+    await page.goto("/");
+    const quickPractice = page.getByRole("region", { name: "Quick Practice" });
+    await quickPractice.getByRole("button", { name: /Begin Quick Practice/ }).click();
+    await expect(quickPractice.getByRole("alert")).toHaveText(/Select NCLEX-RN or NCLEX-PN/);
+    await quickPractice.getByRole("radio", { name: /NCLEX-PN/ }).check({ force: true });
+    await quickPractice.getByRole("button", { name: /Begin Quick Practice/ }).click();
+    await page.waitForURL(/\/sign-in\?returnTo=/);
+    expect(new URL(page.url()).searchParams.get("returnTo")).toBe("/learner/custom-practice?pathway=PN_LPN");
   });
 
   test("Step 2 — Registration persists a learner account", async ({ page }) => {
