@@ -14,8 +14,6 @@ using Npgsql;
 using System.ComponentModel.DataAnnotations;
 using System.Data.Common;
 using Xunit;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Nurvia.Tests;
 
@@ -28,27 +26,9 @@ public class PostgreSqlIntegrationTests : IAsyncLifetime
     public PostgreSqlIntegrationTests(Xunit.Abstractions.ITestOutputHelper output)
     {
         _output = output;
-        _connectionString = LoadTestConnectionString();
+        _connectionString = Environment.GetEnvironmentVariable("TEST_CONNECTION_STRING") 
+                           ?? "Host=localhost;Port=5432;Database=nurvia_test;Username=nurvia_test_user;Password=nurvia_secure_test_password_dev2026!;Include Error Detail=true";
         ValidateTestEnvironmentAndDatabase();
-    }
-
-    private string LoadTestConnectionString()
-    {
-        // Load configuration from test environment
-        var builder = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.Test.json", optional: false, reloadOnChange: true)
-            .AddEnvironmentVariables();
-            
-        var configuration = builder.Build();
-        var connectionString = configuration.GetConnectionString("DefaultConnection");
-        
-        if (string.IsNullOrEmpty(connectionString))
-        {
-            throw new InvalidOperationException("Test database connection string not found in configuration.");
-        }
-        
-        return connectionString;
     }
 
     private void ValidateTestEnvironmentAndDatabase()
@@ -93,6 +73,12 @@ public class PostgreSqlIntegrationTests : IAsyncLifetime
         if (builder.Host == "prod-db.nurvia.com" || builder.Host == "production-db.nurvia.com")
         {
             throw new InvalidOperationException("Test environment cannot connect to production database host");
+        }
+        
+        // 7. Validate that we have a password (security check)
+        if (string.IsNullOrEmpty(builder.Password))
+        {
+            throw new InvalidOperationException("Database password must be configured for test environment");
         }
     }
 
