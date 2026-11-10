@@ -26,8 +26,11 @@ public class PostgreSqlIntegrationTests : IAsyncLifetime
     public PostgreSqlIntegrationTests(Xunit.Abstractions.ITestOutputHelper output)
     {
         _output = output;
-        _connectionString = Environment.GetEnvironmentVariable("TEST_CONNECTION_STRING") 
-                           ?? "Host=localhost;Port=5432;Database=nurvia_test;Username=nurvia_test_user;Password=nurvia_secure_test_password_dev2026!;Include Error Detail=true";
+        _connectionString = Environment.GetEnvironmentVariable("TEST_CONNECTION_STRING");
+        if (string.IsNullOrEmpty(_connectionString))
+        {
+            throw new InvalidOperationException("TEST_CONNECTION_STRING environment variable is required for test execution. Please set this variable to point to the test database.");
+        }
         ValidateTestEnvironmentAndDatabase();
     }
 
