@@ -141,7 +141,7 @@ export default function HomePage() {
                   className={buttonVariants({
                     size: "lg",
                     className:
-                      "h-14 w-full gap-2 rounded-full bg-accent px-8 text-[1.0625rem] font-bold text-white shadow-md hover:bg-accent-hover focus-visible:ring-offset-background min-[480px]:w-auto md:w-full lg:w-auto lg:min-w-[230px]",
+                      "h-14 w-full gap-2 rounded-full bg-primary px-8 text-[1.0625rem] font-bold text-primary-foreground shadow-md hover:bg-primary-hover focus-visible:ring-offset-background min-[480px]:w-auto md:w-full lg:w-auto lg:min-w-[230px]",
                   })}
                 >
                   Try a Practice Set <ArrowRight className="h-5 w-5" aria-hidden="true" />
@@ -152,7 +152,7 @@ export default function HomePage() {
                     variant: "outline",
                     size: "lg",
                     className:
-                      "h-14 w-full rounded-full border-border bg-surface px-8 text-[1.0625rem] font-bold text-foreground hover:border-accent/60 hover:text-accent-highlight focus-visible:ring-offset-background min-[480px]:w-auto md:w-full lg:w-auto lg:min-w-[230px]",
+                      "h-14 w-full rounded-full border-border bg-surface px-8 text-[1.0625rem] font-bold text-foreground hover:border-brand-teal/60 hover:text-brand-tealDark focus-visible:ring-offset-background min-[480px]:w-auto md:w-full lg:w-auto lg:min-w-[230px]",
                   })}
                 >
                   Explore the Exam Library
