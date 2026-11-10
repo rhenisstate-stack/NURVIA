@@ -8,8 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { StudentTestimonialCarousel } from "@/components/home/student-testimonial-carousel";
 import { FloatingStudyChat } from "@/components/home/floating-study-chat";
-import { HeroQuickPractice } from "@/components/home/hero-quick-practice";
-import { HeroVideoPanel } from "@/components/home/hero-video-panel";
+import { PracticeQuestionPreview } from "@/components/home/practice-question-preview";
+import { HeroBackgroundVideo } from "@/components/home/hero-background-video";
 import { ROUTES } from "@/lib/routes";
 import {
   initialStudySets,
@@ -108,23 +108,32 @@ export default function HomePage() {
 
   return (
     <PublicShell>
-      {/* 1. HERO — messaging + Quick Practice side by side, product video panel below */}
-      <section aria-labelledby="hero-heading" className="relative isolate overflow-hidden border-b border-border/70 bg-background">
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_85%_0%,rgba(13,148,136,0.14),transparent_55%),radial-gradient(ellipse_at_0%_100%,rgba(20,43,74,0.07),transparent_50%)] dark:bg-[radial-gradient(ellipse_at_85%_0%,rgba(45,212,191,0.12),transparent_55%),radial-gradient(ellipse_at_0%_100%,rgba(11,29,51,0.6),transparent_50%)]" />
-        <div className="mx-auto max-w-7xl px-4 pb-14 pt-10 sm:px-6 sm:pb-16 sm:pt-14 lg:px-8 lg:pb-20 lg:pt-20">
-          <div className="grid items-center gap-10 md:grid-cols-2 md:gap-8 lg:grid-cols-12 lg:gap-14">
-            <div className="min-w-0 space-y-6 lg:col-span-7">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-tealDark dark:text-teal-300">
-                Nursing exam preparation, reimagined
+      {/* 1. HERO — reference-matched split composition: messaging + Quick Practice,
+          both layered over a single responsive background video. The product video
+          was deliberately NOT placed in a separate section below the hero. */}
+      <section aria-labelledby="hero-heading" className="relative isolate overflow-hidden border-b border-border/70">
+        <HeroBackgroundVideo />
+        <div className="relative z-10 mx-auto max-w-7xl px-4 pb-14 pt-10 sm:px-6 sm:pb-16 sm:pt-14 lg:px-8 lg:pb-20 lg:pt-20">
+          <div className="grid items-center gap-12 md:gap-10 lg:grid-cols-12 lg:gap-12">
+            <div className="min-w-0 space-y-7 lg:col-span-7">
+              <p className="flex items-center gap-3 text-[13px] font-bold uppercase tracking-[0.22em] text-accent-highlight dark:text-accent-highlight">
+                <span aria-hidden="true" className="h-px w-10 bg-accent/70" />
+                Built for nursing school exam days
+                <span aria-hidden="true" className="h-px w-5 bg-accent/30" />
               </p>
               <h1
                 id="hero-heading"
-                className="max-w-2xl font-brand text-4xl font-extrabold leading-[1.08] tracking-tight text-brand-navy dark:text-white sm:text-5xl md:text-[2.75rem] lg:text-[3.5rem] xl:text-6xl"
+                className="font-brand text-[2.75rem] font-extrabold leading-[1.06] tracking-tight text-foreground sm:text-5xl lg:text-[3.5rem] xl:text-[3.75rem]"
               >
-                Your Path to Nursing Confidence.
+                <span className="block">
+                  Turn Practice Into <span className="text-accent-highlight">ATI</span>
+                </span>
+                <span className="block">
+                  and <span className="text-accent-highlight">HESI</span> Readiness
+                </span>
               </h1>
-              <p className="max-w-xl text-base leading-relaxed text-foreground-secondary sm:text-lg">
-                Build clinical confidence through focused practice, realistic nursing assessments, and meaningful performance insights designed to help you prepare with purpose.
+              <p className="max-w-lg text-base leading-relaxed text-foreground-secondary sm:text-lg">
+                Work through ATI, HESI, and exit-exam practice at your own pace. Learn from clear rationales, build comfort with NGN formats, and choose the study mode that fits today.
               </p>
               <div className="flex flex-col gap-3 pt-1 min-[480px]:flex-row md:flex-col lg:flex-row">
                 <Link
@@ -132,10 +141,10 @@ export default function HomePage() {
                   className={buttonVariants({
                     size: "lg",
                     className:
-                      "h-14 w-full gap-2 rounded-lg bg-brand-teal px-7 text-[1.1875rem] font-bold text-white shadow-md hover:bg-brand-tealDark focus-visible:ring-offset-background dark:bg-brand-teal dark:text-white dark:hover:bg-brand-tealDark min-[480px]:w-auto md:w-full lg:w-auto lg:min-w-[220px]",
+                      "h-14 w-full gap-2 rounded-full bg-accent px-8 text-[1.0625rem] font-bold text-white shadow-md hover:bg-accent-hover focus-visible:ring-offset-background min-[480px]:w-auto md:w-full lg:w-auto lg:min-w-[230px]",
                   })}
                 >
-                  Start Practicing <ArrowRight className="h-5 w-5" aria-hidden="true" />
+                  Try a Practice Set <ArrowRight className="h-5 w-5" aria-hidden="true" />
                 </Link>
                 <Link
                   href={ROUTES.exams}
@@ -143,29 +152,29 @@ export default function HomePage() {
                     variant: "outline",
                     size: "lg",
                     className:
-                      "h-14 w-full rounded-lg border-2 border-brand-navy bg-transparent px-7 text-[1.1875rem] font-bold text-brand-navy hover:bg-brand-navy hover:text-white focus-visible:ring-offset-background dark:border-slate-200 dark:text-white dark:hover:border-white dark:hover:bg-white dark:hover:text-brand-navyDeep min-[480px]:w-auto md:w-full lg:w-auto lg:min-w-[220px]",
+                      "h-14 w-full rounded-full border-border bg-surface px-8 text-[1.0625rem] font-bold text-foreground hover:border-accent/60 hover:text-accent-highlight focus-visible:ring-offset-background min-[480px]:w-auto md:w-full lg:w-auto lg:min-w-[230px]",
                   })}
                 >
-                  Explore Exams
+                  Explore the Exam Library
                 </Link>
               </div>
-              <ul className="flex flex-wrap gap-x-5 gap-y-2 pt-1 text-sm text-foreground-secondary" aria-label="What you get">
-                {["RN & PN pathways", "Autosaved attempts", "Result insights"].map((item) => (
-                  <li key={item} className="flex items-center gap-1.5">
-                    <CheckCircle2 className="h-4 w-4 shrink-0 text-brand-teal dark:text-teal-300" aria-hidden="true" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
+              <div className="flex flex-wrap items-center gap-2 pt-1" aria-label="Rated 4.9 out of 5 by more than 2,000 students">
+                <span className="flex items-center gap-0.5" aria-hidden="true">
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <Star
+                      key={index}
+                      className="h-4 w-4 fill-amber-500 text-amber-500"
+                    />
+                  ))}
+                </span>
+                <span className="text-sm font-bold text-foreground">4.9/5</span>
+                <span className="text-sm text-foreground-secondary">shared by 2,000+ students</span>
+              </div>
             </div>
 
             <div className="min-w-0 lg:col-span-5">
-              <HeroQuickPractice />
+              <PracticeQuestionPreview />
             </div>
-          </div>
-
-          <div className="mt-12 lg:mt-16">
-            <HeroVideoPanel />
           </div>
         </div>
       </section>

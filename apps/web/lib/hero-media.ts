@@ -1,10 +1,13 @@
 /**
- * Hero product-video manifest.
+ * Hero background-video manifest.
  *
- * The landing-page video panel only plays media that has been explicitly
- * approved by the product owner. Until an approved recording of the real
- * learner journey is delivered (see docs/NURVIA-HERO-VIDEO-STORYBOARD.md),
- * the status stays "pending" and the panel renders an explicit placeholder.
+ * The landing-page hero renders its messaging and the Quick Practice card
+ * over a single responsive background video. Just like the previous
+ * video-panel manifest, only media that has been explicitly approved by the
+ * product owner may be published. Until an approved hero background video is
+ * delivered, `status` stays "pending" and the hero renders the
+ * reference-matched static gradient fallback instead (see
+ * `components/home/hero-background-video.tsx`).
  *
  * To publish an approved asset, place the files under
  * `apps/web/public/brand/hero/` and replace `heroVideo` with an
@@ -12,13 +15,17 @@
  *
  *   export const heroVideo: HeroVideoConfig = {
  *     status: "approved",
- *     title: "NURVIA learner journey walkthrough",
- *     poster: "/brand/hero/learner-journey-poster.webp",
+ *     title: "NURVIA hero background",
+ *     poster: "/brand/hero/hero-background-poster.webp",
  *     sources: [
- *       { src: "/brand/hero/learner-journey.webm", type: "video/webm" },
- *       { src: "/brand/hero/learner-journey.mp4", type: "video/mp4" },
+ *       { src: "/brand/hero/hero-background.webm", type: "video/webm" },
+ *       { src: "/brand/hero/hero-background.mp4", type: "video/mp4" },
  *     ],
  *   };
+ *
+ * The approved video must be a soft, light-toned ambient loop: the hero keeps
+ * near-black headline text on a rosy light wash (per the approved reference)
+ * and the component only adds a restrained light scrim over the video.
  */
 
 export interface HeroVideoSource {
@@ -42,17 +49,5 @@ export type HeroVideoConfig = ApprovedHeroVideo | PendingHeroVideo;
 
 export const heroVideo: HeroVideoConfig = {
   status: "pending",
-  reason: "No approved NURVIA learner-journey recording has been delivered yet.",
+  reason: "No approved NURVIA hero background video has been delivered yet.",
 };
-
-/** The learner journey the approved walkthrough must demonstrate, in order. */
-export const heroVideoChapters = [
-  "Platform discovery",
-  "Account registration",
-  "Sign in",
-  "Learner dashboard",
-  "Exam access",
-  "Answering questions",
-  "Exam submission",
-  "Performance results & charts",
-] as const;

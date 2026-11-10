@@ -23,7 +23,7 @@ export function PracticeQuestionPreview() {
   const [currentIndex, setCurrentIndex] = React.useState(0);
   const [selectedAnswers, setSelectedAnswers] = React.useState<Record<number, number>>({});
   const [showRationale, setShowRationale] = React.useState(true);
-  const [seconds, setSeconds] = React.useState(78); // 01:18 in seconds
+  const [seconds, setSeconds] = React.useState(18); // matches the approved reference's 0:18 start
   const [isTimerRunning, setIsTimerRunning] = React.useState(true);
   const [completed, setCompleted] = React.useState(false);
 
@@ -43,7 +43,7 @@ export function PracticeQuestionPreview() {
   const formatTimer = (totalSec: number) => {
     const mins = Math.floor(totalSec / 60);
     const secs = totalSec % 60;
-    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+    return `${mins}:${String(secs).padStart(2, "0")}`;
   };
 
   const handleSelectOption = (index: number) => {
@@ -72,14 +72,27 @@ export function PracticeQuestionPreview() {
     setCurrentIndex(0);
     setSelectedAnswers({});
     setCompleted(false);
-    setSeconds(78);
+    setSeconds(18);
     setIsTimerRunning(true);
   };
 
-  // Keyboard accessibility: 1, 2, 3, 4 or A, B, C, D
+  // Keyboard accessibility: 1, 2, 3, 4 or A, B, C, D.
+  // Skip while the user is typing elsewhere on the page (e.g. the study-set
+  // search field) so typing "a"–"d" outside the card never changes a selection.
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (completed) return;
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
       const key = e.key.toUpperCase();
       if (key === "1" || key === "A") handleSelectOption(0);
       if (key === "2" || key === "B") handleSelectOption(1);
@@ -102,47 +115,54 @@ export function PracticeQuestionPreview() {
   }, 0);
 
   return (
-    <div className="w-full max-w-xl mx-auto lg:max-w-none">
-      <div className="rounded-2xl border border-border/80 bg-surface/95 dark:bg-surface/90 shadow-xl backdrop-blur-md overflow-hidden transition-all duration-200">
-        {/* Card Header matching screenshot */}
-        <div className="p-5 sm:p-6 pb-4 border-b border-border/60">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-brand-teal/15 text-brand-teal dark:text-teal-400 flex items-center justify-center font-bold">
-                <HeartPulse className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-foreground">
-                  QUICK PRACTICE
-                </span>
-                <span className="text-xs text-foreground-muted block">
-                  Question {currentIndex + 1} of {heroPracticeQuestions.length}
-                </span>
-              </div>
+    <section
+      aria-label="Quick Practice"
+      data-testid="hero-quick-practice"
+      className="relative rounded-lg border border-border/80 bg-surface shadow-lg shadow-rose-950/10 overflow-hidden transition-all duration-200 dark:bg-surface"
+    >
+      {/* Reference-matched accent strip hugging the top-left edge of the card */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-accent from-45% via-accent/25 to-transparent"
+      />
+      <div className="p-5 sm:p-6 pb-4 border-b border-border/60">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-accent text-white flex items-center justify-center">
+              <HeartPulse className="w-5 h-5" />
             </div>
-
-            <button
-              type="button"
-              onClick={() => setIsTimerRunning(!isTimerRunning)}
-              title={isTimerRunning ? "Click to pause timer" : "Click to resume timer"}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-muted border border-border text-foreground-secondary text-xs font-mono font-medium hover:border-brand-teal/40 transition-colors"
-            >
-              <Clock className="w-3.5 h-3.5 text-foreground-muted" />
-              <span>{formatTimer(seconds)}</span>
-            </button>
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+                QUICK PRACTICE
+              </span>
+              <span className="text-xs text-foreground-muted block">
+                Question {currentIndex + 1} of {heroPracticeQuestions.length}
+              </span>
+            </div>
           </div>
 
-          {/* Eyebrow tags */}
-          <div className="flex flex-wrap items-center gap-2 mt-4">
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-teal-500/10 text-brand-teal dark:text-teal-300 border border-teal-500/20 text-[11px] font-semibold">
-              <Sparkles className="w-3 h-3" />
-              {currentQ.modeBadge}
-            </span>
-            <span className="px-2.5 py-0.5 rounded-full bg-surface-muted text-foreground-secondary border border-border text-[11px] font-semibold uppercase tracking-wider">
-              {currentQ.topic}
-            </span>
-          </div>
+          <button
+            type="button"
+            onClick={() => setIsTimerRunning(!isTimerRunning)}
+            title={isTimerRunning ? "Click to pause timer" : "Click to resume timer"}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-muted border border-border text-foreground-secondary text-xs font-mono font-medium hover:border-accent/40 transition-colors"
+          >
+            <Clock className="w-3.5 h-3.5 text-foreground-muted" />
+            <span>{formatTimer(seconds)}</span>
+          </button>
         </div>
+
+        {/* Eyebrow tags */}
+        <div className="flex flex-wrap items-center gap-2 mt-4">
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/25 text-[11px] font-semibold">
+            <Sparkles className="w-3 h-3" />
+            {currentQ.modeBadge}
+          </span>
+          <span className="px-2.5 py-0.5 rounded-full bg-surface-muted text-foreground-secondary border border-border text-[11px] font-semibold uppercase tracking-wider">
+            {currentQ.topic}
+          </span>
+        </div>
+      </div>
 
         {/* Card Body */}
         <div className="p-5 sm:p-6 space-y-5">
@@ -194,7 +214,7 @@ export function PracticeQuestionPreview() {
                       aria-checked={isSelected}
                       onClick={() => handleSelectOption(idx)}
                       className={cn(
-                        "w-full text-left p-3.5 sm:p-4 rounded-xl border transition-all flex items-start gap-3.5 group focus:outline-none focus:ring-2 focus:ring-brand-teal",
+                        "w-full text-left p-3.5 sm:p-4 rounded-lg border transition-all flex items-start gap-3.5 group focus:outline-none focus:ring-2 focus:ring-accent/70",
                         optionStyle
                       )}
                     >
@@ -306,7 +326,7 @@ export function PracticeQuestionPreview() {
               <span>Back</span>
             </button>
 
-            {/* Pagination Dots */}
+            {/* Pagination Dots (active dot per the reference) */}
             <div className="flex items-center gap-1.5" aria-label="Question progress">
               {heroPracticeQuestions.map((q, idx) => (
                 <button
@@ -317,7 +337,7 @@ export function PracticeQuestionPreview() {
                   className={cn(
                     "h-2 rounded-full transition-all duration-200",
                     currentIndex === idx
-                      ? "w-6 bg-brand-teal"
+                      ? "w-6 bg-accent"
                       : "w-2 bg-border-strong hover:bg-foreground-muted"
                   )}
                 />
@@ -328,14 +348,13 @@ export function PracticeQuestionPreview() {
             <Button
               size="sm"
               onClick={handleNext}
-              className="text-xs font-semibold h-8 px-4 gap-1 bg-brand-navy hover:bg-brand-navyDeep text-white dark:bg-brand-teal dark:hover:bg-brand-tealDark"
+              className="text-xs font-semibold h-8 px-4 gap-1 rounded-full bg-accent hover:bg-accent-hover text-white"
             >
               <span>{currentIndex === heroPracticeQuestions.length - 1 ? "Finish" : "Keep Going"}</span>
               <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
             </Button>
           </div>
         )}
-      </div>
-    </div>
+    </section>
   );
 }

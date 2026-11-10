@@ -32,25 +32,28 @@ async function shot(page: import("@playwright/test").Page, name: string) {
 test.describe("Complete authenticated learner journey", () => {
   test("Step 1 — Public landing page hero, CTAs, Quick Practice, navbar", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { level: 1, name: "Your Path to Nursing Confidence." })).toBeVisible();
-    await expect(page.getByText("Nursing exam preparation, reimagined", { exact: false })).toBeVisible();
-    await expect(page.getByText("Build clinical confidence through focused practice", { exact: false })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Turn Practice Into ATI and HESI Readiness" })
+    ).toBeVisible();
+    await expect(page.getByText("Built for nursing school exam days", { exact: false })).toBeVisible();
+    await expect(page.getByText("Work through ATI, HESI, and exit-exam practice", { exact: false })).toBeVisible();
+
+    // Background video / reference fallback sits behind the hero content
+    const heroLayer = page.getByTestId("hero-background-fallback").or(page.getByTestId("hero-background-video"));
+    await expect(heroLayer.first()).toBeVisible();
+
     const quickPractice = page.getByRole("region", { name: "Quick Practice" });
     await expect(quickPractice).toBeVisible();
-    await expect(quickPractice.getByRole("button", { name: /Begin Quick Practice/ })).toBeVisible();
+    await expect(quickPractice.getByText(/Question 1 of 3/)).toBeVisible();
+    await expect(quickPractice.getByText(/warfarin/)).toBeVisible();
 
-    const startLink = page.getByRole("link", { name: /Start Practicing/ }).first();
+    const startLink = page.getByRole("link", { name: /Try a Practice Set/ }).first();
     await expect(startLink).toBeVisible();
     await expect(startLink).toHaveAttribute("href", /\/sign-up/);
 
-    const exploreLink = page.getByRole("main").getByRole("link", { name: "Explore Exams" });
+    const exploreLink = page.getByRole("main").getByRole("link", { name: "Explore the Exam Library" });
     await expect(exploreLink).toBeVisible();
     await expect(exploreLink).toHaveAttribute("href", "/exams");
-    // Secondary CTA stroke must be visible at rest
-    await expect(exploreLink).toHaveClass(/border-2/);
-
-    // Product video panel sits below the hero columns, never behind the copy
-    await expect(page.getByRole("region", { name: "See the learner journey" })).toBeVisible();
 
     // Navbar auth links open dedicated pages
     await expect(page.getByRole("link", { name: "Sign In" }).first()).toBeVisible();
@@ -62,20 +65,26 @@ test.describe("Complete authenticated learner journey", () => {
   test("Step 1b — Mobile hero layout", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
-    await expect(page.getByRole("heading", { level: 1, name: "Your Path to Nursing Confidence." })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Turn Practice Into ATI and HESI Readiness" })
+    ).toBeVisible();
     await expect(page.getByRole("region", { name: "Quick Practice" })).toBeVisible();
     await shot(page, "01b-hero-mobile");
   });
 
-  test("Step 1c — Quick Practice validates and routes the selected pathway", async ({ page }) => {
+  test("Step 1c — Quick Practice preview: select, learn, navigate", async ({ page }) => {
     await page.goto("/");
     const quickPractice = page.getByRole("region", { name: "Quick Practice" });
-    await quickPractice.getByRole("button", { name: /Begin Quick Practice/ }).click();
-    await expect(quickPractice.getByRole("alert")).toHaveText(/Select NCLEX-RN or NCLEX-PN/);
-    await quickPractice.getByRole("radio", { name: /NCLEX-PN/ }).check({ force: true });
-    await quickPractice.getByRole("button", { name: /Begin Quick Practice/ }).click();
-    await page.waitForURL(/\/sign-in\?returnTo=/);
-    expect(new URL(page.url()).searchParams.get("returnTo")).toBe("/learner/custom-practice?pathway=PN_LPN");
+
+    // Select an option → learn-as-you-go rationale is revealed only after selection
+    await quickPractice.getByRole("radio", { name: /To monitor the time it takes for your blood to clot/ }).click();
+    await expect(quickPractice.getByText(/Clinical Reasoning & Rationale/)).toBeVisible();
+
+    // Keep Going advances to the next sample question; Back returns
+    await quickPractice.getByRole("button", { name: /Keep Going/ }).click();
+    await expect(quickPractice.getByText(/Question 2 of 3/)).toBeVisible();
+    await quickPractice.getByRole("button", { name: "Back" }).click();
+    await expect(quickPractice.getByText(/Question 1 of 3/)).toBeVisible();
   });
 
   test("Step 2 — Registration persists a learner account", async ({ page }) => {

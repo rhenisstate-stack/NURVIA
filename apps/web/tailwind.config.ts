@@ -17,6 +17,11 @@ const config: Config = {
           tealDark: "#0F766E",
           navyDeep: "#0B1D33",
         },
+        accent: {
+          DEFAULT: "var(--accent)",
+          hover: "var(--accent-hover)",
+          highlight: "var(--accent-highlight)",
+        },
         background: "var(--background)",
         surface: {
           DEFAULT: "var(--surface)",

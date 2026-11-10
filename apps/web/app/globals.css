@@ -9,6 +9,12 @@
   --brand-teal-dark: #0F766E;
   --brand-navy-deep: #0B1D33;
 
+  /* Hero accent (approved landing-hero reference: magenta-berry highlights/CTAs;
+     no existing brand token covers this hue, so it is tokenised once here) */
+  --accent: #9D174D;
+  --accent-hover: #831843;
+  --accent-highlight: #BE185D;
+
   /* Light Theme Surfaces & Colors */
   --background: #F4F7F9;
   --surface: #FFFFFF;
@@ -62,6 +68,11 @@
   --primary: #2DD4BF;
   --primary-hover: #5EEAD4;
   --primary-foreground: #0B1220;
+
+  /* Dark-mode hero accent (same hue, lifted for contrast on dark surfaces) */
+  --accent: #DB2777;
+  --accent-hover: #BE185D;
+  --accent-highlight: #F472B6;
 
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.2);
   --shadow-md: 0 4px 12px rgb(0 0 0 / 0.35);
