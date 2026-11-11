@@ -15,8 +15,8 @@ export function isAuthenticated(user: AuthUserDto | null): boolean {
  * Check if user has a specific role
  */
 export function hasRole(user: AuthUserDto | null, role: string): boolean {
-  if (!user || !user.roles) return false;
-  return user.roles.includes(role);
+  if (!user || !user.role) return false;
+  return user.role === role;
 }
 
 /**
