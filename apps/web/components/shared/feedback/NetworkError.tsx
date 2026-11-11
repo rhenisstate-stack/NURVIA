@@ -5,7 +5,7 @@ import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { WifiOff, RefreshCw } from "lucide-react";
-import { retryOperation, getRetryOptions, shouldRetryRequest } from "@/lib/utils/request-utils";
+import { retryOperation, getRetryOptions, shouldRetryRequest } from "@/lib/utils/retry-utils";
 import { ErrorType, getUserFriendlyMessage } from "@/lib/utils/error-utils";
 import { ApiErrorHandler } from "@/components/shared/feedback/ApiErrorHandler";
 
