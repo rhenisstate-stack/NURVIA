@@ -9,6 +9,24 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { nurviaApi } from "@/lib/api-client";
 import type { ExamAttemptSummaryDto, ExamDto } from "@/lib/api-types";
 
+// Helper function to get personalized greeting based on user's name and time of day
+function getPersonalizedGreeting(name: string | null | undefined) {
+  if (!name) return "";
+  
+  const hour = new Date().getHours();
+  let greeting = "";
+  
+  if (hour >= 5 && hour < 12) {
+    greeting = "Good morning";
+  } else if (hour >= 12 && hour < 17) {
+    greeting = "Good afternoon";
+  } else {
+    greeting = "Good evening";
+  }
+  
+  return `${greeting}, ${name}`;
+}
+
 export default function LearnerDashboardPage() {
   const { user } = useAuth();
   const [attempts, setAttempts] = React.useState<ExamAttemptSummaryDto[]>([]);
@@ -53,7 +71,7 @@ export default function LearnerDashboardPage() {
         <section className="rounded-2xl border border-border bg-surface p-6 sm:p-8">
           <p className="text-xs font-bold uppercase tracking-wider text-brand-teal">Learner dashboard</p>
           <h1 className="mt-2 font-brand text-2xl font-bold text-foreground sm:text-3xl">
-            Welcome{user?.name ? `, ${user.name}` : ""}
+            {getPersonalizedGreeting(user?.name) || "Welcome to NURVIA"}
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-foreground-secondary">
             Continue an in-progress attempt or choose a published exam. Your activity and results are drawn from your saved account data.
