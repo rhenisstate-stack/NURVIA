@@ -105,6 +105,20 @@ public class PostgreSqlIntegrationTests : IAsyncLifetime
     {
         await using var context = CreateDbContext();
         await context.Database.MigrateAsync();
+
+        // Test isolation: the database-level Superadmin uniqueness invariant
+        // (exactly one Superadmin per database) means leftover Superadmin
+        // accounts from earlier runs (e.g. runtime bootstrap during e2e)
+        // would collide with accounts these tests create. The test database
+        // holds no production data, so remove leftover Superadmins first.
+        var leftoverSuperadmins = await context.UserAccounts
+            .Where(u => u.Role == "Superadmin")
+            .ToListAsync();
+        if (leftoverSuperadmins.Count > 0)
+        {
+            context.UserAccounts.RemoveRange(leftoverSuperadmins);
+            await context.SaveChangesAsync();
+        }
     }
 
     public async Task DisposeAsync()
