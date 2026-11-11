@@ -40,16 +40,18 @@ export default function SignInPage() {
   const [error, setError] = React.useState<string | null>(null);
   const completedSignIn = React.useRef(false);
 
-  // Show redirect screen when authentication is in progress
-  if (status === "loading") {
-    return <RedirectScreen heading="Verifying your access" description="Please wait while we securely prepare your account." />;
-  }
-
   React.useEffect(() => {
     if (status === "authenticated" && user && !completedSignIn.current) {
       router.replace(safeReturnTo() || defaultDestination(user.role));
     }
   }, [status, user, router]);
+
+  // Show redirect screen when authentication is in progress.
+  // This early return must stay below every hook call (Rules of Hooks); because it
+  // handles the "loading" state, the form below only renders for the other states.
+  if (status === "loading") {
+    return <RedirectScreen heading="Verifying your access" description="Please wait while we securely prepare your account." />;
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

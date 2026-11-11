@@ -2,16 +2,18 @@
 
 import * as React from "react";
 import { Logo } from "@/components/brand/logo";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { SearchX } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface NotFoundPageProps {
   title?: string;
   message?: string;
   showBack?: boolean;
   showDashboard?: boolean;
+  /** Explicit destination for "Go Back". When omitted, browser history is used. */
   backHref?: string;
   dashboardHref?: string;
 }
@@ -21,9 +23,10 @@ export function NotFoundPage({
   message = "Looks like this page has wandered outside the NURVIA learning environment. The page you're looking for may have been moved, removed, or may no longer be available.",
   showBack = true,
   showDashboard = true,
-  backHref = "javascript:history.back()",
+  backHref,
   dashboardHref = "/"
 }: NotFoundPageProps) {
+  const router = useRouter();
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="flex flex-col items-center gap-6 text-center max-w-md">
@@ -57,18 +60,20 @@ export function NotFoundPage({
           className="flex flex-col sm:flex-row gap-3 w-full"
         >
           {showBack && (
-            <Link href={backHref}>
-              <Button>
+            backHref ? (
+              <Link href={backHref} className={buttonVariants()}>
+                Go Back
+              </Link>
+            ) : (
+              <Button type="button" onClick={() => router.back()}>
                 Go Back
               </Button>
-            </Link>
+            )
           )}
 
           {showDashboard && (
-            <Link href={dashboardHref}>
-              <Button variant="outline">
-                Return to Dashboard
-              </Button>
+            <Link href={dashboardHref} className={buttonVariants({ variant: "outline" })}>
+              Return to Dashboard
             </Link>
           )}
         </motion.div>

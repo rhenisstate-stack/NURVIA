@@ -12,11 +12,14 @@ export function isAuthenticated(user: AuthUserDto | null): boolean {
 }
 
 /**
- * Check if user has a specific role
+ * Check if user has a specific role.
+ * Users carry a single role (AuthUserDto.role, sourced from the backend CurrentUser.Role).
+ * Matching is case-insensitive to mirror the backend's OrdinalIgnoreCase comparison.
+ * This is a UI convenience only; authorization is enforced by the API.
  */
 export function hasRole(user: AuthUserDto | null, role: string): boolean {
   if (!user || !user.role) return false;
-  return user.role === role;
+  return user.role.toLowerCase() === role.toLowerCase();
 }
 
 /**
@@ -26,7 +29,7 @@ export function getLoginRedirectUrl(user: AuthUserDto | null, defaultUrl: string
   if (!user) return defaultUrl;
   
   // Determine the appropriate dashboard based on user roles
-  if (hasRole(user, 'SuperAdmin')) {
+  if (hasRole(user, 'Superadmin')) {
     return '/admin/dashboard';
   } else if (hasRole(user, 'Administrator')) {
     return '/admin/dashboard';
