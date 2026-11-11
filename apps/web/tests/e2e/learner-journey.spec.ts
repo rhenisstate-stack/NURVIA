@@ -194,7 +194,9 @@ test.describe("Complete authenticated learner journey", () => {
     await signInLearner(page);
     await page.goto(`/learner/attempts/${attemptRef.id}`);
     await expect(page.getByText("Correct answer").first()).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByText(/Clinical Rationale|Overall Clinical Rationale/i).first()).toBeVisible();
+    // The review page renders the general rationale text without a
+    // "Clinical Rationale" heading, so anchor on the seeded rationale content.
+    await expect(page.getByText(/cardiac glycoside with positive inotropic/i).first()).toBeVisible();
     await shot(page, "08-review-answer-key");
   });
 
