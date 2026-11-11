@@ -158,6 +158,26 @@ export const nurviaApi = {
     });
   },
 
+  async uploadAvatar(file: File): Promise<ApiResponse<{ storageKey: string; message: string }>> {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    return request<{ storageKey: string; message: string }>('/api/avatar', {
+      method: 'POST',
+      body: formData,
+    });
+  },
+
+  async getAvatar(): Promise<ApiResponse<{ storageKey: string; url: string; uploadedAtUtc: string }>> {
+    return request<{ storageKey: string; url: string; uploadedAtUtc: string }>('/api/avatar');
+  },
+
+  async removeAvatar(): Promise<ApiResponse<string>> {
+    return request<string>('/api/avatar', {
+      method: 'DELETE',
+    });
+  },
+
   async logout(): Promise<ApiResponse<string>> {
     return request<string>('/api/auth/logout', { method: 'POST' });
   },
