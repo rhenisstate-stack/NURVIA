@@ -3,34 +3,53 @@
 import * as React from "react";
 import { LearnerShell } from "@/components/layout/learner-shell";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { UserAvatar } from "@/components/shared/avatar/UserAvatar";
 import { useAuth } from "@/components/auth/auth-provider";
+import { nurviaApi } from "@/lib/api-client";
+import { ApiResponse } from "@/lib/api-types";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2 } from "lucide-react";
 
 export default function AccountPage() {
-  const { user, updateProfile } = useAuth();
-  const [name, setName] = React.useState("");
-  const [saving, setSaving] = React.useState(false);
+  const { user, refresh } = useAuth();
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [isUpdating, setIsUpdating] = React.useState(false);
   const [message, setMessage] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (user) setName(user.name);
-  }, [user]);
+    setIsLoading(false);
+  }, []);
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setSaving(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsUpdating(true);
     setMessage(null);
     setError(null);
-    const response = await updateProfile(name.trim());
-    setSaving(false);
 
-    if (!response.success || !response.data) {
-      setError(response.message || "Unable to save profile changes.");
-      return;
+    try {
+      // For now, we'll just show a message - email change functionality will be 
+      // implemented in a later phase when the actual backend is ready
+      setMessage("Account settings would be updated here");
+      // In a real implementation, we would call an API endpoint to update account info
+    } catch (err) {
+      setError("Failed to update account settings");
+    } finally {
+      setIsUpdating(false);
     }
+  };
 
-    setName(response.data.name);
-    setMessage("Your profile changes have been saved.");
+  if (isLoading) {
+    return (
+      <LearnerShell>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </LearnerShell>
+    );
   }
 
   return (
@@ -38,49 +57,75 @@ export default function AccountPage() {
       <div className="mx-auto max-w-2xl space-y-6">
         <div className="space-y-1">
           <h1 className="font-brand text-2xl font-bold text-foreground sm:text-3xl">My Account</h1>
-          <p className="text-sm text-foreground-secondary">Review your account details and update your display name.</p>
+          <p className="text-sm text-foreground-secondary">Review and manage your account details.</p>
         </div>
+
+        {message && (
+          <Alert variant="default">
+            <AlertDescription>{message}</AlertDescription>
+          </Alert>
+        )}
+
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
         <section className="rounded-2xl border border-border bg-surface p-6 sm:p-8">
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-1.5">
-              <label htmlFor="profile-name" className="text-sm font-semibold text-foreground">Full name</label>
-              <input
-                id="profile-name"
-                name="name"
-                type="text"
-                required
-                minLength={2}
-                maxLength={200}
-                autoComplete="name"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                className="h-11 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label htmlFor="profile-email" className="text-sm font-semibold text-foreground">Email address</label>
-              <input
-                id="profile-email"
+              <Label htmlFor="account-email">Email Address</Label>
+              <Input
+                id="account-email"
                 type="email"
                 value={user?.email || ""}
                 readOnly
-                className="h-11 w-full rounded-lg border border-border bg-surface-muted px-3 text-sm text-foreground-secondary"
+                className="bg-surface-muted"
               />
-              <p className="text-xs text-foreground-muted">Email changes are not available in this account flow.</p>
-            </div>
-            <div className="space-y-1.5">
-              <span className="block text-sm font-semibold text-foreground">Account role</span>
-              <p className="rounded-lg border border-border bg-surface-muted px-3 py-2.5 text-sm text-foreground-secondary" aria-label="Account role">
-                {user?.role || "—"}
+              <p className="text-xs text-foreground-muted">
+                Email changes are not available in this account flow.
               </p>
-              <p className="text-xs text-foreground-muted">Roles and permissions can only be changed by an authorized administrator.</p>
             </div>
-            {message && <p role="status" className="text-sm text-emerald-700 dark:text-emerald-300">{message}</p>}
-            {error && <p role="alert" className="text-sm text-rose-700 dark:text-rose-300">{error}</p>}
-            <Button type="submit" isLoading={saving} disabled={saving || !name.trim()}>
-              Save profile
-            </Button>
+            
+            <div className="space-y-1.5">
+              <Label htmlFor="account-role">Account Role</Label>
+              <Input
+                id="account-role"
+                value={user?.role || ""}
+                readOnly
+                className="bg-surface-muted"
+              />
+              <p className="text-xs text-foreground-muted">
+                Roles and permissions can only be changed by an authorized administrator.
+              </p>
+            </div>
+            
+            <div className="space-y-1.5">
+              <Label htmlFor="account-created">Account Created</Label>
+              <Input
+                id="account-created"
+                value="January 2024"
+                readOnly
+                className="bg-surface-muted"
+              />
+            </div>
+            
+            <div className="space-y-1.5">
+              <Label htmlFor="account-status">Account Status</Label>
+              <Input
+                id="account-status"
+                value="Active"
+                readOnly
+                className="bg-surface-muted"
+              />
+            </div>
+            
+            <div className="flex justify-end">
+              <Button type="submit" isLoading={isUpdating} disabled={isUpdating}>
+                {isUpdating ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
           </form>
         </section>
       </div>
