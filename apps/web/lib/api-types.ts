@@ -347,3 +347,9 @@ export interface UserProfileDto {
   updatedAtUtc?: string;
   updatedBy?: string;
 }
+
+export interface AvatarDto {
+  storageKey: string;
+  url: string;
+  uploadedAtUtc: string;
+}
