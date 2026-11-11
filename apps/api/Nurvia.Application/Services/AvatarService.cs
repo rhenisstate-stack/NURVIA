@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using Nurvia.Application.Interfaces;
 using Nurvia.Application.Security;
 using Nurvia.Domain.Accounts;
+using System.Drawing;
+using System.Drawing.Imaging;
 
 namespace Nurvia.Application.Services;
 
@@ -33,7 +35,7 @@ public sealed class AvatarService : IAvatarService
         }
 
         // Validate file
-        var validationResult = ValidateFile(fileStream, fileName, contentType);
+        var validationResult = await ValidateFileAsync(fileStream, fileName, contentType, cancellationToken);
         if (!validationResult.IsValid)
         {
             return new AvatarUploadResponse
@@ -53,18 +55,28 @@ public sealed class AvatarService : IAvatarService
             _context.UserProfiles.Add(userProfile);
         }
 
-        // If there's an existing avatar, remove it
-        if (!string.IsNullOrEmpty(userProfile.AvatarStorageKey))
-        {
-            await _fileStorageService.DeleteFileAsync(userProfile.AvatarStorageKey, cancellationToken);
-        }
-
-        // Store the file
+        // Store the file first (before updating DB to avoid inconsistency)
         var storageKey = await _fileStorageService.SaveFileAsync(fileStream, fileName, contentType, cancellationToken);
 
-        // Update the user profile with the avatar storage key
-        userProfile.AvatarStorageKey = storageKey;
-        await _context.SaveChangesAsync(cancellationToken);
+        // Only update DB after successful file storage
+        try
+        {
+            // If there's an existing avatar, remove it
+            if (!string.IsNullOrEmpty(userProfile.AvatarStorageKey))
+            {
+                await _fileStorageService.DeleteFileAsync(userProfile.AvatarStorageKey, cancellationToken);
+            }
+
+            // Update the user profile with the avatar storage key
+            userProfile.AvatarStorageKey = storageKey;
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception)
+        {
+            // If DB update fails, remove the newly created file
+            await _fileStorageService.DeleteFileAsync(storageKey, cancellationToken);
+            throw;
+        }
 
         return new AvatarUploadResponse
         {
@@ -102,19 +114,23 @@ public sealed class AvatarService : IAvatarService
         if (userProfile == null)
             return false;
 
-        // If there's an existing avatar, remove it from storage
-        if (!string.IsNullOrEmpty(userProfile.AvatarStorageKey))
-        {
-            await _fileStorageService.DeleteFileAsync(userProfile.AvatarStorageKey, cancellationToken);
-        }
-
+        // Store the storage key before removing from DB to handle cleanup
+        var storageKey = userProfile.AvatarStorageKey;
+        
+        // Remove the database reference first
         userProfile.AvatarStorageKey = null;
         await _context.SaveChangesAsync(cancellationToken);
+
+        // Then remove the file
+        if (!string.IsNullOrEmpty(storageKey))
+        {
+            await _fileStorageService.DeleteFileAsync(storageKey, cancellationToken);
+        }
 
         return true;
     }
 
-    private AvatarValidationResult ValidateFile(Stream fileStream, string fileName, string contentType)
+    private async Task<AvatarValidationResult> ValidateFileAsync(Stream fileStream, string fileName, string contentType, CancellationToken cancellationToken)
     {
         // Check for empty file
         if (fileStream == null || fileStream.Length == 0)
@@ -137,7 +153,7 @@ public sealed class AvatarService : IAvatarService
             };
         }
 
-        // Check file extension
+        // Validate file extension
         var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
         var fileExtension = Path.GetExtension(fileName).ToLowerInvariant();
         if (!allowedExtensions.Contains(fileExtension))
@@ -149,12 +165,175 @@ public sealed class AvatarService : IAvatarService
             };
         }
 
-        // Basic validation - we'll defer detailed image validation to the file storage service
-        // For now, we'll just validate the file isn't empty and has correct extension
+        // Validate MIME type consistency
+        var allowedMimeTypes = new[] { "image/jpeg", "image/png", "image/webp" };
+        if (!string.IsNullOrEmpty(contentType) && !allowedMimeTypes.Contains(contentType.ToLowerInvariant()))
+        {
+            return new AvatarValidationResult
+            {
+                IsValid = false,
+                ErrorMessage = "Unsupported MIME type."
+            };
+        }
+
+        // Validate actual file signature (magic numbers)
+        var fileSignature = await GetFileSignatureAsync(fileStream);
+        if (!IsValidImageSignature(fileSignature))
+        {
+            return new AvatarValidationResult
+            {
+                IsValid = false,
+                ErrorMessage = "Invalid file signature - not a recognized image format."
+            };
+        }
+
+        // Validate file extension and signature consistency
+        if (!IsExtensionAndSignatureConsistent(fileExtension, fileSignature))
+        {
+            return new AvatarValidationResult
+            {
+                IsValid = false,
+                ErrorMessage = "File extension does not match image signature."
+            };
+        }
+
+        // Decode image to validate it's not corrupted/truncated
+        try
+        {
+            using var image = Image.FromStream(fileStream, false, false);
+            
+            // Validate dimensions
+            const int maxWidth = 4096;
+            const int maxHeight = 4096;
+            const int maxPixelCount = 16777216; // 4096x4096
+            
+            if (image.Width > maxWidth || image.Height > maxHeight)
+            {
+                return new AvatarValidationResult
+                {
+                    IsValid = false,
+                    ErrorMessage = $"Image dimensions exceed maximum allowed size ({maxWidth}x{maxHeight})."
+                };
+            }
+            
+            if ((long)image.Width * image.Height > maxPixelCount)
+            {
+                return new AvatarValidationResult
+                {
+                    IsValid = false,
+                    ErrorMessage = "Image pixel count exceeds maximum allowed."
+                };
+            }
+            
+            // Reset stream position for further processing
+            fileStream.Position = 0;
+        }
+        catch (ArgumentException)
+        {
+            return new AvatarValidationResult
+            {
+                IsValid = false,
+                ErrorMessage = "Corrupted or invalid image file."
+            };
+        }
+        catch (ExternalException)
+        {
+            return new AvatarValidationResult
+            {
+                IsValid = false,
+                ErrorMessage = "Corrupted or invalid image file."
+            };
+        }
+
         return new AvatarValidationResult
         {
             IsValid = true
         };
+    }
+
+    private async Task<byte[]> GetFileSignatureAsync(Stream stream)
+    {
+        var signature = new byte[12];
+        var bytesRead = await stream.ReadAsync(signature, 0, signature.Length);
+        stream.Position = 0; // Reset position
+        return signature.Take(bytesRead).ToArray();
+    }
+
+    private bool IsValidImageSignature(byte[] signature)
+    {
+        // JPEG signature
+        if (signature.Length >= 3 && 
+            signature[0] == 0xFF && 
+            signature[1] == 0xD8 && 
+            signature[2] == 0xFF)
+        {
+            return true;
+        }
+        
+        // PNG signature
+        if (signature.Length >= 8 &&
+            signature[0] == 0x89 && 
+            signature[1] == 0x50 && 
+            signature[2] == 0x4E && 
+            signature[3] == 0x47 && 
+            signature[4] == 0x0D && 
+            signature[5] == 0x0A && 
+            signature[6] == 0x1A && 
+            signature[7] == 0x0A)
+        {
+            return true;
+        }
+        
+        // WebP signature
+        if (signature.Length >= 12 &&
+            signature[8] == 0x57 && 
+            signature[9] == 0x45 && 
+            signature[10] == 0x42 && 
+            signature[11] == 0x50)
+        {
+            return true;
+        }
+        
+        return false;
+    }
+
+    private bool IsExtensionAndSignatureConsistent(string extension, byte[] signature)
+    {
+        // Check for JPEG
+        if (extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) || 
+            extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase))
+        {
+            return signature.Length >= 3 && 
+                   signature[0] == 0xFF && 
+                   signature[1] == 0xD8 && 
+                   signature[2] == 0xFF;
+        }
+        
+        // Check for PNG
+        if (extension.Equals(".png", StringComparison.OrdinalIgnoreCase))
+        {
+            return signature.Length >= 8 &&
+                   signature[0] == 0x89 && 
+                   signature[1] == 0x50 && 
+                   signature[2] == 0x4E && 
+                   signature[3] == 0x47 && 
+                   signature[4] == 0x0D && 
+                   signature[5] == 0x0A && 
+                   signature[6] == 0x1A && 
+                   signature[7] == 0x0A;
+        }
+        
+        // Check for WebP
+        if (extension.Equals(".webp", StringComparison.OrdinalIgnoreCase))
+        {
+            return signature.Length >= 12 &&
+                   signature[8] == 0x57 && 
+                   signature[9] == 0x45 && 
+                   signature[10] == 0x42 && 
+                   signature[11] == 0x50;
+        }
+        
+        return false;
     }
 }
 
