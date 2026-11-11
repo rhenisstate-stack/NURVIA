@@ -10,6 +10,7 @@ import {
   SubmittedExamResultDto,
   ExamAttemptSummaryDto,
   AuthUserDto,
+  UserProfileDto,
 } from './api-types';
 import { classifyError, ErrorType } from './utils/error-utils';
 
@@ -100,7 +101,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   } catch (error: unknown) {
     // More specific error handling for network errors
     const errorType = classifyError(error);
-    
+
     if (errorType === ErrorType.NETWORK_ERROR) {
       return {
         success: false,
@@ -141,6 +142,17 @@ export const nurviaApi = {
 
   async updateProfile(payload: { name: string }): Promise<ApiResponse<AuthUserDto>> {
     return request<AuthUserDto>('/api/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async getProfile(): Promise<ApiResponse<UserProfileDto>> {
+    return request<UserProfileDto>('/api/profile');
+  },
+
+  async updateProfileDetails(payload: any): Promise<ApiResponse<{ profile: UserProfileDto; message: string }>> {
+    return request<{ profile: UserProfileDto; message: string }>('/api/profile', {
       method: 'PUT',
       body: JSON.stringify(payload),
     });
