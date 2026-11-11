@@ -2,71 +2,142 @@
 
 import * as React from "react";
 import { LearnerShell } from "@/components/layout/learner-shell";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Settings, Moon, Sun, Bell, Volume2, Shield } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { useAuth } from "@/components/auth/auth-provider";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2 } from "lucide-react";
 
 export default function SettingsPage() {
-  const [soundEffects, setSoundEffects] = React.useState(true);
-  const [emailAlerts, setEmailAlerts] = React.useState(true);
-  const [highContrast, setHighContrast] = React.useState(false);
+  const { user } = useAuth();
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [isUpdating, setIsUpdating] = React.useState(false);
+  const [message, setMessage] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+  const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
+  const [theme, setTheme] = React.useState<'light' | 'dark' | 'system'>('system');
+
+  React.useEffect(() => {
+    setIsLoading(false);
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsUpdating(true);
+    setMessage(null);
+    setError(null);
+
+    try {
+      // In a real implementation, we would call an API to update settings
+      setMessage("Settings saved successfully!");
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+    } catch (err) {
+      setError("Failed to save settings");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <LearnerShell>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </LearnerShell>
+    );
+  }
 
   return (
     <LearnerShell>
-      <div className="space-y-6 max-w-2xl">
+      <div className="mx-auto max-w-2xl space-y-6">
         <div className="space-y-1">
-          <Badge variant="teal">Preferences</Badge>
-          <h1 className="font-brand text-2xl sm:text-3xl font-bold text-foreground">
-            Platform Settings
-          </h1>
-          <p className="text-xs sm:text-sm text-foreground-secondary">
-            Configure examination simulation behavior, audio cues, and notification preferences.
-          </p>
+          <h1 className="font-brand text-2xl font-bold text-foreground sm:text-3xl">Settings</h1>
+          <p className="text-sm text-foreground-secondary">Manage your application preferences.</p>
         </div>
 
-        <Card className="p-6 space-y-5">
-          <div className="space-y-4 text-xs">
-            <div className="flex items-center justify-between pb-3 border-b border-border">
-              <div>
-                <span className="font-semibold text-foreground block">Exam Simulation Timer Audio</span>
-                <span className="text-foreground-muted">Alert when 5 minutes remain on proctored exams</span>
-              </div>
-              <input
-                type="checkbox"
-                checked={soundEffects}
-                onChange={(e) => setSoundEffects(e.target.checked)}
-                className="rounded accent-brand-teal h-4 w-4"
-              />
-            </div>
+        {message && (
+          <Alert variant="default">
+            <AlertDescription>{message}</AlertDescription>
+          </Alert>
+        )}
 
-            <div className="flex items-center justify-between pb-3 border-b border-border">
-              <div>
-                <span className="font-semibold text-foreground block">Daily Spaced Repetition Reminders</span>
-                <span className="text-foreground-muted">Receive email reminders when review cards are due</span>
-              </div>
-              <input
-                type="checkbox"
-                checked={emailAlerts}
-                onChange={(e) => setEmailAlerts(e.target.checked)}
-                className="rounded accent-brand-teal h-4 w-4"
-              />
-            </div>
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="font-semibold text-foreground block">High Contrast Testing Mode</span>
-                <span className="text-foreground-muted">Enhance visual contrast during exam sessions</span>
+        <section className="rounded-2xl border border-border bg-surface p-6 sm:p-8">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-4">
+              <h2 className="text-lg font-semibold text-foreground">Preferences</h2>
+              
+              <div className="flex items-center justify-between rounded-lg border border-border p-4">
+                <div>
+                  <Label htmlFor="notifications" className="font-medium">Enable Notifications</Label>
+                  <p className="text-sm text-foreground-secondary">Receive important updates and alerts</p>
+                </div>
+                <Switch
+                  id="notifications"
+                  checked={notificationsEnabled}
+                  onCheckedChange={setNotificationsEnabled}
+                />
               </div>
-              <input
-                type="checkbox"
-                checked={highContrast}
-                onChange={(e) => setHighContrast(e.target.checked)}
-                className="rounded accent-brand-teal h-4 w-4"
-              />
+              
+              <div className="flex items-center justify-between rounded-lg border border-border p-4">
+                <div>
+                  <Label htmlFor="theme" className="font-medium">Theme</Label>
+                  <p className="text-sm text-foreground-secondary">Choose your preferred color scheme</p>
+                </div>
+                <select
+                  id="theme"
+                  value={theme}
+                  onChange={(e) => setTheme(e.target.value as any)}
+                  className="rounded border border-border bg-background px-3 py-1.5 text-sm"
+                >
+                  <option value="system">System</option>
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
+                </select>
+              </div>
             </div>
-          </div>
-        </Card>
+            
+            <div className="pt-4">
+              <h2 className="text-lg font-semibold text-foreground mb-4">Account Security</h2>
+              
+              <div className="space-y-4">
+                <div className="rounded-lg border border-border p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="font-medium">Password</Label>
+                      <p className="text-sm text-foreground-secondary">Change your account password</p>
+                    </div>
+                    <Button variant="outline" size="sm">Change Password</Button>
+                  </div>
+                </div>
+                
+                <div className="rounded-lg border border-border p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="font-medium">Two-Factor Authentication</Label>
+                      <p className="text-sm text-foreground-secondary">Add extra security to your account</p>
+                    </div>
+                    <Button variant="outline" size="sm">Setup</Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end pt-4">
+              <Button type="submit" isLoading={isUpdating} disabled={isUpdating}>
+                {isUpdating ? "Saving..." : "Save Settings"}
+              </Button>
+            </div>
+          </form>
+        </section>
       </div>
     </LearnerShell>
   );
