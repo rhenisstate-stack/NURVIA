@@ -327,3 +327,23 @@ export interface ExamAttemptSummaryDto {
   passed?: boolean;
   totalQuestions: number;
 }
+
+export interface UserProfileDto {
+  id: string;
+  userId: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  displayName: string;
+  biography?: string;
+  phoneNumber?: string;
+  country?: string;
+  city?: string;
+  professionalTitle?: string;
+  organization?: string;
+  avatarStorageKey?: string;
+  createdAtUtc: string;
+  createdBy: string;
+  updatedAtUtc?: string;
+  updatedBy?: string;
+}
