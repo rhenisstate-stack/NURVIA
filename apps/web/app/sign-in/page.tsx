@@ -125,7 +125,7 @@ export default function SignInPage() {
               </div>
             </div>
             {error && <p role="alert" className="text-sm text-rose-700 dark:text-rose-300">{error}</p>}
-            <Button type="submit" className="w-full" isLoading={submitting} disabled={submitting || status === "loading"}>
+            <Button type="submit" className="w-full" isLoading={submitting} disabled={submitting}>
               Sign In
             </Button>
           </form>
