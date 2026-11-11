@@ -169,17 +169,17 @@ app.MapGet("/api/catalogue/summary", async (NurviaDbContext dbContext, Cancellat
 var bootstrapName = builder.Configuration["BootstrapAdmin:Name"];
 var bootstrapEmail = builder.Configuration["BootstrapAdmin:Email"];
 var bootstrapPassword = builder.Configuration["BootstrapAdmin:Password"];
-var bootstrapConfigured = !string.IsNullOrWhiteSpace(bootstrapName) ||
-                         !string.IsNullOrWhiteSpace(bootstrapEmail) ||
-                         !string.IsNullOrWhiteSpace(bootstrapPassword);
-if (bootstrapConfigured &&
-    (string.IsNullOrWhiteSpace(bootstrapName) ||
-     string.IsNullOrWhiteSpace(bootstrapEmail) ||
-     string.IsNullOrWhiteSpace(bootstrapPassword) ||
-     bootstrapPassword.Length < 12))
+var bootstrapErrors = BootstrapConfigurationValidator.Validate(
+    builder.Environment.EnvironmentName, bootstrapName, bootstrapEmail, bootstrapPassword);
+if (bootstrapErrors.Count > 0)
 {
+    // Startup is intentionally blocked: bootstrap must never activate in a
+    // restricted environment or with a partially configured/weak credential set.
+    foreach (var error in bootstrapErrors)
+        app.Logger.LogError("Superadmin bootstrap configuration rejected: {Error}", error);
     throw new InvalidOperationException(
-        "BootstrapAdmin:Name, BootstrapAdmin:Email, and a password of at least 12 characters must be configured together.");
+        "Superadmin bootstrap configuration was rejected. See logged errors. " +
+        "No secrets are ever logged.");
 }
 
 try
@@ -193,7 +193,7 @@ catch (Exception ex)
     app.Logger.LogWarning(ex, "Database seeding skipped or encountered non-fatal connection issue.");
 }
 
-if (bootstrapConfigured)
+if (bootstrapErrors.Count == 0 && (!string.IsNullOrWhiteSpace(bootstrapName)))
 {
     using var scope = app.Services.CreateScope();
     var authService = scope.ServiceProvider.GetRequiredService<IAuthService>();

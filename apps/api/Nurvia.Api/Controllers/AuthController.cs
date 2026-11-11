@@ -176,14 +176,7 @@ public sealed class AuthController : ControllerBase
         if (!caller.IsAuthenticated)
             return Unauthorized(ApiResponse<string>.Error("Authentication is required to assign user roles."));
 
-        if (!caller.Role.Equals("Superadmin", StringComparison.OrdinalIgnoreCase) &&
-            !caller.Role.Equals("Administrator", StringComparison.OrdinalIgnoreCase))
-        {
-            return Forbid();
-        }
-
-        if (request.Role.Equals("Superadmin", StringComparison.OrdinalIgnoreCase) &&
-            !caller.Role.Equals("Superadmin", StringComparison.OrdinalIgnoreCase))
+        if (!RoleAssignmentPolicy.CanAssign(caller.Role, request.Role))
         {
             return Forbid();
         }

@@ -26,8 +26,14 @@ public class ExamAttemptsController : ControllerBase
         var user = HttpContext.GetCurrentUser();
         if (!user.IsAuthenticated)
             return Unauthorized(ApiResponse<StartAttemptResultDto>.Error("Authentication is required to start an examination."));
-        if (!user.Role.Equals("Learner", StringComparison.OrdinalIgnoreCase))
+        // Explicit backend authorization: only Learners and the Superadmin may
+        // start examination attempts. Superadmin attempts remain strictly bound
+        // to their own account by the service-level ownership check.
+        if (!user.Role.Equals("Learner", StringComparison.OrdinalIgnoreCase) &&
+            !user.Role.Equals("Superadmin", StringComparison.OrdinalIgnoreCase))
+        {
             return Forbid();
+        }
 
         try
         {

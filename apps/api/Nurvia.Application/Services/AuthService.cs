@@ -83,8 +83,14 @@ public sealed class AuthService : IAuthService
     }
 
     public async Task<bool> AssignRoleAsync(
-        string targetUserId, string role, string updatedBy, CancellationToken cancellationToken)
+        string targetUserId, string role, string updatedBy, string callerRole, CancellationToken cancellationToken)
     {
+        // Backend enforcement of the privilege-escalation invariant on every
+        // role-assignment path, independent of any controller-level check:
+        // only a Superadmin may assign the Superadmin role.
+        if (!RoleAssignmentPolicy.CanAssign(callerRole, role))
+            return false;
+
         if (!Guid.TryParse(targetUserId, out var userId) || !AllowedRoles.Contains(role))
             return false;
 

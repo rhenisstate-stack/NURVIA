@@ -19,5 +19,12 @@ public sealed class UserAccountConfiguration : IEntityTypeConfiguration<UserAcco
         builder.Property(user => user.CreatedBy).IsRequired().HasMaxLength(100);
         builder.Property(user => user.UpdatedBy).HasMaxLength(100);
         builder.HasIndex(user => user.NormalizedEmail).IsUnique();
+        // Integrity invariant: at most one Superadmin account may exist. The
+        // filtered unique index makes concurrent bootstrap attempts fail at the
+        // database level even if the application-level existence check races.
+        builder.HasIndex(user => user.Role)
+            .IsUnique()
+            .HasFilter($"\"{nameof(UserAccount.Role)}\" = 'Superadmin'")
+            .HasDatabaseName("IX_UserAccounts_Superadmin_Unique");
     }
 }
