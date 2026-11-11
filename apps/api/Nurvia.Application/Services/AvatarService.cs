@@ -20,7 +20,9 @@ public sealed class AvatarService : IAvatarService
 
     public async Task<AvatarUploadResponse> UploadAvatarAsync(
         string userId,
-        IFormFile file,
+        Stream fileStream,
+        string fileName,
+        string contentType,
         CancellationToken cancellationToken)
     {
         // Validate user ID
@@ -33,7 +35,7 @@ public sealed class AvatarService : IAvatarService
         }
 
         // Validate file
-        var validationResult = ValidateFile(file);
+        var validationResult = ValidateFile(fileStream, fileName, contentType);
         if (!validationResult.IsValid)
         {
             return new AvatarUploadResponse
@@ -60,7 +62,7 @@ public sealed class AvatarService : IAvatarService
         }
 
         // Store the file
-        var storageKey = await _fileStorageService.SaveFileAsync(file.OpenReadStream(), file.FileName, file.ContentType, cancellationToken);
+        var storageKey = await _fileStorageService.SaveFileAsync(fileStream, fileName, contentType, cancellationToken);
         
         // Update the user profile with the avatar storage key
         userProfile.AvatarStorageKey = storageKey;
@@ -114,10 +116,10 @@ public sealed class AvatarService : IAvatarService
         return true;
     }
 
-    private AvatarValidationResult ValidateFile(IFormFile file)
+    private AvatarValidationResult ValidateFile(Stream fileStream, string fileName, string contentType)
     {
         // Check for empty file
-        if (file == null || file.Length == 0)
+        if (fileStream == null || fileStream.Length == 0)
         {
             return new AvatarValidationResult
             {
@@ -128,7 +130,7 @@ public sealed class AvatarService : IAvatarService
 
         // Check file size (max 5MB)
         const long maxSizeInBytes = 5 * 1024 * 1024;
-        if (file.Length > maxSizeInBytes)
+        if (fileStream.Length > maxSizeInBytes)
         {
             return new AvatarValidationResult
             {
@@ -139,7 +141,7 @@ public sealed class AvatarService : IAvatarService
 
         // Check file extension
         var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
-        var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        var fileExtension = Path.GetExtension(fileName).ToLowerInvariant();
         if (!allowedExtensions.Contains(fileExtension))
         {
             return new AvatarValidationResult
@@ -152,8 +154,10 @@ public sealed class AvatarService : IAvatarService
         // Validate image content by attempting to decode it
         try
         {
-            using var imageStream = file.OpenReadStream();
-            using var image = Image.FromStream(imageStream);
+            using var image = Image.FromStream(fileStream);
+            
+            // Reset position to beginning for further processing
+            fileStream.Position = 0;
             
             // Additional validation for image properties
             if (image.Width <= 0 || image.Height <= 0)
