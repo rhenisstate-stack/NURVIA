@@ -81,7 +81,7 @@ export default function ProfilePage() {
     setError(null);
 
     try {
-      const response = await nurviaApi.updateProfile({
+      const response = await nurviaApi.updateProfileDetails({
         firstName: formData.firstName,
         middleName: formData.middleName,
         lastName: formData.lastName,
@@ -131,9 +131,17 @@ export default function ProfilePage() {
     setError(null);
     
     try {
-      // Note: Avatar upload functionality will be implemented in a later phase
-      // This is a placeholder for now
-      setMessage("Avatar upload would be implemented here");
+      const response = await nurviaApi.uploadAvatar(avatarFile);
+      if (response.success && response.data) {
+        setMessage("Avatar uploaded successfully!");
+        // Update profile with new avatar info
+        setProfile(prev => ({
+          ...prev,
+          avatarStorageKey: response.data.storageKey
+        }));
+      } else {
+        setError(response.message || "Failed to upload avatar");
+      }
     } catch (err) {
       setError("Failed to upload avatar");
     } finally {
@@ -142,9 +150,29 @@ export default function ProfilePage() {
   };
 
   const handleRemoveAvatar = async () => {
-    // Note: Avatar removal functionality will be implemented in a later phase
-    // This is a placeholder for now
-    setMessage("Avatar removal would be implemented here");
+    if (!user) return;
+    
+    setIsUploading(true);
+    setMessage(null);
+    setError(null);
+    
+    try {
+      const response = await nurviaApi.removeAvatar();
+      if (response.success) {
+        setMessage("Avatar removed successfully!");
+        // Update profile to remove avatar info
+        setProfile(prev => ({
+          ...prev,
+          avatarStorageKey: null
+        }));
+      } else {
+        setError(response.message || "Failed to remove avatar");
+      }
+    } catch (err) {
+      setError("Failed to remove avatar");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   if (isLoading) {
@@ -365,6 +393,18 @@ export default function ProfilePage() {
                       />
                     </div>
                   )}
+                  
+                  <div className="flex justify-center">
+                    <Button 
+                      variant="secondary" 
+                      size="sm" 
+                      onClick={handleUploadAvatar}
+                      disabled={!avatarFile || isUploading}
+                      className="w-full"
+                    >
+                      {isUploading ? "Saving..." : "Save Avatar"}
+                    </Button>
+                  </div>
                   
                   <p className="text-xs text-foreground-muted">
                     JPG, PNG, or WebP. Maximum file size 5MB.
