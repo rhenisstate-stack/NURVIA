@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth/auth-provider";
+import { SuperadminSwitcher } from "@/components/layout/superadmin-switcher";
 
 interface AdminNavGroup {
   title: string;
@@ -233,6 +234,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-3">
+            <SuperadminSwitcher />
             <ThemeToggle />
             <div className="flex items-center gap-2 pl-2 border-l border-border text-xs">
               <div className="w-7 h-7 rounded-full bg-brand-teal text-white font-bold flex items-center justify-center text-xs">
