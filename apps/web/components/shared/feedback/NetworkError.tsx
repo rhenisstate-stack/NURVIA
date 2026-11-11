@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { WifiOff, RefreshCw } from "lucide-react";
 import { retryOperation, getRetryOptions, shouldRetryRequest } from "@/lib/utils/request-utils";
 import { ErrorType, getUserFriendlyMessage } from "@/lib/utils/error-utils";
+import { ApiErrorHandler } from "@/components/shared/feedback/ApiErrorHandler";
 
 interface NetworkErrorProps {
   onRetry?: () => Promise<void> | void;
@@ -66,6 +67,22 @@ export function NetworkError({
       setIsRetrying(false);
     }
   }, [onRetry, isRetrying, error, retryOptions]);
+  
+  // If we have an error and it's not just a network error, use the ApiErrorHandler
+  if (error && !isRetrying) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="max-w-md w-full">
+          <ApiErrorHandler 
+            error={error} 
+            onRetry={handleRetry}
+            title={title}
+            showRetry={showRetry}
+          />
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
