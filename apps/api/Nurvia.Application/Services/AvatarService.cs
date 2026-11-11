@@ -1,3 +1,5 @@
+using System.Drawing;
+using System.Drawing.Imaging;
 using Microsoft.EntityFrameworkCore;
 using Nurvia.Application.Interfaces;
 using Nurvia.Application.Security;
@@ -8,23 +10,20 @@ namespace Nurvia.Application.Services;
 public sealed class AvatarService : IAvatarService
 {
     private readonly INurviaDbContext _context;
+    private readonly IFileStorageService _fileStorageService;
 
-    public AvatarService(INurviaDbContext context)
+    public AvatarService(INurviaDbContext context, IFileStorageService fileStorageService)
     {
         _context = context;
+        _fileStorageService = fileStorageService;
     }
 
     public async Task<AvatarUploadResponse> UploadAvatarAsync(
-        string userId, 
-        IFormFile file, 
+        string userId,
+        IFormFile file,
         CancellationToken cancellationToken)
     {
-        // In a real implementation, this would:
-        // 1. Validate the file (size, type, etc.)
-        // 2. Generate a secure storage key
-        // 3. Store the file securely
-        // 4. Update the user profile with the avatar storage key
-        
+        // Validate user ID
         if (!Guid.TryParse(userId, out var guidUserId))
         {
             return new AvatarUploadResponse
@@ -33,13 +32,20 @@ public sealed class AvatarService : IAvatarService
             };
         }
 
-        // Placeholder implementation - in reality this would validate and store the file
-        var storageKey = $"avatar_{userId}_{DateTime.UtcNow.Ticks}";
-        
-        // Update the user profile with the avatar storage key
+        // Validate file
+        var validationResult = ValidateFile(file);
+        if (!validationResult.IsValid)
+        {
+            return new AvatarUploadResponse
+            {
+                Message = validationResult.ErrorMessage ?? "Invalid file format or size."
+            };
+        }
+
+        // Check if user has an existing profile
         var userProfile = await _context.UserProfiles
             .FirstOrDefaultAsync(p => p.UserId == guidUserId, cancellationToken);
-        
+
         if (userProfile == null)
         {
             // Create a new profile if it doesn't exist
@@ -47,6 +53,16 @@ public sealed class AvatarService : IAvatarService
             _context.UserProfiles.Add(userProfile);
         }
 
+        // If there's an existing avatar, remove it
+        if (!string.IsNullOrEmpty(userProfile.AvatarStorageKey))
+        {
+            await _fileStorageService.DeleteFileAsync(userProfile.AvatarStorageKey, cancellationToken);
+        }
+
+        // Store the file
+        var storageKey = await _fileStorageService.SaveFileAsync(file.OpenReadStream(), file.FileName, file.ContentType, cancellationToken);
+        
+        // Update the user profile with the avatar storage key
         userProfile.AvatarStorageKey = storageKey;
         await _context.SaveChangesAsync(cancellationToken);
 
@@ -82,13 +98,121 @@ public sealed class AvatarService : IAvatarService
 
         var userProfile = await _context.UserProfiles
             .FirstOrDefaultAsync(p => p.UserId == guidUserId, cancellationToken);
-        
+
         if (userProfile == null)
             return false;
 
+        // If there's an existing avatar, remove it from storage
+        if (!string.IsNullOrEmpty(userProfile.AvatarStorageKey))
+        {
+            await _fileStorageService.DeleteFileAsync(userProfile.AvatarStorageKey, cancellationToken);
+        }
+
         userProfile.AvatarStorageKey = null;
         await _context.SaveChangesAsync(cancellationToken);
-        
+
         return true;
     }
+
+    private AvatarValidationResult ValidateFile(IFormFile file)
+    {
+        // Check for empty file
+        if (file == null || file.Length == 0)
+        {
+            return new AvatarValidationResult
+            {
+                IsValid = false,
+                ErrorMessage = "No file was uploaded."
+            };
+        }
+
+        // Check file size (max 5MB)
+        const long maxSizeInBytes = 5 * 1024 * 1024;
+        if (file.Length > maxSizeInBytes)
+        {
+            return new AvatarValidationResult
+            {
+                IsValid = false,
+                ErrorMessage = "File size exceeds the maximum limit of 5MB."
+            };
+        }
+
+        // Check file extension
+        var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+        var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!allowedExtensions.Contains(fileExtension))
+        {
+            return new AvatarValidationResult
+            {
+                IsValid = false,
+                ErrorMessage = "Only JPG, PNG and WebP image formats are allowed."
+            };
+        }
+
+        // Validate image content by attempting to decode it
+        try
+        {
+            using var imageStream = file.OpenReadStream();
+            using var image = Image.FromStream(imageStream);
+            
+            // Additional validation for image properties
+            if (image.Width <= 0 || image.Height <= 0)
+            {
+                return new AvatarValidationResult
+                {
+                    IsValid = false,
+                    ErrorMessage = "Invalid image dimensions."
+                };
+            }
+            
+            // Limit maximum dimensions to prevent excessive memory usage
+            const int maxDimension = 4000;
+            if (image.Width > maxDimension || image.Height > maxDimension)
+            {
+                return new AvatarValidationResult
+                {
+                    IsValid = false,
+                    ErrorMessage = "Image dimensions exceed the maximum allowed size (4000x4000 pixels)."
+                };
+            }
+            
+            // Check total pixel count
+            const long maxPixels = 16000000; // 4000x4000 = 16 million pixels
+            if ((long)image.Width * image.Height > maxPixels)
+            {
+                return new AvatarValidationResult
+                {
+                    IsValid = false,
+                    ErrorMessage = "Image exceeds maximum pixel count (16 million pixels)."
+                };
+            }
+        }
+        catch (ArgumentException)
+        {
+            return new AvatarValidationResult
+            {
+                IsValid = false,
+                ErrorMessage = "Invalid image file format."
+            };
+        }
+        catch (Exception)
+        {
+            return new AvatarValidationResult
+            {
+                IsValid = false,
+                ErrorMessage = "Failed to process the image file."
+            };
+        }
+
+        return new AvatarValidationResult
+        {
+            IsValid = true
+        };
+    }
+}
+
+public class AvatarValidationResult
+{
+    public bool IsValid { get; set; }
+    public string? ErrorMessage { get; set; }
 }
