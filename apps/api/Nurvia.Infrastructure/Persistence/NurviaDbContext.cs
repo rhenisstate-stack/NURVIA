@@ -18,6 +18,7 @@ public class NurviaDbContext : DbContext, INurviaDbContext
 
     public DbSet<Question> Questions => Set<Question>();
     public DbSet<UserAccount> UserAccounts => Set<UserAccount>();
+    public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
     public DbSet<QuestionVersion> QuestionVersions => Set<QuestionVersion>();
     public DbSet<QuestionOption> QuestionOptions => Set<QuestionOption>();
     public DbSet<QuestionExhibit> QuestionExhibits => Set<QuestionExhibit>();
