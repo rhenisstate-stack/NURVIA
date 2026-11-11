@@ -42,6 +42,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth/auth-provider";
+import { SuperadminSwitcher } from "@/components/layout/superadmin-switcher";
 
 interface NavSubItem {
   name: string;
@@ -205,8 +206,11 @@ export function LearnerShell({ children }: { children: React.ReactNode }) {
     router.replace("/");
   }
 
+  // Superadmin is explicitly admitted to the learner experience with the same
+  // authenticated identity; other staff roles are redirected to access-denied.
   if (status === "loading" || status === "unauthenticated" ||
-      (status === "authenticated" && user?.role !== "Learner")) {
+      (status === "authenticated" &&
+        user?.role !== "Learner" && user?.role !== "Superadmin")) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-background px-6 text-sm text-foreground-secondary" aria-live="polite">
         {status === "loading" ? "Checking your session…" : "Redirecting to the appropriate page…"}
@@ -423,6 +427,7 @@ export function LearnerShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-3">
+            <SuperadminSwitcher />
             <ThemeToggle />
             <Button type="button" variant="outline" size="sm" className="text-xs" onClick={handleSignOut}>
               Sign Out

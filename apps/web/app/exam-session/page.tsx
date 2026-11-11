@@ -74,7 +74,7 @@ function ExamSessionContent() {
         ? "/exam-session"
         : `${window.location.pathname}${window.location.search}`;
       router.replace(`/sign-in?returnTo=${encodeURIComponent(returnTo)}`);
-    } else if (status === "authenticated" && user?.role !== "Learner") {
+    } else if (status === "authenticated" && user?.role !== "Learner" && user?.role !== "Superadmin") {
       router.replace("/access-denied");
     }
   }, [status, user, router]);
@@ -292,7 +292,8 @@ function ExamSessionContent() {
   const unansweredCount = questions.length - answeredCount;
   const flaggedCount = Object.values(flags).filter(Boolean).length;
 
-  if (status !== "authenticated" || user?.role !== "Learner") {
+  if (status !== "authenticated" ||
+      (user?.role !== "Learner" && user?.role !== "Superadmin")) {
     return <main className="flex min-h-screen items-center justify-center px-6 text-sm text-foreground-secondary" aria-live="polite">Checking your learner accessâ€¦</main>;
   }
 
