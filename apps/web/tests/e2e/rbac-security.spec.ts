@@ -66,8 +66,14 @@ test.describe("Authentication, RBAC, and exam integrity", () => {
     const unsafe = await request.post(`${API}/api/attempts/start/00000000-0000-0000-0000-000000000000`);
     expect([400, 401]).toContain(unsafe.status());
 
+    // The public catalogue endpoint intentionally serves only Published exams
+    // to unauthenticated visitors (drafts are never exposed).
     const exams = await request.get(`${API}/api/Exams`);
-    expect(exams.status()).toBe(401);
+    expect(exams.status()).toBe(200);
+    const publicItems = ((await exams.json()).data?.items ?? []) as Array<{ status: string }>;
+    for (const item of publicItems) {
+      expect(item.status).toBe("Published");
+    }
   });
 
   test("Unsafe requests without CSRF token are rejected", async ({ request }) => {
