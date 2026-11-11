@@ -219,7 +219,10 @@ test.describe("Complete authenticated learner journey", () => {
 
     await page.goto("/learner");
     await page.getByRole("button", { name: "Sign Out" }).first().click();
-    await page.waitForURL(/localhost:3000\/$|:3000\//, { timeout: 30_000 });
+    // The learner shell signs out via the API and lands on the sign-in page.
+    // (The URL must actually change; a permissive matcher would race the
+    // in-flight logout request and abort it.)
+    await page.waitForURL(/\/sign-in/, { timeout: 30_000 });
 
     // Protected page requires authentication again
     await page.goto("/learner");
