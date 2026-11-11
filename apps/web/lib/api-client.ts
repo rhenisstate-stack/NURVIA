@@ -11,6 +11,7 @@ import {
   ExamAttemptSummaryDto,
   AuthUserDto,
 } from './api-types';
+import { classifyError, ErrorType } from './utils/error-utils';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5055';
 let csrfTokenPromise: Promise<string> | null = null;
@@ -98,7 +99,9 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     return { ...json, statusCode: res.status };
   } catch (error: unknown) {
     // More specific error handling for network errors
-    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+    const errorType = classifyError(error);
+    
+    if (errorType === ErrorType.NETWORK_ERROR) {
       return {
         success: false,
         message: 'Network error connecting to NURVIA API',
@@ -106,7 +109,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
         errors: ['Failed to connect to the server. Please check your internet connection.']
       };
     }
-    
+
     const message = error instanceof Error ? error.message : 'Unknown network error';
     return {
       success: false,
