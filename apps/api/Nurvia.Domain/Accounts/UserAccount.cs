@@ -29,6 +29,9 @@ public sealed class UserAccount : Entity, IAuditableEntity
     public string CreatedBy { get; set; } = string.Empty;
     public DateTime? UpdatedAtUtc { get; set; }
     public string? UpdatedBy { get; set; }
+    
+    // Navigation property for user profile
+    public UserProfile? Profile { get; set; }
 
     public void UpdateProfile(string name, string updatedBy)
     {
