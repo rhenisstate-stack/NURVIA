@@ -177,9 +177,14 @@ test.describe("Browser-level Superadmin dashboard navigation", () => {
   });
 
   test("An ordinary Learner keeps access to the learner dashboard only", async ({ page }) => {
+    // A fresh learner that has never been promoted (the `learner` account
+    // above is promoted to Administrator by an earlier HTTP test).
+    const plainLearner = { email: `nav4.${stamp}@nurviatest.example`, password: "NavLearner4-2026", name: "Plain Learner" };
+    await apiRegister(page.request, plainLearner);
+
     await page.goto("/sign-in");
-    await page.locator("#email").fill(learner.email);
-    await page.locator("#password").fill(learner.password);
+    await page.locator("#email").fill(plainLearner.email);
+    await page.locator("#password").fill(plainLearner.password);
     await page.locator("form").getByRole("button", { name: /Sign In/ }).click();
     await page.waitForURL(/\/learner$/, { timeout: 30_000 });
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 20_000 });
