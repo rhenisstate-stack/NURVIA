@@ -13,7 +13,7 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         var connectionString = configuration.GetConnectionString("DefaultConnection");
-        
+
         // Ensure a connection string is provided
         if (string.IsNullOrEmpty(connectionString))
         {
@@ -28,6 +28,7 @@ public static class DependencyInjection
         // Register Application Services
         services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IProfileService, ProfileService>();
         services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<IQuestionService, QuestionService>();
         services.AddScoped<IExamService, ExamService>();
