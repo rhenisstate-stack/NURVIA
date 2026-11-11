@@ -49,16 +49,19 @@ await apiRegister(apiCtx);
 await apiSignIn(apiCtx);
 
 // Sign in through the UI to establish the web session
-await page.goto("http://localhost:3000/sign-in", { waitUntil: "networkidle" });
-await page.locator("#email").fill(learner.email);
-await page.locator("#password").fill(learner.password);
-const signInBtn = page.locator("form").getByRole("button", { name: /Sign In/ });
-for (let i = 0; i < 5; i++) {
-  try {
-    await signInBtn.click({ timeout: 5000 });
-    break;
-  } catch {
-    if (page.url().match(/\/learner/)) break;
+// Establish web session: the API session cookie may auto-redirect us.
+await page.goto("http://localhost:3000/sign-in", { waitUntil: "domcontentloaded" });
+if (await page.locator("#email").count() > 0) {
+  await page.locator("#email").fill(learner.email);
+  await page.locator("#password").fill(learner.password);
+  const signInBtn = page.locator("form").getByRole("button", { name: /Sign In/ });
+  for (let i = 0; i < 5; i++) {
+    try {
+      await signInBtn.click({ timeout: 5000 });
+      break;
+    } catch {
+      if (page.url().match(/\/learner/)) break;
+    }
   }
 }
 await page.waitForURL(/\/learner$/, { timeout: 30000 });
@@ -72,6 +75,13 @@ await page.getByText("Item 1 of 2").waitFor({ timeout: 15000 });
 
 // THE FAST SEQUENCE: click option then IMMEDIATELY click Next Item
 await page.getByRole("button", { name: /Auscultate the apical pulse rate for one full minute/ }).click();
+const preCls = await page.getByRole("button", { name: /Auscultate the apical pulse rate for one full minute/ }).getAttribute("class");
+console.log("Q1 class immediately after click:", preCls?.includes("ring-brand-teal") ? "HIGHLIGHTED" : "NOT highlighted");
+
+// Wait past the debounce window to see if a debounced PUT fires
+await page.waitForTimeout(2000);
+console.log("--- after 2s wait; any Q1 PUT above? ---");
+
 await page.getByRole("button", { name: /Next Item/ }).click();
 await page.getByText("Item 2 of 2").waitFor({ timeout: 15000 });
 
