@@ -4,8 +4,9 @@ namespace Nurvia.Application.Security;
 
 public sealed class AvatarUploadRequest
 {
-    [Required]
-    public IFormFile File { get; set; } = null!;
+    public Stream File { get; set; } = null!;
+    public string FileName { get; set; } = string.Empty;
+    public string ContentType { get; set; } = string.Empty;
 }
 
 public sealed class AvatarUploadResponse
@@ -23,7 +24,7 @@ public sealed class AvatarDto
 
 public interface IAvatarService
 {
-    Task<AvatarUploadResponse> UploadAvatarAsync(string userId, IFormFile file, CancellationToken cancellationToken);
+    Task<AvatarUploadResponse> UploadAvatarAsync(string userId, Stream fileStream, string fileName, string contentType, CancellationToken cancellationToken);
     Task<AvatarDto?> GetAvatarAsync(string userId, CancellationToken cancellationToken);
     Task<bool> RemoveAvatarAsync(string userId, CancellationToken cancellationToken);
 }
