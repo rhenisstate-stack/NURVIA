@@ -12,7 +12,7 @@ using Nurvia.Infrastructure.Persistence;
 namespace Nurvia.Infrastructure.Migrations
 {
     [DbContext(typeof(NurviaDbContext))]
-    [Migration("20261111053733_AddSuperadminRoleUniqueness")]
+    [Migration("20261111054031_AddSuperadminRoleUniqueness")]
     partial class AddSuperadminRoleUniqueness
     {
         /// <inheritdoc />
@@ -78,6 +78,11 @@ namespace Nurvia.Infrastructure.Migrations
 
                     b.HasIndex("NormalizedEmail")
                         .IsUnique();
+
+                    b.HasIndex("Role")
+                        .IsUnique()
+                        .HasDatabaseName("IX_UserAccounts_Superadmin_Unique")
+                        .HasFilter("\"Role\" = 'Superadmin'");
 
                     b.ToTable("UserAccounts", (string)null);
                 });

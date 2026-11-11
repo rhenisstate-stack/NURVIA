@@ -66,7 +66,32 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
       cache: 'no-store',
     });
 
-    const json = await res.json() as ApiResponse<T>;
+    // HTTP 204 (and other empty-bodied responses) are legitimate: a 204 is a
+    // success with no content, and some error responses carry no body either.
+    // Never parse JSON from a bodyless response.
+    const raw = await res.text();
+    if (!raw) {
+      if (res.ok) {
+        return { success: true, message: '', statusCode: res.status } as ApiResponse<T>;
+      }
+      return {
+        success: false,
+        message: `Request failed (${res.status}).`,
+        statusCode: res.status,
+      };
+    }
+
+    let json: ApiResponse<T>;
+    try {
+      json = JSON.parse(raw) as ApiResponse<T>;
+    } catch {
+      return {
+        success: false,
+        message: `Request failed (${res.status}).`,
+        statusCode: res.status,
+      };
+    }
+
     if (!res.ok && json.success) {
       return { success: false, message: `Request failed (${res.status}).`, statusCode: res.status };
     }

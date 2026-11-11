@@ -182,7 +182,7 @@ public sealed class AuthController : ControllerBase
         }
 
         var assigned = await _authService.AssignRoleAsync(
-            request.TargetUserId, request.Role, caller.Id, cancellationToken);
+            request.TargetUserId, request.Role, caller.Id, caller.Role, cancellationToken);
         if (!assigned)
             return BadRequest(ApiResponse<string>.Error("The requested account or role is invalid."));
 

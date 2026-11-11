@@ -76,6 +76,11 @@ namespace Nurvia.Infrastructure.Migrations
                     b.HasIndex("NormalizedEmail")
                         .IsUnique();
 
+                    b.HasIndex("Role")
+                        .IsUnique()
+                        .HasDatabaseName("IX_UserAccounts_Superadmin_Unique")
+                        .HasFilter("\"Role\" = 'Superadmin'");
+
                     b.ToTable("UserAccounts", (string)null);
                 });
 

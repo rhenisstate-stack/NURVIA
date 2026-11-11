@@ -5,10 +5,12 @@ import Link from "next/link";
 import { useAuth } from "@/components/auth/auth-provider";
 
 export function SuperadminSwitcher() {
-  const { user } = useAuth();
-  
-  // Check if user is authenticated and is Superadmin
-  if (!user || !user.isAuthenticated || user.role !== "Superadmin") {
+  const { status, user } = useAuth();
+
+  // Only an authenticated Superadmin may see the cross-dashboard switcher.
+  // AuthUserDto has no isAuthenticated field — authentication state comes from
+  // the AuthProvider status, and the role is authoritative from the backend.
+  if (status !== "authenticated" || !user || user.role !== "Superadmin") {
     return null;
   }
   

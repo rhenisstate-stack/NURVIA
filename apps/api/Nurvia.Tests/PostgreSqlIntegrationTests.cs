@@ -5,6 +5,7 @@ using Nurvia.Application.Questions;
 using Nurvia.Application.Services;
 using Nurvia.Application.Security;
 using Nurvia.Domain.Auditing;
+using Nurvia.Domain.Accounts;
 using Nurvia.Domain.Enums;
 using Nurvia.Domain.Exceptions;
 using Nurvia.Domain.Exams;
@@ -195,6 +196,123 @@ public class PostgreSqlIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task AssignRole_ServiceEnforcesSuperadminInvariant_OnEveryCallPath()
+    {
+        await using var context = CreateDbContext();
+        var authService = new AuthService(context, new Pbkdf2PasswordHasher());
+        var hasher = new Pbkdf2PasswordHasher();
+
+        // Two real PostgreSQL-backed accounts: an Administrator and a target learner.
+        var admin = new UserAccount("Service Admin", $"svc-admin-{Guid.NewGuid():N}@example.test", hasher.Hash("NursingConfidence-2026!"));
+        admin.ChangeRole("Administrator", "test-setup");
+        var target = new UserAccount("Service Target", $"svc-target-{Guid.NewGuid():N}@example.test", hasher.Hash("NursingConfidence-2026!"));
+        context.UserAccounts.AddRange(admin, target);
+        await context.SaveChangesAsync();
+        _createdUserIds.AddRange([admin.Id, target.Id]);
+
+        // Invariant 1: Administrator must NEVER be able to assign Superadmin —
+        // even when calling the application service directly, bypassing HTTP.
+        Assert.False(await authService.AssignRoleAsync(
+            target.Id.ToString(), "SUPERADMIN", admin.Id.ToString(), "Administrator", CancellationToken.None));
+        Assert.False(await authService.AssignRoleAsync(
+            target.Id.ToString(), "superadmin", admin.Id.ToString(), "administrator", CancellationToken.None));
+        Assert.Equal("Learner", await context.UserAccounts
+            .Where(u => u.Id == target.Id).Select(u => u.Role).SingleAsync());
+
+        // Invariant 2: lower-privileged callers (including self-assignment) are denied.
+        Assert.False(await authService.AssignRoleAsync(
+            target.Id.ToString(), "Administrator", target.Id.ToString(), "Learner", CancellationToken.None));
+        Assert.False(await authService.AssignRoleAsync(
+            target.Id.ToString(), "Administrator", target.Id.ToString(), "Instructor", CancellationToken.None));
+
+        // Invariant 3: a Superadmin caller may assign permitted non-Superadmin roles.
+        var superadmin = new UserAccount("Service Owner", $"svc-owner-{Guid.NewGuid():N}@example.test", hasher.Hash("NursingConfidence-2026!"));
+        superadmin.ChangeRole("Superadmin", "test-setup");
+        context.UserAccounts.Add(superadmin);
+        await context.SaveChangesAsync();
+        _createdUserIds.Add(superadmin.Id);
+
+        Assert.True(await authService.AssignRoleAsync(
+            target.Id.ToString(), "Administrator", superadmin.Id.ToString(), "Superadmin", CancellationToken.None));
+        Assert.Equal("Administrator", await context.UserAccounts
+            .Where(u => u.Id == target.Id).Select(u => u.Role).SingleAsync());
+
+        // Invariant 4: unknown or malformed role identifiers are rejected.
+        Assert.False(await authService.AssignRoleAsync(
+            target.Id.ToString(), "Root", superadmin.Id.ToString(), "Superadmin", CancellationToken.None));
+        Assert.False(await authService.AssignRoleAsync(
+            "not-a-guid", "Author", superadmin.Id.ToString(), "Superadmin", CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task SuperadminUniqueness_DatabaseConstraintRejectsSecondSuperadmin()
+    {
+        await using var context = CreateDbContext();
+        var hasher = new Pbkdf2PasswordHasher();
+
+        var first = new UserAccount("Only Owner", $"uniq-owner-{Guid.NewGuid():N}@example.test", hasher.Hash("NursingConfidence-2026!"));
+        first.ChangeRole("Superadmin", "test-setup");
+        context.UserAccounts.Add(first);
+        await context.SaveChangesAsync();
+        _createdUserIds.Add(first.Id);
+
+        // A second Superadmin row must be rejected by the database itself —
+        // this is what protects against concurrent bootstrap races.
+        var second = new UserAccount("Race Owner", $"uniq-race-{Guid.NewGuid():N}@example.test", hasher.Hash("NursingConfidence-2026!"));
+        second.ChangeRole("Superadmin", "concurrent-bootstrap");
+        context.UserAccounts.Add(second);
+
+        await Assert.ThrowsAsync<DbUpdateException>(() => context.SaveChangesAsync());
+    }
+
+    [Fact]
+    public async Task Superadmin_CanUseOwnLearnerExamExperience_ButNotOthersAttempts()
+    {
+        await using var context = CreateDbContext();
+        var hasher = new Pbkdf2PasswordHasher();
+
+        var superadmin = new UserAccount("Learner Owner", $"sa-learner-{Guid.NewGuid():N}@example.test", hasher.Hash("NursingConfidence-2026!"));
+        superadmin.ChangeRole("Superadmin", "test-setup");
+        context.UserAccounts.Add(superadmin);
+        await context.SaveChangesAsync();
+        _createdUserIds.Add(superadmin.Id);
+
+        await DatabaseSeeder.SeedAsync(context);
+        var publishedExamId = await context.Exams
+            .Where(e => e.Status == ExamStatus.Published)
+            .Select(e => e.Id)
+            .FirstAsync();
+
+        var attemptService = new ExamAttemptService(context);
+
+        // Superadmin's own learner experience: starting an attempt is permitted
+        // and the attempt is owned by the Superadmin's identity.
+        var start = await attemptService.StartAttemptAsync(
+            publishedExamId, superadmin.Id.ToString(), superadmin.Name, CancellationToken.None);
+        Assert.NotEqual(Guid.Empty, start.AttemptId);
+        Assert.NotEmpty(start.Questions);
+
+        // The attempt is owned by the Superadmin's own identity in the database.
+        var attemptOwner = await context.ExamAttempts
+            .Where(a => a.Id == start.AttemptId)
+            .Select(a => a.LearnerId)
+            .SingleAsync();
+        Assert.Equal(superadmin.Id.ToString(), attemptOwner);
+
+        // Ownership still applies: another identity cannot read the Superadmin's attempt.
+        var stranger = Guid.NewGuid().ToString();
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            attemptService.GetActiveAttemptAsync(start.AttemptId, stranger, CancellationToken.None));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            attemptService.SubmitAttemptAsync(start.AttemptId, stranger, CancellationToken.None));
+
+        // The owner can read their own attempt.
+        var own = await attemptService.GetActiveAttemptAsync(start.AttemptId, superadmin.Id.ToString(), CancellationToken.None);
+        Assert.NotNull(own);
+        Assert.Equal(start.AttemptId, own.AttemptId);
+    }
+
+    [Fact]
     public async Task BootstrapSuperadmin_IsOneTimeAndDoesNotEscalateAnExistingAccount()
     {
         await using var context = CreateDbContext();
@@ -358,7 +476,9 @@ public class PostgreSqlIntegrationTests : IAsyncLifetime
     {
         await using var context = CreateDbContext();
 
-        // DatabaseSeeder checks context.Questions.AnyAsync() and returns if already seeded
+        // First invocation may legitimately seed a fresh database; establish that
+        // state explicitly so the assertion below only tests idempotency.
+        await DatabaseSeeder.SeedAsync(context);
         var countBefore = await context.Questions.CountAsync();
         await DatabaseSeeder.SeedAsync(context);
         var countAfter = await context.Questions.CountAsync();
