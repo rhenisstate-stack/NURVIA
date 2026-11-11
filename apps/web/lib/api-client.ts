@@ -97,6 +97,16 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     }
     return { ...json, statusCode: res.status };
   } catch (error: unknown) {
+    // More specific error handling for network errors
+    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+      return {
+        success: false,
+        message: 'Network error connecting to NURVIA API',
+        statusCode: 0,
+        errors: ['Failed to connect to the server. Please check your internet connection.']
+      };
+    }
+    
     const message = error instanceof Error ? error.message : 'Unknown network error';
     return {
       success: false,

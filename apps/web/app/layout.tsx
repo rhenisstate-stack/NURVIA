@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { AuthProvider } from "@/components/auth/auth-provider";
 import "./globals.css";
+import { PageLoader } from "@/components/shared/feedback/PageLoader";
+import { AuthErrorBoundary } from "@/components/shared/feedback/AuthErrorBoundary";
 
 export const metadata: Metadata = {
   title: "NURVIA — Your Path to Nursing Confidence",
@@ -19,7 +21,13 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="antialiased selection:bg-brand-teal selection:text-white">
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <AuthErrorBoundary>
+            <PageLoader isLoading={true}>
+              {children}
+            </PageLoader>
+          </AuthErrorBoundary>
+        </AuthProvider>
       </body>
     </html>
   );

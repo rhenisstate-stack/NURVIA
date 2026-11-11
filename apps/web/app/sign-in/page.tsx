@@ -7,6 +7,7 @@ import { Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { PublicShell } from "@/components/layout/public-shell";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/auth-provider";
+import { RedirectScreen } from "@/components/shared/feedback/RedirectScreen";
 
 function defaultDestination(role: string) {
   if (role === "Learner") return "/learner";
@@ -39,9 +40,14 @@ export default function SignInPage() {
   const [error, setError] = React.useState<string | null>(null);
   const completedSignIn = React.useRef(false);
 
+  // Show redirect screen when authentication is in progress
+  if (status === "loading") {
+    return <RedirectScreen heading="Verifying your access" description="Please wait while we securely prepare your account." />;
+  }
+
   React.useEffect(() => {
     if (status === "authenticated" && user && !completedSignIn.current) {
-      router.replace(defaultDestination(user.role));
+      router.replace(safeReturnTo() || defaultDestination(user.role));
     }
   }, [status, user, router]);
 
