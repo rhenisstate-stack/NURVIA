@@ -64,6 +64,8 @@ test.describe("Backend role-assignment security (authenticated HTTP)", () => {
     const learnerUser = await apiSignIn(request, learner);
     expect(learnerUser.role).toBe("Learner");
 
+    // Switch this request context to the Superadmin before assigning.
+    await apiSignIn(request, superadmin);
     const assign = await request.post(`${API}/api/auth/assign-role`, {
       data: { targetUserId: learnerUser.id, role: "Administrator" },
       headers: { "X-CSRF-TOKEN": await getCsrf(request) },
