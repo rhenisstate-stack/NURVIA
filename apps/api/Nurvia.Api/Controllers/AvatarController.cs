@@ -23,13 +23,21 @@ public sealed class AvatarController : ControllerBase
         if (!currentUser.IsAuthenticated)
             return Unauthorized(ApiResponse<AvatarUploadResponse>.Error("Authentication is required."));
 
-        // Note: In a real implementation, we would read the uploaded file from the request
-        // For now, we'll return a placeholder response
-        return Ok(ApiResponse<AvatarUploadResponse>.Ok(
-            new AvatarUploadResponse { 
-                StorageKey = "avatar_" + currentUser.Id, 
-                Message = "Avatar uploaded successfully" 
-            }));
+        // Check if file was uploaded
+        if (!Request.Form.Files.TryGetValue("file", out var file) || file == null || file.Length == 0)
+        {
+            return BadRequest(ApiResponse<AvatarUploadResponse>.Error("No file was uploaded."));
+        }
+
+        // Process the avatar upload
+        var response = await _avatarService.UploadAvatarAsync(currentUser.Id, file, cancellationToken);
+        
+        if (string.IsNullOrEmpty(response.StorageKey))
+        {
+            return BadRequest(ApiResponse<AvatarUploadResponse>.Error(response.Message));
+        }
+        
+        return Ok(ApiResponse<AvatarUploadResponse>.Ok(response));
     }
 
     [HttpGet]
@@ -40,14 +48,14 @@ public sealed class AvatarController : ControllerBase
         if (!currentUser.IsAuthenticated)
             return Unauthorized(ApiResponse<AvatarDto>.Error("Authentication is required."));
 
-        // Note: In a real implementation, we would retrieve the avatar from storage
-        // For now, we'll return a placeholder response
-        return Ok(ApiResponse<AvatarDto>.Ok(
-            new AvatarDto { 
-                StorageKey = "avatar_" + currentUser.Id, 
-                Url = $"/api/avatar/{currentUser.Id}",
-                UploadedAtUtc = DateTime.UtcNow 
-            }));
+        var avatar = await _avatarService.GetAvatarAsync(currentUser.Id, cancellationToken);
+        
+        if (avatar == null)
+        {
+            return NotFound(ApiResponse<AvatarDto>.Error("Avatar not found."));
+        }
+        
+        return Ok(ApiResponse<AvatarDto>.Ok(avatar));
     }
 
     [HttpDelete]
@@ -58,8 +66,13 @@ public sealed class AvatarController : ControllerBase
         if (!currentUser.IsAuthenticated)
             return Unauthorized(ApiResponse<string>.Error("Authentication is required."));
 
-        // Note: In a real implementation, we would remove the avatar from storage
-        // For now, we'll return a placeholder response
+        var success = await _avatarService.RemoveAvatarAsync(currentUser.Id, cancellationToken);
+        
+        if (!success)
+        {
+            return NotFound(ApiResponse<string>.Error("Avatar not found or could not be removed."));
+        }
+        
         return Ok(ApiResponse<string>.Ok("Avatar removed successfully"));
     }
 }
