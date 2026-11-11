@@ -1,0 +1,89 @@
+{"version":10,"type":"context-options","origin":"library","browserName":"","playwrightVersion":"1.65.0","options":{},"platform":"win32","wallTime":1794377291132,"monotonicTime":107814.83,"sdkLanguage":"javascript","title":"superadmin-navigation.spec.ts:100 › Backend role-assignment security (authenticated HTTP) › Learner cannot assign any role"}
+{"type":"before","callId":"bxip@341","startTime":107819.273,"class":"APIRequestContext","method":"fetch","params":{"url":"http://localhost:5055/api/auth/csrf","method":"GET"}}
+{"type":"log","callId":"bxip@341","time":107821.182,"message":"→ GET http://localhost:5055/api/auth/csrf"}
+{"type":"log","callId":"bxip@341","time":107821.25,"message":"  user-agent: Playwright/1.65.0 (x64; windows 10.0) node/24.21"}
+{"type":"log","callId":"bxip@341","time":107821.277,"message":"  accept: */*"}
+{"type":"log","callId":"bxip@341","time":107821.297,"message":"  accept-encoding: gzip,deflate,br"}
+{"type":"log","callId":"bxip@341","time":107825.643,"message":"← 200 OK"}
+{"type":"log","callId":"bxip@341","time":107825.675,"message":"  content-type: application/json; charset=utf-8"}
+{"type":"log","callId":"bxip@341","time":107825.687,"message":"  date: Wed, 11 Nov 2026 06:08:10 GMT"}
+{"type":"log","callId":"bxip@341","time":107825.695,"message":"  server: Kestrel"}
+{"type":"log","callId":"bxip@341","time":107825.703,"message":"  cache-control: no-cache, no-store"}
+{"type":"log","callId":"bxip@341","time":107825.712,"message":"  pragma: no-cache"}
+{"type":"log","callId":"bxip@341","time":107825.719,"message":"  set-cookie: nurvia_csrf=CfDJ8Ihz709ZX3tDhGkrYk9xBw9khp1NAeuc1YfThYloI3OGfxOHulOAC1wKUvJynU7q2Z01gFP5cKadf6RZ1goQ-XgoS8WC72fJSxv8vfIGgUD2qx9wGtlmPjNZicswCCikNeLKZraJdvh2rOux9pofu3w; path=/; samesite=strict; httponly"}
+{"type":"log","callId":"bxip@341","time":107825.727,"message":"  transfer-encoding: chunked"}
+{"type":"log","callId":"bxip@341","time":107825.735,"message":"  x-frame-options: SAMEORIGIN"}
+{"type":"after","callId":"bxip@341","endTime":107826.531,"result":{"response":{"url":"http://localhost:5055/api/auth/csrf","status":200,"statusText":"OK","headers":[{"name":"Content-Type","value":"application/json; charset=utf-8"},{"name":"Date","value":"Wed, 11 Nov 2026 06:08:10 GMT"},{"name":"Server","value":"Kestrel"},{"name":"Cache-Control","value":"no-cache, no-store"},{"name":"Pragma","value":"no-cache"},{"name":"Set-Cookie","value":"nurvia_csrf=CfDJ8Ihz709ZX3tDhGkrYk9xBw9khp1NAeuc1YfThYloI3OGfxOHulOAC1wKUvJynU7q2Z01gFP5cKadf6RZ1goQ-XgoS8WC72fJSxv8vfIGgUD2qx9wGtlmPjNZicswCCikNeLKZraJdvh2rOux9pofu3w; path=/; samesite=strict; httponly"},{"name":"Transfer-Encoding","value":"chunked"},{"name":"X-Frame-Options","value":"SAMEORIGIN"}],"serverAddr":{"ipAddress":"::1","port":5055},"timing":{"startTime":1794377291137,"domainLookupStart":0,"domainLookupEnd":2.6700000000128057,"connectStart":2.6700000000128057,"secureConnectionStart":-1,"connectEnd":4.305000000007567,"requestStart":4.305000000007567,"responseStart":5.4490000000078},"responseEndTiming":6.20700000000943,"fetchUid":"be4382afdfc4c91d9a83fc7530c3482f"}}}
+{"type":"before","callId":"bxip@345","startTime":107831.118,"class":"APIRequestContext","method":"fetch","params":{"url":"http://localhost:5055/api/auth/register","method":"POST","headers":[{"name":"X-CSRF-TOKEN","value":"CfDJ8Ihz709ZX3tDhGkrYk9xBw9Mjyi3WMaZyhRovrl12ogBSMMqyeA7Z31WUDSm2DOaXIcY8VYkZypQdFAjzoh-xfmP1rPz1csy06hHqoW4NnUKf-Dp2s1yy6LC9ZxHtcH6Gxe3GYlbYNmh23lql7sElwM"}],"jsonData":"{\"name\":\"Nav Learner 2\",\"email\":\"nav2.1794377284468@nurviatest.example\",\"password\":\"NavLearner2-2026\"}"}}
+{"type":"log","callId":"bxip@345","time":107831.986,"message":"→ POST http://localhost:5055/api/auth/register"}
+{"type":"log","callId":"bxip@345","time":107832.013,"message":"  user-agent: Playwright/1.65.0 (x64; windows 10.0) node/24.21"}
+{"type":"log","callId":"bxip@345","time":107832.023,"message":"  accept: */*"}
+{"type":"log","callId":"bxip@345","time":107832.031,"message":"  accept-encoding: gzip,deflate,br"}
+{"type":"log","callId":"bxip@345","time":107832.039,"message":"  X-CSRF-TOKEN: CfDJ8Ihz709ZX3tDhGkrYk9xBw9Mjyi3WMaZyhRovrl12ogBSMMqyeA7Z31WUDSm2DOaXIcY8VYkZypQdFAjzoh-xfmP1rPz1csy06hHqoW4NnUKf-Dp2s1yy6LC9ZxHtcH6Gxe3GYlbYNmh23lql7sElwM"}
+{"type":"log","callId":"bxip@345","time":107832.047,"message":"  content-type: application/json"}
+{"type":"log","callId":"bxip@345","time":107832.055,"message":"  content-length: 102"}
+{"type":"log","callId":"bxip@345","time":107832.063,"message":"  cookie: nurvia_csrf=CfDJ8Ihz709ZX3tDhGkrYk9xBw9khp1NAeuc1YfThYloI3OGfxOHulOAC1wKUvJynU7q2Z01gFP5cKadf6RZ1goQ-XgoS8WC72fJSxv8vfIGgUD2qx9wGtlmPjNZicswCCikNeLKZraJdvh2rOux9pofu3w"}
+{"type":"log","callId":"bxip@345","time":108606.025,"message":"← 202 Accepted"}
+{"type":"log","callId":"bxip@345","time":108606.055,"message":"  content-type: application/json; charset=utf-8"}
+{"type":"log","callId":"bxip@345","time":108606.067,"message":"  date: Wed, 11 Nov 2026 06:08:11 GMT"}
+{"type":"log","callId":"bxip@345","time":108606.075,"message":"  server: Kestrel"}
+{"type":"log","callId":"bxip@345","time":108606.083,"message":"  transfer-encoding: chunked"}
+{"type":"after","callId":"bxip@345","endTime":108606.231,"result":{"response":{"url":"http://localhost:5055/api/auth/register","status":202,"statusText":"Accepted","headers":[{"name":"Content-Type","value":"application/json; charset=utf-8"},{"name":"Date","value":"Wed, 11 Nov 2026 06:08:11 GMT"},{"name":"Server","value":"Kestrel"},{"name":"Transfer-Encoding","value":"chunked"}],"serverAddr":{"ipAddress":"::1","port":5055},"timing":{"startTime":1794377291149,"domainLookupStart":-1,"domainLookupEnd":-1,"connectStart":-1,"secureConnectionStart":-1,"connectEnd":-1,"requestStart":0.5049999999901047,"responseStart":773.531999999992},"responseEndTiming":773.8689999999915,"fetchUid":"0ad324e777fc337c08910dd5970f0e29"}}}
+{"type":"before","callId":"bxip@348","startTime":108609.47,"class":"APIRequestContext","method":"fetch","params":{"url":"http://localhost:5055/api/auth/csrf","method":"GET"}}
+{"type":"log","callId":"bxip@348","time":108610.433,"message":"→ GET http://localhost:5055/api/auth/csrf"}
+{"type":"log","callId":"bxip@348","time":108610.465,"message":"  user-agent: Playwright/1.65.0 (x64; windows 10.0) node/24.21"}
+{"type":"log","callId":"bxip@348","time":108610.475,"message":"  accept: */*"}
+{"type":"log","callId":"bxip@348","time":108610.483,"message":"  accept-encoding: gzip,deflate,br"}
+{"type":"log","callId":"bxip@348","time":108610.49,"message":"  cookie: nurvia_csrf=CfDJ8Ihz709ZX3tDhGkrYk9xBw9khp1NAeuc1YfThYloI3OGfxOHulOAC1wKUvJynU7q2Z01gFP5cKadf6RZ1goQ-XgoS8WC72fJSxv8vfIGgUD2qx9wGtlmPjNZicswCCikNeLKZraJdvh2rOux9pofu3w"}
+{"type":"log","callId":"bxip@348","time":108613.09,"message":"← 200 OK"}
+{"type":"log","callId":"bxip@348","time":108613.11,"message":"  content-type: application/json; charset=utf-8"}
+{"type":"log","callId":"bxip@348","time":108613.122,"message":"  date: Wed, 11 Nov 2026 06:08:11 GMT"}
+{"type":"log","callId":"bxip@348","time":108613.13,"message":"  server: Kestrel"}
+{"type":"log","callId":"bxip@348","time":108613.138,"message":"  cache-control: no-cache, no-store"}
+{"type":"log","callId":"bxip@348","time":108613.146,"message":"  pragma: no-cache"}
+{"type":"log","callId":"bxip@348","time":108613.154,"message":"  transfer-encoding: chunked"}
+{"type":"after","callId":"bxip@348","endTime":108613.361,"result":{"response":{"url":"http://localhost:5055/api/auth/csrf","status":200,"statusText":"OK","headers":[{"name":"Content-Type","value":"application/json; charset=utf-8"},{"name":"Date","value":"Wed, 11 Nov 2026 06:08:11 GMT"},{"name":"Server","value":"Kestrel"},{"name":"Cache-Control","value":"no-cache, no-store"},{"name":"Pragma","value":"no-cache"},{"name":"Transfer-Encoding","value":"chunked"}],"serverAddr":{"ipAddress":"::1","port":5055},"timing":{"startTime":1794377291927,"domainLookupStart":-1,"domainLookupEnd":-1,"connectStart":-1,"secureConnectionStart":-1,"connectEnd":-1,"requestStart":0.6520000000018626,"responseStart":2.3250000000116415},"responseEndTiming":2.7560000000084983,"fetchUid":"030ff15b962cf395043eaee70c49368d"}}}
+{"type":"before","callId":"bxip@352","startTime":108617.46,"class":"APIRequestContext","method":"fetch","params":{"url":"http://localhost:5055/api/auth/login","method":"POST","headers":[{"name":"X-CSRF-TOKEN","value":"CfDJ8Ihz709ZX3tDhGkrYk9xBw8oOjZ6b5o8hLNf8BGzCvbhA_tun9Nk0ZRJ6o3We_5E4XZCJv4X5ciFYyUDXeaGhLR3s5OiSzddLbNuenBHCcVHMvY_DD3meum4KNdqYTwKdUgApx_4aUFPOvrf1mgE6Pw"}],"jsonData":"{\"email\":\"nav2.1794377284468@nurviatest.example\",\"password\":\"NavLearner2-2026\"}"}}
+{"type":"log","callId":"bxip@352","time":108618.504,"message":"→ POST http://localhost:5055/api/auth/login"}
+{"type":"log","callId":"bxip@352","time":108618.529,"message":"  user-agent: Playwright/1.65.0 (x64; windows 10.0) node/24.21"}
+{"type":"log","callId":"bxip@352","time":108618.539,"message":"  accept: */*"}
+{"type":"log","callId":"bxip@352","time":108618.547,"message":"  accept-encoding: gzip,deflate,br"}
+{"type":"log","callId":"bxip@352","time":108618.555,"message":"  X-CSRF-TOKEN: CfDJ8Ihz709ZX3tDhGkrYk9xBw8oOjZ6b5o8hLNf8BGzCvbhA_tun9Nk0ZRJ6o3We_5E4XZCJv4X5ciFYyUDXeaGhLR3s5OiSzddLbNuenBHCcVHMvY_DD3meum4KNdqYTwKdUgApx_4aUFPOvrf1mgE6Pw"}
+{"type":"log","callId":"bxip@352","time":108618.563,"message":"  content-type: application/json"}
+{"type":"log","callId":"bxip@352","time":108618.571,"message":"  content-length: 79"}
+{"type":"log","callId":"bxip@352","time":108618.578,"message":"  cookie: nurvia_csrf=CfDJ8Ihz709ZX3tDhGkrYk9xBw9khp1NAeuc1YfThYloI3OGfxOHulOAC1wKUvJynU7q2Z01gFP5cKadf6RZ1goQ-XgoS8WC72fJSxv8vfIGgUD2qx9wGtlmPjNZicswCCikNeLKZraJdvh2rOux9pofu3w"}
+{"type":"log","callId":"bxip@352","time":109343.761,"message":"← 200 OK"}
+{"type":"log","callId":"bxip@352","time":109343.801,"message":"  content-type: application/json; charset=utf-8"}
+{"type":"log","callId":"bxip@352","time":109343.824,"message":"  date: Wed, 11 Nov 2026 06:08:12 GMT"}
+{"type":"log","callId":"bxip@352","time":109343.843,"message":"  server: Kestrel"}
+{"type":"log","callId":"bxip@352","time":109343.86,"message":"  set-cookie: nurvia_session=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhYzEyMzgyMy03MmY0LTRiMzItYmJkOC03YzQyM2I0ZTNkMjkiLCJuYW1lIjoiTmF2IExlYXJuZXIgMiIsImVtYWlsIjoibmF2Mi4xNzk0Mzc3Mjg0NDY4QG51cnZpYXRlc3QuZXhhbXBsZSIsInJvbGUiOiJMZWFybmVyIiwiaXNzIjoiTnVydmlhQXBpIiwiYXVkIjoiTnVydmlhV2ViIiwiaWF0IjoxNzk0Mzc3MjkyLCJleHAiOjE3OTQzODA4OTIsImp0aSI6IjI3NmY1MjdjYjdmZTRjYjFhYmQ1ZDE1NWNiOGRiNTQ3In0.ouB9MSOWBvjetnCz8K0MgRvDJrPc6OUPTfUZBqqjvIA; expires=Wed, 11 Nov 2026 07:08:12 GMT; path=/; samesite=strict; httponly"}
+{"type":"log","callId":"bxip@352","time":109343.879,"message":"  transfer-encoding: chunked"}
+{"type":"after","callId":"bxip@352","endTime":109344.888,"result":{"response":{"url":"http://localhost:5055/api/auth/login","status":200,"statusText":"OK","headers":[{"name":"Content-Type","value":"application/json; charset=utf-8"},{"name":"Date","value":"Wed, 11 Nov 2026 06:08:12 GMT"},{"name":"Server","value":"Kestrel"},{"name":"Set-Cookie","value":"nurvia_session=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhYzEyMzgyMy03MmY0LTRiMzItYmJkOC03YzQyM2I0ZTNkMjkiLCJuYW1lIjoiTmF2IExlYXJuZXIgMiIsImVtYWlsIjoibmF2Mi4xNzk0Mzc3Mjg0NDY4QG51cnZpYXRlc3QuZXhhbXBsZSIsInJvbGUiOiJMZWFybmVyIiwiaXNzIjoiTnVydmlhQXBpIiwiYXVkIjoiTnVydmlhV2ViIiwiaWF0IjoxNzk0Mzc3MjkyLCJleHAiOjE3OTQzODA4OTIsImp0aSI6IjI3NmY1MjdjYjdmZTRjYjFhYmQ1ZDE1NWNiOGRiNTQ3In0.ouB9MSOWBvjetnCz8K0MgRvDJrPc6OUPTfUZBqqjvIA; expires=Wed, 11 Nov 2026 07:08:12 GMT; path=/; samesite=strict; httponly"},{"name":"Transfer-Encoding","value":"chunked"}],"serverAddr":{"ipAddress":"::1","port":5055},"timing":{"startTime":1794377291935,"domainLookupStart":-1,"domainLookupEnd":-1,"connectStart":-1,"secureConnectionStart":-1,"connectEnd":-1,"requestStart":0.547999999995227,"responseStart":725.051999999996},"responseEndTiming":725.9550000000017,"fetchUid":"724716ededde442a89e5fc94d1580a64"}}}
+{"type":"before","callId":"bxip@356","startTime":109349.812,"class":"APIRequestContext","method":"fetch","params":{"url":"http://localhost:5055/api/auth/csrf","method":"GET"}}
+{"type":"log","callId":"bxip@356","time":109350.438,"message":"→ GET http://localhost:5055/api/auth/csrf"}
+{"type":"log","callId":"bxip@356","time":109350.46,"message":"  user-agent: Playwright/1.65.0 (x64; windows 10.0) node/24.21"}
+{"type":"log","callId":"bxip@356","time":109350.47,"message":"  accept: */*"}
+{"type":"log","callId":"bxip@356","time":109350.477,"message":"  accept-encoding: gzip,deflate,br"}
+{"type":"log","callId":"bxip@356","time":109350.485,"message":"  cookie: nurvia_csrf=CfDJ8Ihz709ZX3tDhGkrYk9xBw9khp1NAeuc1YfThYloI3OGfxOHulOAC1wKUvJynU7q2Z01gFP5cKadf6RZ1goQ-XgoS8WC72fJSxv8vfIGgUD2qx9wGtlmPjNZicswCCikNeLKZraJdvh2rOux9pofu3w; nurvia_session=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhYzEyMzgyMy03MmY0LTRiMzItYmJkOC03YzQyM2I0ZTNkMjkiLCJuYW1lIjoiTmF2IExlYXJuZXIgMiIsImVtYWlsIjoibmF2Mi4xNzk0Mzc3Mjg0NDY4QG51cnZpYXRlc3QuZXhhbXBsZSIsInJvbGUiOiJMZWFybmVyIiwiaXNzIjoiTnVydmlhQXBpIiwiYXVkIjoiTnVydmlhV2ViIiwiaWF0IjoxNzk0Mzc3MjkyLCJleHAiOjE3OTQzODA4OTIsImp0aSI6IjI3NmY1MjdjYjdmZTRjYjFhYmQ1ZDE1NWNiOGRiNTQ3In0.ouB9MSOWBvjetnCz8K0MgRvDJrPc6OUPTfUZBqqjvIA"}
+{"type":"log","callId":"bxip@356","time":109354.823,"message":"← 200 OK"}
+{"type":"log","callId":"bxip@356","time":109354.845,"message":"  content-type: application/json; charset=utf-8"}
+{"type":"log","callId":"bxip@356","time":109354.857,"message":"  date: Wed, 11 Nov 2026 06:08:12 GMT"}
+{"type":"log","callId":"bxip@356","time":109354.865,"message":"  server: Kestrel"}
+{"type":"log","callId":"bxip@356","time":109354.872,"message":"  cache-control: no-cache, no-store"}
+{"type":"log","callId":"bxip@356","time":109354.88,"message":"  pragma: no-cache"}
+{"type":"log","callId":"bxip@356","time":109354.888,"message":"  transfer-encoding: chunked"}
+{"type":"after","callId":"bxip@356","endTime":109355.044,"result":{"response":{"url":"http://localhost:5055/api/auth/csrf","status":200,"statusText":"OK","headers":[{"name":"Content-Type","value":"application/json; charset=utf-8"},{"name":"Date","value":"Wed, 11 Nov 2026 06:08:12 GMT"},{"name":"Server","value":"Kestrel"},{"name":"Cache-Control","value":"no-cache, no-store"},{"name":"Pragma","value":"no-cache"},{"name":"Transfer-Encoding","value":"chunked"}],"serverAddr":{"ipAddress":"::1","port":5055},"timing":{"startTime":1794377292667,"domainLookupStart":-1,"domainLookupEnd":-1,"connectStart":-1,"secureConnectionStart":-1,"connectEnd":-1,"requestStart":0.4309999999968568,"responseStart":3.6019999999989523},"responseEndTiming":4.028999999994994,"fetchUid":"6cb95cccccfefd482cef66ad25994019"}}}
+{"type":"before","callId":"bxip@360","startTime":109359.481,"class":"APIRequestContext","method":"fetch","params":{"url":"http://localhost:5055/api/auth/assign-role","method":"POST","headers":[{"name":"X-CSRF-TOKEN","value":"CfDJ8Ihz709ZX3tDhGkrYk9xBw-z_yT9FalO_TXjxu8pA8TYVHuBQUc20TU4QwUUk4bDeFjivogDrksIHTOnkL9M0p6k5e7ycNXrQh9WbFmQ7K4c_5cYghTTjcCJBl1zYxm7rothsFQf1kZ35IGPvdsMRfBo9oeBKPOeYLr4LHtuHne8es7vuJPYti9RRYaYNmJ-MQ"}],"jsonData":"{\"targetUserId\":\"nav2.1794377284468@nurviatest.example\",\"role\":\"Administrator\"}"}}
+{"type":"log","callId":"bxip@360","time":109360.354,"message":"→ POST http://localhost:5055/api/auth/assign-role"}
+{"type":"log","callId":"bxip@360","time":109360.378,"message":"  user-agent: Playwright/1.65.0 (x64; windows 10.0) node/24.21"}
+{"type":"log","callId":"bxip@360","time":109360.387,"message":"  accept: */*"}
+{"type":"log","callId":"bxip@360","time":109360.395,"message":"  accept-encoding: gzip,deflate,br"}
+{"type":"log","callId":"bxip@360","time":109360.402,"message":"  X-CSRF-TOKEN: CfDJ8Ihz709ZX3tDhGkrYk9xBw-z_yT9FalO_TXjxu8pA8TYVHuBQUc20TU4QwUUk4bDeFjivogDrksIHTOnkL9M0p6k5e7ycNXrQh9WbFmQ7K4c_5cYghTTjcCJBl1zYxm7rothsFQf1kZ35IGPvdsMRfBo9oeBKPOeYLr4LHtuHne8es7vuJPYti9RRYaYNmJ-MQ"}
+{"type":"log","callId":"bxip@360","time":109360.41,"message":"  content-type: application/json"}
+{"type":"log","callId":"bxip@360","time":109360.418,"message":"  content-length: 79"}
+{"type":"log","callId":"bxip@360","time":109360.425,"message":"  cookie: nurvia_csrf=CfDJ8Ihz709ZX3tDhGkrYk9xBw9khp1NAeuc1YfThYloI3OGfxOHulOAC1wKUvJynU7q2Z01gFP5cKadf6RZ1goQ-XgoS8WC72fJSxv8vfIGgUD2qx9wGtlmPjNZicswCCikNeLKZraJdvh2rOux9pofu3w; nurvia_session=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhYzEyMzgyMy03MmY0LTRiMzItYmJkOC03YzQyM2I0ZTNkMjkiLCJuYW1lIjoiTmF2IExlYXJuZXIgMiIsImVtYWlsIjoibmF2Mi4xNzk0Mzc3Mjg0NDY4QG51cnZpYXRlc3QuZXhhbXBsZSIsInJvbGUiOiJMZWFybmVyIiwiaXNzIjoiTnVydmlhQXBpIiwiYXVkIjoiTnVydmlhV2ViIiwiaWF0IjoxNzk0Mzc3MjkyLCJleHAiOjE3OTQzODA4OTIsImp0aSI6IjI3NmY1MjdjYjdmZTRjYjFhYmQ1ZDE1NWNiOGRiNTQ3In0.ouB9MSOWBvjetnCz8K0MgRvDJrPc6OUPTfUZBqqjvIA"}
+{"type":"log","callId":"bxip@360","time":109365.217,"message":"← 403 Forbidden"}
+{"type":"log","callId":"bxip@360","time":109365.241,"message":"  content-length: 0"}
+{"type":"log","callId":"bxip@360","time":109365.251,"message":"  date: Wed, 11 Nov 2026 06:08:12 GMT"}
+{"type":"log","callId":"bxip@360","time":109365.26,"message":"  server: Kestrel"}
+{"type":"after","callId":"bxip@360","endTime":109365.402,"result":{"response":{"url":"http://localhost:5055/api/auth/assign-role","status":403,"statusText":"Forbidden","headers":[{"name":"Content-Length","value":"0"},{"name":"Date","value":"Wed, 11 Nov 2026 06:08:12 GMT"},{"name":"Server","value":"Kestrel"}],"serverAddr":{"ipAddress":"::1","port":5055},"timing":{"startTime":1794377292677,"domainLookupStart":-1,"domainLookupEnd":-1,"connectStart":-1,"secureConnectionStart":-1,"connectEnd":-1,"requestStart":0.4860000000044238,"responseStart":4.346000000005006},"responseEndTiming":4.707999999998719,"fetchUid":"d24caa5b994b47d83b4c0094cf6b9e0f"}}}
