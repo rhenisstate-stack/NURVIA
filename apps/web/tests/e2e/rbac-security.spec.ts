@@ -60,8 +60,11 @@ test.describe("Authentication, RBAC, and exam integrity", () => {
     const questions = await request.get(`${API}/api/Questions`);
     expect(questions.status()).toBe(401);
 
+    // Token-less unsafe requests are rejected by the global antiforgery
+    // filter (400) before the controller's authentication check runs; GET
+    // endpoints above return 401 directly. Both outcomes deny the request.
     const unsafe = await request.post(`${API}/api/attempts/start/00000000-0000-0000-0000-000000000000`);
-    expect(unsafe.status()).toBe(401);
+    expect([400, 401]).toContain(unsafe.status());
 
     const exams = await request.get(`${API}/api/Exams`);
     expect(exams.status()).toBe(401);
@@ -231,9 +234,13 @@ test.describe("Authentication, RBAC, and exam integrity", () => {
     expect(bad.status()).toBe(401);
 
     await signIn(request, learnerA);
+    // ASP.NET Core binds antiforgery tokens to the authenticated user, so the
+    // token fetched before sign-in is rejected after authentication. Fetch a
+    // fresh token for the authenticated session.
+    const authenticatedCsrf = await getCsrf(request);
     const profile = await request.put(`${API}/api/auth/profile`, {
       data: { name: "Rbac Learner A Renamed", role: "Superadmin" },
-      headers: { "X-CSRF-TOKEN": csrf },
+      headers: { "X-CSRF-TOKEN": authenticatedCsrf },
     });
     expect(profile.status()).toBe(200);
     const profileBody = (await profile.json()).data;

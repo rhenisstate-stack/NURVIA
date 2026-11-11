@@ -1,0 +1,16 @@
+1:"$Sreact.fragment"
+2:I[9766,[],""]
+3:I[8924,[],""]
+4:I[1959,[],"ClientPageRoot"]
+5:I[5471,["2619","static/chunks/2619-3c9e02e22d10480a.js","8889","static/chunks/8889-899033063b8c4d5a.js","5220","static/chunks/5220-773e0d7157dce40e.js","1603","static/chunks/1603-cdd4b910d9992f8f.js","963","static/chunks/963-f48ef1758af0686b.js","9335","static/chunks/app/learner/attempts/%5Bid%5D/page-ed1857a20d0829c2.js"],"default"]
+6:I[4431,[],"OutletBoundary"]
+8:I[5278,[],"AsyncMetadataOutlet"]
+a:I[4431,[],"ViewportBoundary"]
+c:I[4431,[],"MetadataBoundary"]
+d:"$Sreact.suspense"
+0:{"b":"904pcs8DpWW6d9Dw0R7gE","f":[["children","learner",["learner",{"children":["attempts",{"children":[["id","b1f20d9f-1932-45b4-97f6-5e1cffd790d5","d"],{"children":["__PAGE__",{}]}]}]}],["learner",["$","$1","c",{"children":[null,["$","$L2",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L3",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","forbidden":"$undefined","unauthorized":"$undefined"}]]}],{"children":["attempts",["$","$1","c",{"children":[null,["$","$L2",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L3",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","forbidden":"$undefined","unauthorized":"$undefined"}]]}],{"children":[["id","b1f20d9f-1932-45b4-97f6-5e1cffd790d5","d"],["$","$1","c",{"children":[null,["$","$L2",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L3",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","forbidden":"$undefined","unauthorized":"$undefined"}]]}],{"children":["__PAGE__",["$","$1","c",{"children":[["$","$L4",null,{"Component":"$5","searchParams":{},"params":{"id":"b1f20d9f-1932-45b4-97f6-5e1cffd790d5"}}],null,["$","$L6",null,{"children":["$L7",["$","$L8",null,{"promise":"$@9"}]]}]]}],{},null,false]},null,false]},null,false]},null,false],["$","$1","h",{"children":[null,["$","$1","QMduXE2JV5dIiux1XBTg5v",{"children":[["$","$La",null,{"children":"$Lb"}],null]}],["$","$Lc","QMduXE2JV5dIiux1XBTg5m",{"children":["$","div",null,{"hidden":true,"children":["$","$d",null,{"fallback":null,"children":"$Le"}]}]}]]}],false]],"S":false}
+b:[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]
+7:null
+f:I[622,[],"IconMark"]
+9:{"metadata":[["$","title","0",{"children":"NURVIA â€” Your Path to Nursing Confidence"}],["$","meta","1",{"name":"description","content":"Comprehensive nursing education and exam-preparation platform for ATI, HESI, NCLEX-RN, and NCLEX-PN."}],["$","link","2",{"rel":"icon","href":"/brand/favicon.svg"}],["$","$Lf","3",{}]],"error":null,"digest":"$undefined"}
+e:"$9:metadata"

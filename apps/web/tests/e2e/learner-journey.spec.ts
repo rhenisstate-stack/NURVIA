@@ -191,6 +191,7 @@ test.describe("Complete authenticated learner journey", () => {
   });
 
   test("Step 8 — Review shows released answer key and rationales", async ({ page }) => {
+    await signInLearner(page);
     await page.goto(`/learner/attempts/${attemptRef.id}`);
     await expect(page.getByText("Correct answer").first()).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText(/Clinical Rationale|Overall Clinical Rationale/i).first()).toBeVisible();
