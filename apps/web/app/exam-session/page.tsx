@@ -65,8 +65,9 @@ function ExamSessionContent() {
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [submissionError, setSubmissionError] = React.useState<string | null>(null);
 
-  // Autosave debounce timer ref
-  const autosaveTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  // Autosave debounce timers, keyed per question so that answering a new
+  // question can never cancel a pending save for a previous one.
+  const autosaveTimeoutsRef = React.useRef<Record<string, NodeJS.Timeout | null>>({});
 
   React.useEffect(() => {
     if (status === "unauthenticated") {
@@ -125,6 +126,16 @@ function ExamSessionContent() {
 
     loadAttempt();
   }, [attemptIdParam, examIdParam, modeParam]);
+
+  // Cancel pending autosaves when the exam session is unmounted.
+  React.useEffect(() => {
+    const timeouts = autosaveTimeoutsRef.current;
+    return () => {
+      Object.values(timeouts).forEach((timer) => {
+        if (timer) clearTimeout(timer);
+      });
+    };
+  }, []);
 
   const hydrateFromReview = (data: SubmittedExamResultDto) => {
     setAttemptId(data.attemptId);
@@ -204,31 +215,42 @@ function ExamSessionContent() {
   };
 
   // 2. Debounced Autosave Handler
+  const persistResponse = async (questionId: string, payloadJson: string | null, isFlagged: boolean) => {
+    if (!attemptId) return;
+    try {
+      const res = await nurviaApi.autosaveResponse(attemptId, {
+        questionId,
+        responseJson: payloadJson,
+        isFlagged,
+      });
+      setAutosaveStatus(res.success ? "saved" : "error");
+    } catch {
+      setAutosaveStatus("error");
+    }
+  };
+
+  // Immediately persists a debounced-but-unsaved response (used before
+  // navigating to another question or opening the submit dialog).
+  const flushPendingAutosave = (questionId: string) => {
+    const pending = autosaveTimeoutsRef.current[questionId];
+    if (pending) {
+      clearTimeout(pending);
+      autosaveTimeoutsRef.current[questionId] = null;
+      void persistResponse(questionId, answers[questionId] ?? null, flags[questionId] || false);
+    }
+  };
+
   const handleAnswerChange = (questionId: string, payloadJson: string) => {
     setAnswers((prev) => ({ ...prev, [questionId]: payloadJson }));
 
     if (!attemptId) return;
 
     setAutosaveStatus("saving");
-    if (autosaveTimeoutRef.current) clearTimeout(autosaveTimeoutRef.current);
+    if (autosaveTimeoutsRef.current[questionId]) clearTimeout(autosaveTimeoutsRef.current[questionId]);
 
-    autosaveTimeoutRef.current = setTimeout(async () => {
-      try {
-        const isFlagged = flags[questionId] || false;
-        const res = await nurviaApi.autosaveResponse(attemptId, {
-          questionId,
-          responseJson: payloadJson,
-          isFlagged,
-        });
-
-        if (res.success) {
-          setAutosaveStatus("saved");
-        } else {
-          setAutosaveStatus("error");
-        }
-      } catch {
-        setAutosaveStatus("error");
-      }
+    autosaveTimeoutsRef.current[questionId] = setTimeout(async () => {
+      autosaveTimeoutsRef.current[questionId] = null;
+      await persistResponse(questionId, payloadJson, flags[questionId] || false);
     }, 600);
   };
 
@@ -243,17 +265,11 @@ function ExamSessionContent() {
 
     if (attemptId) {
       setAutosaveStatus("saving");
-      try {
-        const ans = answers[currentQ.id] || null;
-        await nurviaApi.autosaveResponse(attemptId, {
-          questionId: currentQ.id,
-          responseJson: ans,
-          isFlagged: nextFlag,
-        });
-        setAutosaveStatus("saved");
-      } catch {
-        setAutosaveStatus("error");
+      if (autosaveTimeoutsRef.current[currentQ.id]) {
+        clearTimeout(autosaveTimeoutsRef.current[currentQ.id]!);
+        autosaveTimeoutsRef.current[currentQ.id] = null;
       }
+      await persistResponse(currentQ.id, answers[currentQ.id] || null, nextFlag);
     }
   };
 
@@ -320,7 +336,12 @@ function ExamSessionContent() {
       onModeChange={setDeliveryMode}
       isFlagged={isCurrentFlagged}
       onToggleFlag={handleToggleFlag}
-      onSubmitExam={() => setIsSubmitModalOpen(true)}
+      onSubmitExam={() => {
+        // Persist every debounced-but-unsaved response before reviewing
+        // the submission status.
+        Object.keys(autosaveTimeoutsRef.current).forEach((qid) => flushPendingAutosave(qid));
+        setIsSubmitModalOpen(true);
+      }}
       secondsRemaining={secondsRemaining}
       onTimerExpired={handleSubmitExam}
       autosaveStatus={autosaveStatus}
@@ -455,7 +476,10 @@ function ExamSessionContent() {
             variant="outline"
             size="sm"
             disabled={currentIndex === 0}
-            onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
+            onClick={() => {
+              if (currentQ) flushPendingAutosave(currentQ.id);
+              setCurrentIndex((prev) => Math.max(0, prev - 1));
+            }}
             className="text-xs gap-1"
           >
             <ChevronLeft className="w-4 h-4" /> Previous Item
@@ -468,7 +492,10 @@ function ExamSessionContent() {
           <Button
             size="sm"
             disabled={currentIndex === questions.length - 1}
-            onClick={() => setCurrentIndex((prev) => Math.min(questions.length - 1, prev + 1))}
+            onClick={() => {
+              if (currentQ) flushPendingAutosave(currentQ.id);
+              setCurrentIndex((prev) => Math.min(questions.length - 1, prev + 1));
+            }}
             className="text-xs gap-1 bg-brand-navy hover:bg-brand-navyDeep text-white dark:bg-brand-teal"
           >
             Next Item <ChevronRight className="w-4 h-4" />
