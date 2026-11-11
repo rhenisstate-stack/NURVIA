@@ -57,19 +57,19 @@ export function NotFoundPage({
           className="flex flex-col sm:flex-row gap-3 w-full"
         >
           {showBack && (
-            <Button asChild>
-              <Link href={backHref}>
+            <Link href={backHref}>
+              <Button>
                 Go Back
-              </Link>
-            </Button>
+              </Button>
+            </Link>
           )}
 
           {showDashboard && (
-            <Button asChild variant="outline">
-              <Link href={dashboardHref}>
+            <Link href={dashboardHref}>
+              <Button variant="outline">
                 Return to Dashboard
-              </Link>
-            </Button>
+              </Button>
+            </Link>
           )}
         </motion.div>
       </div>
