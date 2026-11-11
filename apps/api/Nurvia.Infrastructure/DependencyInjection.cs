@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Nurvia.Application.Interfaces;
+using Nurvia.Application.Options;
 using Nurvia.Application.Security;
 using Nurvia.Application.Services;
 using Nurvia.Infrastructure.Persistence;
@@ -34,6 +36,13 @@ public static class DependencyInjection
         services.AddScoped<IQuestionService, QuestionService>();
         services.AddScoped<IExamService, ExamService>();
         services.AddScoped<IExamAttemptService, ExamAttemptService>();
+        
+        // Register file storage service
+        services.Configure<FileStorageOptions>(options =>
+        {
+            options.StoragePath = Path.Combine(Directory.GetCurrentDirectory(), "storage", "avatars");
+        });
+        services.AddScoped<IFileStorageService, FileStorageService>();
 
         return services;
     }
