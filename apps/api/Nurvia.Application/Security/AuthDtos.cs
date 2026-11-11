@@ -15,7 +15,7 @@ public sealed class RegistrationRequest
     public string Password { get; set; } = string.Empty;
 }
 
-public sealed class UpdateProfileRequest
+public sealed class UpdateAuthProfileRequest
 {
     public string Name { get; set; } = string.Empty;
 }
