@@ -1,8 +1,0 @@
-{"version":10,"type":"context-options","origin":"library","browserName":"chromium","playwrightVersion":"1.65.0","options":{"baseURL":"http://localhost:3000","viewport":{"width":1280,"height":720},"isMobile":false},"platform":"win32","wallTime":1794378440235,"monotonicTime":27192.805,"sdkLanguage":"javascript","testIdAttributeName":"data-testid","title":"learner-journey.spec.ts:105 › Complete authenticated learner journey › Step 2b — Duplicate registration is handled safely"}
-{"type":"before","callId":"gxzn@463","startTime":27214.967,"class":"BrowserContext","method":"newPage","params":{}}
-{"type":"event","time":27452.668,"class":"BrowserContext","method":"page","params":{"pageId":"page@a73122bec7fd3b2fe01b982adde75b7b"}}
-{"type":"after","callId":"gxzn@463","endTime":27452.967,"result":{"page":"<Page>"}}
-{"type":"before","callId":"gxzn@465","startTime":27461.169,"class":"Frame","method":"goto","params":{"url":"/sign-up","waitUntil":"load"}}
-{"type":"frame-snapshot","snapshot":{"callId":"gxzn@465","phase":"before","pageId":"page@a73122bec7fd3b2fe01b982adde75b7b","frameId":"frame@fbab4f6dc8ea27d023cf109b06fd4ee0","frameUrl":"about:blank","html":["HTML",{},["HEAD",{},["BASE",{"href":"about:blank"}]],["BODY"]],"viewport":{"width":1280,"height":720},"timestamp":27474.062,"wallTime":1794378440518,"collectionTime":5.300000004470348,"resourceOverrides":[],"isMainFrame":true}}
-{"type":"log","callId":"gxzn@465","time":27478.071,"message":"navigating to \"http://localhost:3000/sign-up\", waiting until \"load\""}
-{"type":"screencast-frame","pageId":"page@a73122bec7fd3b2fe01b982adde75b7b","file":"screencast/page@a73122bec7fd3b2fe01b982adde75b7b-1794378440552.jpeg","width":1280,"height":720,"timestamp":27509.625,"frameSwapWallTime":1794378440510.548}

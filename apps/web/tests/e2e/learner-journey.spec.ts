@@ -214,8 +214,8 @@ test.describe("Complete authenticated learner journey", () => {
     await page.reload();
     await expect(page.locator("#profile-name")).toHaveValue(updatedName);
 
-    // Email field must be read-only and no role control may exist
-    await expect(page.locator("#profile-email")).toBeDisabled();
+    // Email field must be read-only (not editable) and no role control may exist
+    await expect(page.locator("#profile-email")).not.toBeEditable();
 
     await page.goto("/learner");
     await page.getByRole("button", { name: "Sign Out" }).first().click();
