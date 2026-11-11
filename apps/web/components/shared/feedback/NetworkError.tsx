@@ -5,14 +5,24 @@ import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { WifiOff, RefreshCw } from "lucide-react";
+import { retryOperation, getRetryOptions, shouldRetryRequest } from "@/lib/utils/request-utils";
+import { ErrorType, getUserFriendlyMessage } from "@/lib/utils/error-utils";
 
 interface NetworkErrorProps {
-  onRetry?: () => void;
+  onRetry?: () => Promise<void> | void;
   message?: string;
   title?: string;
   showRetry?: boolean;
   showBack?: boolean;
   onBack?: () => void;
+  retryOptions?: {
+    maxAttempts?: number;
+    initialDelay?: number;
+    maxDelay?: number;
+    backoffMultiplier?: number;
+    jitter?: boolean;
+  };
+  error?: unknown;
 }
 
 export function NetworkError({
@@ -21,8 +31,42 @@ export function NetworkError({
   title = "Connection interrupted",
   showRetry = true,
   showBack = false,
-  onBack
+  onBack,
+  retryOptions = {},
+  error
 }: NetworkErrorProps) {
+  const [isRetrying, setIsRetrying] = React.useState(false);
+  const [retryCount, setRetryCount] = React.useState(0);
+  
+  const handleRetry = React.useCallback(async () => {
+    if (!onRetry || isRetrying) return;
+    
+    setIsRetrying(true);
+    setRetryCount(prev => prev + 1);
+    
+    try {
+      // Attempt retry using the retry infrastructure
+      if (shouldRetryRequest(error, { retry: true })) {
+        const options = getRetryOptions({ retryOptions });
+        const result = await retryOperation(async () => {
+          await onRetry();
+        }, options);
+        
+        if (result.error) {
+          // Handle retry failure
+          console.error("Retry failed:", result.error);
+        }
+      } else {
+        // Simple retry without exponential backoff
+        await onRetry();
+      }
+    } catch (err) {
+      console.error("Retry error:", err);
+    } finally {
+      setIsRetrying(false);
+    }
+  }, [onRetry, isRetrying, error, retryOptions]);
+  
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="flex flex-col items-center gap-6 text-center max-w-md">
@@ -35,7 +79,7 @@ export function NetworkError({
             <WifiOff className="h-8 w-8" />
           </div>
         </motion.div>
-        
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -48,7 +92,7 @@ export function NetworkError({
             {message}
           </p>
         </motion.div>
-        
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -56,17 +100,27 @@ export function NetworkError({
           className="flex flex-col sm:flex-row gap-3 w-full"
         >
           {showRetry && (
-            <Button 
-              onClick={onRetry}
+            <Button
+              onClick={handleRetry}
+              disabled={isRetrying}
               className="flex items-center justify-center gap-2"
             >
-              <RefreshCw className="h-4 w-4" />
-              Try Again
+              {isRetrying ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  Retrying...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-4 w-4" />
+                  Try Again
+                </>
+              )}
             </Button>
           )}
-          
+
           {showBack && onBack && (
-            <Button 
+            <Button
               variant="outline"
               onClick={onBack}
               className="flex items-center justify-center gap-2"
