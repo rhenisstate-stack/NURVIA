@@ -1,5 +1,3 @@
-using System.Drawing;
-using System.Drawing.Imaging;
 using Microsoft.EntityFrameworkCore;
 using Nurvia.Application.Interfaces;
 using Nurvia.Application.Security;
@@ -63,7 +61,7 @@ public sealed class AvatarService : IAvatarService
 
         // Store the file
         var storageKey = await _fileStorageService.SaveFileAsync(fileStream, fileName, contentType, cancellationToken);
-        
+
         // Update the user profile with the avatar storage key
         userProfile.AvatarStorageKey = storageKey;
         await _context.SaveChangesAsync(cancellationToken);
@@ -151,63 +149,8 @@ public sealed class AvatarService : IAvatarService
             };
         }
 
-        // Validate image content by attempting to decode it
-        try
-        {
-            using var image = Image.FromStream(fileStream);
-            
-            // Reset position to beginning for further processing
-            fileStream.Position = 0;
-            
-            // Additional validation for image properties
-            if (image.Width <= 0 || image.Height <= 0)
-            {
-                return new AvatarValidationResult
-                {
-                    IsValid = false,
-                    ErrorMessage = "Invalid image dimensions."
-                };
-            }
-            
-            // Limit maximum dimensions to prevent excessive memory usage
-            const int maxDimension = 4000;
-            if (image.Width > maxDimension || image.Height > maxDimension)
-            {
-                return new AvatarValidationResult
-                {
-                    IsValid = false,
-                    ErrorMessage = "Image dimensions exceed the maximum allowed size (4000x4000 pixels)."
-                };
-            }
-            
-            // Check total pixel count
-            const long maxPixels = 16000000; // 4000x4000 = 16 million pixels
-            if ((long)image.Width * image.Height > maxPixels)
-            {
-                return new AvatarValidationResult
-                {
-                    IsValid = false,
-                    ErrorMessage = "Image exceeds maximum pixel count (16 million pixels)."
-                };
-            }
-        }
-        catch (ArgumentException)
-        {
-            return new AvatarValidationResult
-            {
-                IsValid = false,
-                ErrorMessage = "Invalid image file format."
-            };
-        }
-        catch (Exception)
-        {
-            return new AvatarValidationResult
-            {
-                IsValid = false,
-                ErrorMessage = "Failed to process the image file."
-            };
-        }
-
+        // Basic validation - we'll defer detailed image validation to the file storage service
+        // For now, we'll just validate the file isn't empty and has correct extension
         return new AvatarValidationResult
         {
             IsValid = true

@@ -150,11 +150,11 @@ public sealed class AuthController : ControllerBase
         if (!currentUser.IsAuthenticated)
             return Unauthorized(ApiResponse<AuthUserDto>.Error("Authentication is required."));
 
-        var name = request.Name.Trim();
-        if (name.Length is < 2 or > 200)
-            return BadRequest(ApiResponse<AuthUserDto>.Error("Name must contain between 2 and 200 characters."));
+        var firstName = request.FirstName.Trim();
+        if (firstName.Length is < 2 or > 200)
+            return BadRequest(ApiResponse<AuthUserDto>.Error("First name must contain between 2 and 200 characters."));
 
-        var user = await _authService.UpdateProfileAsync(currentUser.Id, name, cancellationToken);
+        var user = await _authService.UpdateProfileAsync(currentUser.Id, firstName, cancellationToken);
         if (user == null)
             return Unauthorized(ApiResponse<AuthUserDto>.Error("User is not authenticated."));
 

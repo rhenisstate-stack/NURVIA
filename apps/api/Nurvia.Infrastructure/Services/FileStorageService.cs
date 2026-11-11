@@ -6,7 +6,7 @@ using Microsoft.Extensions.Options;
 using Nurvia.Application.Interfaces;
 using Nurvia.Application.Options;
 
-namespace Nurvia.Application.Services;
+namespace Nurvia.Infrastructure.Services;
 
 public sealed class FileStorageService : IFileStorageService
 {
@@ -17,7 +17,7 @@ public sealed class FileStorageService : IFileStorageService
     {
         _storagePath = options.Value.StoragePath;
         _environment = environment;
-        
+
         // Ensure the storage directory exists
         Directory.CreateDirectory(_storagePath);
     }
@@ -26,25 +26,25 @@ public sealed class FileStorageService : IFileStorageService
     {
         // Generate a secure, unpredictable storage key
         var storageKey = GenerateStorageKey(fileName);
-        
+
         // Construct the full file path
         var filePath = Path.Combine(_storagePath, storageKey);
-        
+
         // Copy the stream to the file
         using var fileStreamCopy = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, 4096, true);
         await fileStream.CopyToAsync(fileStreamCopy, cancellationToken);
-        
+
         return storageKey;
     }
 
     public async Task<Stream?> GetFileStreamAsync(string storageKey, CancellationToken cancellationToken)
     {
         var filePath = Path.Combine(_storagePath, storageKey);
-        
+
         // Check if file exists
         if (!File.Exists(filePath))
             return null;
-            
+
         // Return the file stream
         return new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous);
     }
@@ -52,7 +52,7 @@ public sealed class FileStorageService : IFileStorageService
     public async Task<bool> DeleteFileAsync(string storageKey, CancellationToken cancellationToken)
     {
         var filePath = Path.Combine(_storagePath, storageKey);
-        
+
         // Check if file exists and delete it
         if (File.Exists(filePath))
         {
@@ -67,7 +67,7 @@ public sealed class FileStorageService : IFileStorageService
                 return false;
             }
         }
-        
+
         return false;
     }
 
@@ -83,19 +83,19 @@ public sealed class FileStorageService : IFileStorageService
         var randomBytes = new byte[32];
         using var rng = RandomNumberGenerator.Create();
         rng.GetBytes(randomBytes);
-        
+
         var base64Key = Convert.ToBase64String(randomBytes)
             .Replace("/", "_")
             .Replace("+", "-")
             .TrimEnd('=');
-            
+
         // Extract file extension from original filename
         var extension = Path.GetExtension(originalFileName);
         if (string.IsNullOrEmpty(extension))
         {
             extension = ".bin";
         }
-        
+
         // Combine key and extension
         return $"{base64Key}{extension}";
     }

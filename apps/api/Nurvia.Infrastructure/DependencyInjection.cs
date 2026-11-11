@@ -7,6 +7,7 @@ using Nurvia.Application.Options;
 using Nurvia.Application.Security;
 using Nurvia.Application.Services;
 using Nurvia.Infrastructure.Persistence;
+using Nurvia.Infrastructure.Services;
 
 namespace Nurvia.Infrastructure;
 
@@ -36,7 +37,7 @@ public static class DependencyInjection
         services.AddScoped<IQuestionService, QuestionService>();
         services.AddScoped<IExamService, ExamService>();
         services.AddScoped<IExamAttemptService, ExamAttemptService>();
-        
+
         // Register file storage service
         services.Configure<FileStorageOptions>(options =>
         {

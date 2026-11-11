@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Nurvia.Application.Common;
 using Nurvia.Application.Security;
+using Nurvia.Api.Common;
 
 namespace Nurvia.Api.Controllers;
 
@@ -39,7 +40,7 @@ public sealed class ProfileController : ControllerBase
             return Unauthorized(ApiResponse<UpdateProfileResponse>.Error("Authentication is required."));
 
         var response = await _profileService.UpdateProfileAsync(currentUser.Id, request, cancellationToken);
-        
+
         if (string.IsNullOrEmpty(response.Message))
         {
             return BadRequest(ApiResponse<UpdateProfileResponse>.Error("Failed to update profile."));
