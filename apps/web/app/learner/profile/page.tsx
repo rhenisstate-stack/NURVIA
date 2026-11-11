@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import { LearnerShell } from "@/components/layout/learner-shell";
@@ -9,13 +9,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { UserAvatar } from "@/components/shared/avatar/UserAvatar";
 import { useAuth } from "@/components/auth/auth-provider";
 import { nurviaApi } from "@/lib/api-client";
-import { ApiResponse } from "@/lib/api-types";
+import { ApiResponse, UserProfileDto } from "@/lib/api-types";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2 } from "lucide-react";
 
 export default function ProfilePage() {
   const { user, refresh } = useAuth();
-  const [profile, setProfile] = React.useState<any>(null);
+  const [profile, setProfile] = React.useState<UserProfileDto | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isUpdating, setIsUpdating] = React.useState(false);
   const [message, setMessage] = React.useState<string | null>(null);
@@ -135,10 +135,13 @@ export default function ProfilePage() {
       if (response.success && response.data) {
         setMessage("Avatar uploaded successfully!");
         // Update profile with new avatar info
-        setProfile(prev => ({
-          ...prev,
-          avatarStorageKey: response.data.storageKey
-        }));
+        const storageKey = response.data.storageKey;
+
+        setProfile(prev =>
+          prev
+            ? { ...prev, avatarStorageKey: storageKey }
+            : prev
+        );
       } else {
         setError(response.message || "Failed to upload avatar");
       }
@@ -161,10 +164,11 @@ export default function ProfilePage() {
       if (response.success) {
         setMessage("Avatar removed successfully!");
         // Update profile to remove avatar info
-        setProfile(prev => ({
-          ...prev,
-          avatarStorageKey: null
-        }));
+        setProfile(prev =>
+          prev
+            ? { ...prev, avatarStorageKey: undefined }
+            : prev
+        );
       } else {
         setError(response.message || "Failed to remove avatar");
       }
