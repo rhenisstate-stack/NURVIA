@@ -30,7 +30,7 @@ public sealed class AvatarController : ControllerBase
         }
 
         // Process the avatar upload
-        var response = await _avatarService.UploadAvatarAsync(currentUser.Id, file, cancellationToken);
+        var response = await _avatarService.UploadAvatarAsync(currentUser.Id, file.OpenReadStream(), file.FileName, file.ContentType, cancellationToken);
         
         if (string.IsNullOrEmpty(response.StorageKey))
         {
