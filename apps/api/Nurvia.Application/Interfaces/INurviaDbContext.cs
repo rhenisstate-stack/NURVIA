@@ -9,6 +9,7 @@ namespace Nurvia.Application.Interfaces;
 public interface INurviaDbContext
 {
     DbSet<UserAccount> UserAccounts { get; }
+    DbSet<UserProfile> UserProfiles { get; }
     DbSet<Question> Questions { get; }
     DbSet<QuestionVersion> QuestionVersions { get; }
     DbSet<QuestionOption> QuestionOptions { get; }

@@ -4,6 +4,7 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Nurvia.Application.Interfaces;
+using Nurvia.Application.Options;
 
 namespace Nurvia.Application.Services;
 
