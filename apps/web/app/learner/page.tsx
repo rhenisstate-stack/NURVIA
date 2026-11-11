@@ -8,24 +8,7 @@ import { Card } from "@/components/ui/card";
 import { useAuth } from "@/components/auth/auth-provider";
 import { nurviaApi } from "@/lib/api-client";
 import type { ExamAttemptSummaryDto, ExamDto } from "@/lib/api-types";
-
-// Helper function to get personalized greeting based on user's name and time of day
-function getPersonalizedGreeting(name: string | null | undefined) {
-  if (!name) return "";
-  
-  const hour = new Date().getHours();
-  let greeting = "";
-  
-  if (hour >= 5 && hour < 12) {
-    greeting = "Good morning";
-  } else if (hour >= 12 && hour < 17) {
-    greeting = "Good afternoon";
-  } else {
-    greeting = "Good evening";
-  }
-  
-  return `${greeting}, ${name}`;
-}
+import { getPersonalizedGreeting } from "@/lib/greeting-utils";
 
 export default function LearnerDashboardPage() {
   const { user } = useAuth();

@@ -38,7 +38,7 @@ export function AppSplashScreen() {
         >
           <Logo size="lg" variant="full" withLink={false} />
         </motion.div>
-        
+
         <motion.p
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -47,7 +47,7 @@ export function AppSplashScreen() {
         >
           Advancing healthcare learning.
         </motion.p>
-        
+
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}

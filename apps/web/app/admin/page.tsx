@@ -21,8 +21,11 @@ import {
   Sliders,
   Layers,
 } from "lucide-react";
+import { useAuth } from "@/components/auth/auth-provider";
+import { getPersonalizedGreeting } from "@/lib/greeting-utils";
 
 export default function AdminDashboardPage() {
+  const { user } = useAuth();
   const contentPipeline = [
     { stage: "Drafts", count: 342, badge: "default" as const },
     { stage: "Validation", count: 85, badge: "warning" as const },
@@ -78,7 +81,7 @@ export default function AdminDashboardPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5">
           <div>
             <h1 className="font-brand text-2xl sm:text-3xl font-bold text-foreground">
-              Curriculum & Examination Studio
+              {getPersonalizedGreeting(user?.name) || "Curriculum & Examination Studio"}
             </h1>
             <p className="text-sm text-foreground-secondary mt-1">
               Author, review, publish, and govern nursing examination questions, clinical case studies, and rubrics.
