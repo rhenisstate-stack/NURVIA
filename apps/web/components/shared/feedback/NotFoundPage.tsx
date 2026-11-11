@@ -63,7 +63,7 @@ export function NotFoundPage({
               </Link>
             </Button>
           )}
-          
+
           {showDashboard && (
             <Button asChild variant="outline">
               <Link href={dashboardHref}>
