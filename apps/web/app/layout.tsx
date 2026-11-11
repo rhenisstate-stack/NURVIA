@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { AuthProvider } from "@/components/auth/auth-provider";
 import "./globals.css";
-import { PageLoader } from "@/components/shared/feedback/PageLoader";
+import { AppInitializationSplash } from "@/components/shared/feedback/AppSplashScreen";
 import { AuthErrorBoundary } from "@/components/shared/feedback/AuthErrorBoundary";
 
 export const metadata: Metadata = {
@@ -23,9 +23,9 @@ export default function RootLayout({
       <body className="antialiased selection:bg-brand-teal selection:text-white">
         <AuthProvider>
           <AuthErrorBoundary>
-            <PageLoader isLoading={true}>
-              {children}
-            </PageLoader>
+            {/* Pages always mount; the splash only overlays the initial session check. */}
+            {children}
+            <AppInitializationSplash />
           </AuthErrorBoundary>
         </AuthProvider>
       </body>

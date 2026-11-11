@@ -3,10 +3,28 @@
 import * as React from "react";
 import { Logo } from "@/components/brand/logo";
 import { motion } from "framer-motion";
+import { useAuth } from "@/components/auth/auth-provider";
+
+/**
+ * Global splash overlay shown only while the initial session check is in flight.
+ * Children are rendered underneath (never withheld); the overlay unmounts as soon as
+ * authentication settles as authenticated, unauthenticated, or error. AuthProvider never
+ * returns to "loading" after the first check, so the splash cannot reappear.
+ */
+export function AppInitializationSplash() {
+  const { status } = useAuth();
+  if (status !== "loading") return null;
+  return <AppSplashScreen />;
+}
 
 export function AppSplashScreen() {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
+    <div
+      role="status"
+      aria-live="polite"
+      aria-label="Loading NURVIA"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-background"
+    >
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

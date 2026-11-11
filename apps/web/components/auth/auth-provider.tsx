@@ -6,6 +6,12 @@ import type { ApiResponse, AuthUserDto } from "@/lib/api-types";
 
 type AuthStatus = "loading" | "authenticated" | "unauthenticated" | "error";
 
+// Upper bound for the session check. fetch() has no timeout of its own, so an API that
+// accepts the connection but never answers would otherwise keep status at "loading" (and
+// the global splash visible) indefinitely. On timeout the status becomes "error"; the
+// user is never treated as authenticated.
+const SESSION_CHECK_TIMEOUT_MS = 15000;
+
 interface AuthContextValue {
   status: AuthStatus;
   user: AuthUserDto | null;
@@ -24,7 +30,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = React.useState<string | null>(null);
 
   const refresh = React.useCallback(async () => {
-    const response = await nurviaApi.getCurrentUser();
+    const controller = new AbortController();
+    const timer = setTimeout(
+      () => controller.abort(new Error("NURVIA took too long to verify your sign-in status. Check your connection and try again.")),
+      SESSION_CHECK_TIMEOUT_MS,
+    );
+    let response: ApiResponse<AuthUserDto>;
+    try {
+      response = await nurviaApi.getCurrentUser({ signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
     if (response.success && response.data) {
       setUser(response.data);
       setStatus("authenticated");

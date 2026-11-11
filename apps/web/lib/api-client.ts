@@ -135,8 +135,8 @@ export const nurviaApi = {
     });
   },
 
-  async getCurrentUser(): Promise<ApiResponse<AuthUserDto>> {
-    return request<AuthUserDto>('/api/auth/me');
+  async getCurrentUser(init: Pick<RequestInit, 'signal'> = {}): Promise<ApiResponse<AuthUserDto>> {
+    return request<AuthUserDto>('/api/auth/me', init);
   },
 
   async updateProfile(payload: { name: string }): Promise<ApiResponse<AuthUserDto>> {
