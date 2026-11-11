@@ -1,34 +1,35 @@
 {
-    "name":  "nurvia-web",
-    "version":  "0.1.0",
-    "private":  true,
-    "scripts":  {
-                    "predev":  "node scripts/prepare-dirs.js",
-                    "dev":  "next dev",
-                    "prebuild":  "node scripts/prepare-dirs.js",
-                    "build":  "next build",
-                    "start":  "next start",
-                    "lint":  "next lint",
-                    "test":  "node tests/navigation-and-carousel.test.mjs \u0026\u0026 node tests/learning-integration.test.mjs \u0026\u0026 node tests/question-renderers.test.mjs \u0026\u0026 node tests/hero-redesign.test.mjs",
-                    "test:e2e":  "playwright test",
-                    "test:e2e headed":  "playwright test --headed"
-                },
-    "dependencies":  {
-                         "clsx":  "^2.1.1",
-                         "lucide-react":  "^0.454.0",
-                         "next":  "^15.5.0",
-                         "react":  "^19.0.0",
-                         "react-dom":  "^19.0.0",
-                         "tailwind-merge":  "^2.5.4"
-                     },
-    "devDependencies":  {
-                            "@playwright/test":  "^1.65.0",
-                            "@types/node":  "^20.17.6",
-                            "@types/react":  "^19.0.0",
-                            "@types/react-dom":  "^19.0.0",
-                            "autoprefixer":  "^10.4.20",
-                            "postcss":  "^8.4.49",
-                            "tailwindcss":  "^3.4.15",
-                            "typescript":  "^5.6.3"
-                        }
+    "name": "nurvia-web",
+    "version": "0.1.0",
+    "private": true,
+    "scripts": {
+        "predev": "node scripts/prepare-dirs.js",
+        "dev": "next dev",
+        "prebuild": "node scripts/prepare-dirs.js",
+        "build": "next build",
+        "start": "next start",
+        "lint": "next lint",
+        "test": "node tests/navigation-and-carousel.test.mjs && node tests/learning-integration.test.mjs && node tests/question-renderers.test.mjs && node tests/hero-redesign.test.mjs",
+        "test:e2e": "playwright test",
+        "test:e2e headed": "playwright test --headed"
+    },
+    "dependencies": {
+        "clsx": "^2.1.1",
+        "framer-motion": "^14.12.0",
+        "lucide-react": "^0.454.0",
+        "next": "^15.5.0",
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0",
+        "tailwind-merge": "^2.5.4"
+    },
+    "devDependencies": {
+        "@playwright/test": "^1.65.0",
+        "@types/node": "^20.17.6",
+        "@types/react": "^19.0.0",
+        "@types/react-dom": "^19.0.0",
+        "autoprefixer": "^10.4.20",
+        "postcss": "^8.4.49",
+        "tailwindcss": "^3.4.15",
+        "typescript": "^5.6.3"
+    }
 }
