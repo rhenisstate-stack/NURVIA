@@ -156,6 +156,11 @@ namespace Nurvia.Infrastructure.Migrations
                     b.Property<DateTime>("DeadlineUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("DeliveryMode")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
                     b.Property<Guid>("ExamId")
                         .HasColumnType("uuid");
 
@@ -174,6 +179,11 @@ namespace Nurvia.Infrastructure.Migrations
 
                     b.Property<bool?>("Passed")
                         .HasColumnType("boolean");
+
+                    b.Property<string>("LayoutMode")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
 
                     b.Property<decimal>("PassingScorePercentage")
                         .HasPrecision(5, 2)
@@ -424,12 +434,22 @@ namespace Nurvia.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("DefaultLayout")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<Guid>("ExamId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("AllowedLayouts")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
 
                     b.Property<string>("Instructions")
                         .IsRequired()

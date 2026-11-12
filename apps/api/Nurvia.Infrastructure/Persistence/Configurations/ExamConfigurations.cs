@@ -105,6 +105,16 @@ public class ExamVersionConfiguration : IEntityTypeConfiguration<ExamVersion>
             .HasMaxLength(30)
             .IsRequired();
 
+        builder.Property(v => v.AllowedLayouts)
+            .HasConversion<string>()
+            .HasMaxLength(30)
+            .IsRequired();
+
+        builder.Property(v => v.DefaultLayout)
+            .HasConversion<string>()
+            .HasMaxLength(30)
+            .IsRequired();
+
         builder.Property(v => v.ReviewReleasedAtUtc);
 
         builder.Property(v => v.CreatedBy)

@@ -12,6 +12,19 @@ public class ExamAttemptConfiguration : IEntityTypeConfiguration<ExamAttempt>
 
         builder.HasKey(a => a.Id);
 
+        // NOTE: ExamAttempt.Status deliberately remains an integer column; converting it
+        // to a string enum would require a destructive alter of existing attempt rows.
+
+        builder.Property(a => a.DeliveryMode)
+            .HasConversion<string>()
+            .HasMaxLength(30)
+            .IsRequired();
+
+        builder.Property(a => a.LayoutMode)
+            .HasConversion<string>()
+            .HasMaxLength(30)
+            .IsRequired();
+
         builder.Property(a => a.LearnerId)
             .IsRequired()
             .HasMaxLength(100);

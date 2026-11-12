@@ -38,6 +38,8 @@ public class ExamVersionDto
     public string? ValidationErrors { get; set; }
     public ReviewReleasePolicy ReviewReleasePolicy { get; set; }
     public DateTime? ReviewReleasedAtUtc { get; set; }
+    public ExamLayoutPolicy AllowedLayouts { get; set; }
+    public ExamLayout DefaultLayout { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public string CreatedBy { get; set; } = string.Empty;
     public ExamBlueprintDto? Blueprint { get; set; }
@@ -79,6 +81,8 @@ public class CreateExamRequest
     public int TimeLimitMinutes { get; set; } = 90;
     public decimal PassingScorePercentage { get; set; } = 75.0m;
     public ReviewReleasePolicy ReviewReleasePolicy { get; set; } = ReviewReleasePolicy.Immediate;
+    public ExamLayoutPolicy AllowedLayouts { get; set; } = ExamLayoutPolicy.Both;
+    public ExamLayout DefaultLayout { get; set; } = ExamLayout.Sequential;
     public int TargetQuestionCount { get; set; } = 50;
     public List<Guid>? InitialQuestionIds { get; set; }
 }
@@ -95,6 +99,8 @@ public class ConfigureExamRequest
     public int TimeLimitMinutes { get; set; }
     public decimal PassingScorePercentage { get; set; }
     public ReviewReleasePolicy ReviewReleasePolicy { get; set; } = ReviewReleasePolicy.Immediate;
+    public ExamLayoutPolicy AllowedLayouts { get; set; } = ExamLayoutPolicy.Both;
+    public ExamLayout DefaultLayout { get; set; } = ExamLayout.Sequential;
     public int TargetQuestionCount { get; set; }
     public List<Guid> AssignedQuestionIds { get; set; } = new();
 }
@@ -107,6 +113,24 @@ public class ExamFilterRequest
     public ExamStatus? Status { get; set; }
     public int PageNumber { get; set; } = 1;
     public int PageSize { get; set; } = 15;
+}
+
+/// <summary>
+/// Learner-facing review-mode content for a published examination. Contains the
+/// approved answer key and rationales for every question so learners can study the
+/// examination without creating a graded attempt. Delivered only when the exam
+/// version's review release policy permits it.
+/// </summary>
+public class ExamReviewContentDto
+{
+    public Guid ExamId { get; set; }
+    public string ExamTitle { get; set; } = string.Empty;
+    public NursingPathway Pathway { get; set; }
+    public ExamCategory Category { get; set; }
+    public string Instructions { get; set; } = string.Empty;
+    public int TimeLimitMinutes { get; set; }
+    public bool ReviewReleased { get; set; }
+    public List<ReviewQuestionDto> Questions { get; set; } = new();
 }
 
 public class SubmittedExamResultDto

@@ -5,7 +5,13 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Nurvia.Infrastructure.Migrations
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// Adds examination navigation-layout configuration (per exam version) and the
+    /// per-attempt delivery mode / layout choice. Purely additive: existing columns
+    /// and rows are untouched. Default values preserve the previous learner behavior
+    /// (both layouts permitted, sequential default, exam delivery mode).
+    /// </summary>
+    [Migration("20261112100000_AddExamLayoutAndDeliveryMode")]
     public partial class AddExamLayoutAndDeliveryMode : Migration
     {
         /// <inheritdoc />

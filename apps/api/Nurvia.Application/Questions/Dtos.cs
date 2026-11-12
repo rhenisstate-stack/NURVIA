@@ -155,6 +155,15 @@ public class ActiveExamOptionDto
     public int OptionIndex { get; set; }
     public string OptionText { get; set; } = string.Empty;
     public int DisplayOrder { get; set; }
+
+    /// <summary>
+    /// Only populated for Tutor-mode attempts. Exam-mode attempts never carry the
+    /// answer key — the backend strictly sanitizes this for exam delivery.
+    /// </summary>
+    public bool IsCorrect { get; set; }
+
+    /// <summary>Only populated for Tutor-mode attempts (per-option rationale).</summary>
+    public string? SpecificRationale { get; set; }
 }
 
 public class ActiveExamQuestionDto
@@ -166,6 +175,10 @@ public class ActiveExamQuestionDto
     public CognitiveSkill CognitiveSkill { get; set; }
     public ClientNeedCategory ClientNeedCategory { get; set; }
     public string? ContentJsonData { get; set; }
+
+    /// <summary>Only populated for Tutor-mode attempts (approved general rationale).</summary>
+    public string? GeneralRationale { get; set; }
+
     public List<ActiveExamOptionDto> Options { get; set; } = new();
     public List<QuestionExhibitDto> Exhibits { get; set; } = new();
 }
