@@ -97,16 +97,26 @@ public static class QuestionResponseGrader
                 case QuestionType.Cloze:
                 case QuestionType.ShortAnswer:
                 {
-                    var textResponse = responseJson.Trim('"', ' ', '\'').ToLowerInvariant();
-                    if (textResponse.StartsWith("{"))
+                    string textResponse;
+                    var trimmedText = responseJson.Trim('"', ' ', '\'');
+                    if (trimmedText.StartsWith("{"))
                     {
-                        using var txtDoc = JsonDocument.Parse(textResponse);
+                        // Parse before lowercasing: TryGetProperty is case-sensitive.
+                        using var txtDoc = JsonDocument.Parse(trimmedText);
                         if (txtDoc.RootElement.TryGetProperty("TextResponse", out var tprop) ||
                             txtDoc.RootElement.TryGetProperty("textResponse", out tprop) ||
                             txtDoc.RootElement.TryGetProperty("value", out tprop))
                         {
                             textResponse = tprop.GetString()?.Trim().ToLowerInvariant() ?? "";
                         }
+                        else
+                        {
+                            textResponse = trimmedText.ToLowerInvariant();
+                        }
+                    }
+                    else
+                    {
+                        textResponse = trimmedText.ToLowerInvariant();
                     }
                     var textCorrect = qv.Options.Any(o => o.IsCorrect && o.OptionText.Trim().ToLowerInvariant() == textResponse);
                     return new QuestionResponseGradingResult(textCorrect, textCorrect ? 1m : 0m);
