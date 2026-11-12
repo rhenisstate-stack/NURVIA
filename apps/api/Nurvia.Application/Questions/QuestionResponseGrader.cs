@@ -222,9 +222,9 @@ public static class QuestionResponseGrader
                 {
                     var parsed = ParseJsonObject(responseJson);
                     var key = ParseJsonObject(qv.ContentJsonData);
-                    var keyActions = GetStringList(key, "CorrectActions", "correctActions");
+                    var keyActions = GetStringList(key, "CorrectActions", "correctActions") ?? new List<string>();
                     var keyCondition = GetSingleString(key, "CorrectCondition", "correctCondition");
-                    var keyParameters = GetStringList(key, "CorrectParameters", "correctParameters");
+                    var keyParameters = GetStringList(key, "CorrectParameters", "correctParameters") ?? new List<string>();
 
                     if (keyActions.Count == 0 && string.IsNullOrEmpty(keyCondition) && keyParameters.Count == 0)
                         return LegacyCredit(responseJson); // No approved key authored: legacy policy.
@@ -355,8 +355,10 @@ public static class QuestionResponseGrader
         return result;
     }
 
-    private static JsonElement ParseJsonObject(string json)
+    private static JsonElement ParseJsonObject(string? json)
     {
+        if (string.IsNullOrWhiteSpace(json))
+            return default;
         using var doc = JsonDocument.Parse(json.Trim());
         return doc.RootElement.Clone();
     }
