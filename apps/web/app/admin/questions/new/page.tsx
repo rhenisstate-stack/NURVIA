@@ -56,6 +56,10 @@ export default function NewQuestionAuthoringPage() {
   const [clientNeed, setClientNeed] = React.useState<ClientNeedCategory>("PhysiologicalIntegrity");
   const [generalRationale, setGeneralRationale] = React.useState("");
 
+  // Type-specific answer-key payload (structured JSON). Required by complex
+  // question types to define the correct key (see guidance below the field).
+  const [contentJsonData, setContentJsonData] = React.useState("");
+
   // Options
   const [options, setOptions] = React.useState<QuestionOptionDto[]>([
     { optionIndex: 1, optionText: "", isCorrect: true, specificRationale: "", displayOrder: 1 },
@@ -96,6 +100,19 @@ export default function NewQuestionAuthoringPage() {
       if (correctCount < 1) errors.push("SATA must have at least 1 correct answer choice.");
     } else if (questionType === "ClinicalCaseStudy") {
       if (exhibits.length === 0) errors.push("Clinical Case Studies require at least one EHR Exhibit (Notes, Vitals, Labs).");
+    } else if (questionType === "TrueFalse") {
+      if (options.length !== 2) errors.push("True/False questions require exactly 2 choices (True and False).");
+      if (options.filter((o) => o.isCorrect).length !== 1) errors.push("True/False must have exactly one correct answer.");
+    } else if (questionType === "OrderedResponse") {
+      if (options.length < 3) errors.push("Ordered Response requires at least 3 steps. Enter them in the correct priority order.");
+    } else if (questionType === "Matching") {
+      if (options.length < 2 || options.length % 2 !== 0) {
+        errors.push("Matching requires an even number of options — each premise followed directly by its correct response.");
+      }
+    } else if (questionType === "MultipleTrueFalse" || questionType === "MatrixGrid" || questionType === "DragAndDrop" || questionType === "BowTie") {
+      if (!contentJsonData.trim()) {
+        errors.push(`${questionType} requires an approved answer key in the structured JSON field.`);
+      }
     }
 
     const emptyOptions = options.some((o) => !o.optionText || o.optionText.trim().length === 0);
@@ -103,8 +120,16 @@ export default function NewQuestionAuthoringPage() {
       errors.push("All answer option text fields must be filled out.");
     }
 
+    if (contentJsonData.trim()) {
+      try {
+        JSON.parse(contentJsonData);
+      } catch {
+        errors.push("Structured JSON (ContentJsonData) is not valid JSON.");
+      }
+    }
+
     return errors;
-  }, [stem, generalRationale, questionType, options, exhibits]);
+  }, [stem, generalRationale, questionType, options, exhibits, contentJsonData]);
 
   const handleOptionTextChange = (index: number, text: string) => {
     setOptions((prev) => {
@@ -196,6 +221,7 @@ export default function NewQuestionAuthoringPage() {
       cognitiveSkill,
       clientNeedCategory: clientNeed,
       generalRationale,
+      contentJsonData: contentJsonData.trim() || undefined,
       options,
       exhibits,
     };
@@ -608,6 +634,35 @@ export default function NewQuestionAuthoringPage() {
                   className="w-full p-3 text-sm rounded-xl border border-border bg-background focus:ring-2 focus:ring-brand-teal focus:outline-none leading-relaxed"
                 />
               </Card>
+
+              {/* Structured answer-key payload for complex question types */}
+              {(questionType === "MultipleTrueFalse" || questionType === "MatrixGrid" || questionType === "DragAndDrop" || questionType === "BowTie" || questionType === "ClinicalCaseStudy" || questionType === "TabularResponse" || questionType === "ImageBased" || contentJsonData.trim() !== "") && (
+                <Card className="p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold uppercase tracking-wider text-foreground-muted">
+                      Approved Answer Key (Structured JSON)
+                    </label>
+                    <Badge variant="outline" className="text-[10px]">Server-validated</Badge>
+                  </div>
+                  <p className="text-xs text-foreground-secondary">
+                    Define the correct key for this question type using option IDs from the saved question
+                    (for matching/bow-tie keys, use the option text or index conventions shown in the learner renderer):
+                  </p>
+                  <ul className="text-[11px] text-foreground-muted list-disc pl-4 space-y-0.5">
+                    <li><strong>MultipleTrueFalse</strong>: <code>{'{"CorrectTrueFalse": {"&lt;optionId&gt;": "True"}}'}</code></li>
+                    <li><strong>MatrixGrid</strong>: <code>{'{"CorrectSelections": {"&lt;rowOptionId&gt;": "Indicated"}}'}</code> (Indicated | Non-Essential | Contraindicated)</li>
+                    <li><strong>DragAndDrop</strong>: <code>{'{"CorrectBuckets": {"&lt;optionId&gt;": "A"}}'}</code> (A | B)</li>
+                    <li><strong>BowTie</strong>: <code>{'{"CorrectActions": ["&lt;id&gt;","&lt;id&gt;"], "CorrectCondition": "&lt;id&gt;", "CorrectParameters": ["&lt;id&gt;","&lt;id&gt;"]}'}</code></li>
+                  </ul>
+                  <textarea
+                    rows={5}
+                    value={contentJsonData}
+                    onChange={(e) => setContentJsonData(e.target.value)}
+                    placeholder='{"CorrectSelections": {"...": "Indicated"}}'
+                    className="w-full p-3 text-xs font-mono rounded-xl border border-border bg-background focus:ring-2 focus:ring-brand-teal focus:outline-none leading-relaxed"
+                  />
+                </Card>
+              )}
             </div>
 
             {/* Right Col: Taxonomy & Validation Panel */}
@@ -655,11 +710,23 @@ export default function NewQuestionAuthoringPage() {
                       className="w-full px-3 py-1.5 rounded-lg border border-border bg-background focus:ring-1 focus:ring-brand-teal font-medium"
                     >
                       <option value="MultipleChoice">Multiple Choice (Single Response)</option>
+                      <option value="SingleChoice">Single Choice (Canonical MCQ)</option>
                       <option value="MultipleResponse">Select All That Apply (SATA)</option>
                       <option value="TrueFalse">True / False</option>
-                      <option value="ClinicalCaseStudy">NGN Unfolding Case Study</option>
-                      <option value="MatrixGrid">NGN Matrix Grid</option>
+                      <option value="MultipleTrueFalse">Multiple True/False (Statement Matrix)</option>
+                      <option value="FillInTheBlank">Cloze / Fill in the Blank</option>
+                      <option value="ShortAnswer">Short Answer (Clinical Term)</option>
                       <option value="NumericResponse">Numeric / Dosage Calculation</option>
+                      <option value="OrderedResponse">Ordered Response (Priority Sequence)</option>
+                      <option value="Matching">Matching (Premise to Response)</option>
+                      <option value="MatrixGrid">NGN Matrix Grid</option>
+                      <option value="ClinicalCaseStudy">NGN Unfolding Case Study</option>
+                      <option value="BowTie">NGN Bow-Tie (Actions / Condition / Parameters)</option>
+                      <option value="ImageBased">Image-Based (Visual Exhibit)</option>
+                      <option value="MultipleImageSelection">Multiple-Image Selection</option>
+                      <option value="DragAndDrop">Drag-and-Drop Classification</option>
+                      <option value="ExtendedResponse">Extended Response / Essay</option>
+                      <option value="TabularResponse">Tabular Response (Trend Analysis)</option>
                     </select>
                   </div>
 

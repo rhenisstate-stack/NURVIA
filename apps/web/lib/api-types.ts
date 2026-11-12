@@ -72,6 +72,10 @@ export type ExamDeliveryMode = 'Review' | 'Exam' | 'Tutor' | 'All';
 
 export type ReviewReleasePolicy = 'Immediate' | 'ManualRelease';
 
+export type ExamLayoutPolicy = 'AllInOneOnly' | 'SequentialOnly' | 'Both';
+
+export type ExamLayout = 'AllInOne' | 'Sequential';
+
 export interface QuestionOptionDto {
   id?: string;
   optionIndex: number;
@@ -169,6 +173,8 @@ export interface ExamVersionDto {
   validationErrors?: string;
   reviewReleasePolicy: ReviewReleasePolicy;
   reviewReleasedAtUtc?: string;
+  allowedLayouts: ExamLayoutPolicy;
+  defaultLayout: ExamLayout;
   createdAtUtc: string;
   createdBy: string;
   blueprint?: ExamBlueprintDto;
@@ -227,6 +233,9 @@ export interface ActiveExamOptionDto {
   optionIndex: number;
   optionText: string;
   displayOrder: number;
+  /** Only populated for Tutor-mode attempts; Exam mode is strictly sanitized server-side. */
+  isCorrect?: boolean;
+  specificRationale?: string;
 }
 
 export interface ActiveExamQuestionDto {
@@ -237,6 +246,8 @@ export interface ActiveExamQuestionDto {
   cognitiveSkill: CognitiveSkill;
   clientNeedCategory: ClientNeedCategory;
   contentJsonData?: string;
+  /** Only populated for Tutor-mode attempts. */
+  generalRationale?: string;
   options: ActiveExamOptionDto[];
   exhibits: QuestionExhibitDto[];
 }
@@ -248,6 +259,11 @@ export interface LearnerAnswerStateDto {
   savedAtUtc: string;
 }
 
+export interface StartAttemptRequestDto {
+  deliveryMode: 'Exam' | 'Tutor';
+  layoutMode?: ExamLayout | null;
+}
+
 export interface StartAttemptResultDto {
   attemptId: string;
   examId: string;
@@ -257,6 +273,9 @@ export interface StartAttemptResultDto {
   startedAtUtc: string;
   deadlineUtc: string;
   totalQuestions: number;
+  deliveryMode: 'Exam' | 'Tutor';
+  layoutMode: ExamLayout;
+  allowedLayouts: ExamLayoutPolicy;
   questions: ActiveExamQuestionDto[];
   savedResponses: Record<string, LearnerAnswerStateDto>;
 }
@@ -265,6 +284,7 @@ export interface AutosaveResponseRequest {
   questionId: string;
   responseJson?: string | null;
   isFlagged: boolean;
+  layoutMode?: ExamLayout | null;
 }
 
 export interface AutosaveResultDto {
@@ -297,6 +317,18 @@ export interface ReviewQuestionDto {
   maxPoints: number;
   options: ReviewOptionDto[];
   exhibits: QuestionExhibitDto[];
+}
+
+/** Review-mode study content for a published exam (answer keys + rationales, no graded attempt). */
+export interface ExamReviewContentDto {
+  examId: string;
+  examTitle: string;
+  pathway: NursingPathway;
+  category: ExamCategory;
+  instructions: string;
+  timeLimitMinutes: number;
+  reviewReleased: boolean;
+  questions: ReviewQuestionDto[];
 }
 
 export interface SubmittedExamResultDto {

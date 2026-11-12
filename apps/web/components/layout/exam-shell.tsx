@@ -40,6 +40,10 @@ interface ExamShellProps {
   autosaveStatus?: "saving" | "saved" | "idle" | "error";
   onOpenQuestionGrid?: () => void;
   answeredCount?: number;
+  showTimer?: boolean;
+  showSubmitExam?: boolean;
+  showFlag?: boolean;
+  modeBadge?: string;
 }
 
 export function ExamShell({
@@ -57,6 +61,10 @@ export function ExamShell({
   autosaveStatus = "idle",
   onOpenQuestionGrid,
   answeredCount,
+  showTimer = true,
+  showSubmitExam = true,
+  showFlag = true,
+  modeBadge,
 }: ExamShellProps) {
   // Authoritative countdown timer
   const [internalSeconds, setInternalSeconds] = React.useState(propSecondsRemaining ?? 5420);
@@ -70,7 +78,7 @@ export function ExamShell({
   }, [propSecondsRemaining]);
 
   React.useEffect(() => {
-    if (isPaused) return;
+    if (isPaused || !showTimer) return;
     const interval = setInterval(() => {
       setInternalSeconds((prev) => {
         if (prev <= 1) {
@@ -82,7 +90,7 @@ export function ExamShell({
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [isPaused, onTimerExpired]);
+  }, [isPaused, onTimerExpired, showTimer]);
 
   const secondsRemaining = internalSeconds;
 
@@ -115,7 +123,7 @@ export function ExamShell({
                 </span>
                 <span className="text-border">•</span>
                 <Badge variant={mode === "Review" ? "teal" : mode === "Exam" ? "destructive" : "info"} className="text-[10px] py-0 px-2">
-                  {mode} Mode
+                  {modeBadge || `${mode} Mode`}
                 </Badge>
               </div>
             </div>
@@ -138,6 +146,7 @@ export function ExamShell({
           {/* Right: Timer, Calculator, Flag & Submission */}
           <div className="flex items-center gap-2 sm:gap-3">
             {/* Timer */}
+            {showTimer && (
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface-muted border border-border font-mono text-xs font-bold text-foreground">
               <Clock className="w-3.5 h-3.5 text-brand-teal" />
               <span>{formatTime(secondsRemaining)}</span>
@@ -150,6 +159,7 @@ export function ExamShell({
                 {isPaused ? <Play className="w-3 h-3 text-emerald-600" /> : <Pause className="w-3 h-3" />}
               </button>
             </div>
+            )}
 
             {/* Autosave Indicator */}
             {autosaveStatus !== "idle" && (
@@ -169,7 +179,7 @@ export function ExamShell({
                 {autosaveStatus === "error" && (
                   <span className="flex items-center gap-1 text-rose-500">
                     <AlertTriangle className="w-3.5 h-3.5" />
-                    Offline
+                    Save failed
                   </span>
                 )}
               </div>
@@ -204,6 +214,7 @@ export function ExamShell({
             </Button>
 
             {/* Flag for Review */}
+            {showFlag && (
             <Button
               variant="outline"
               size="sm"
@@ -214,6 +225,7 @@ export function ExamShell({
               <Bookmark className={cn("w-3.5 h-3.5 sm:mr-1", isFlagged && "fill-amber-500")} />
               <span className="hidden sm:inline">{isFlagged ? "Flagged" : "Flag"}</span>
             </Button>
+            )}
 
             <ThemeToggle />
 
@@ -225,6 +237,7 @@ export function ExamShell({
               </Button>
             </Link>
 
+            {showSubmitExam && (
             <Button
               variant="primary"
               size="sm"
@@ -233,6 +246,7 @@ export function ExamShell({
             >
               Finish Exam
             </Button>
+            )}
           </div>
         </div>
       </header>

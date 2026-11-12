@@ -31,6 +31,8 @@ import {
   ExamCategory,
   ExamDeliveryMode,
   ReviewReleasePolicy,
+  ExamLayoutPolicy,
+  ExamLayout,
   QuestionDto,
 } from "@/lib/api-types";
 
@@ -53,6 +55,8 @@ export default function ExamStudioPage() {
   const [newPassingScore, setNewPassingScore] = React.useState(75);
   const [newMode, setNewMode] = React.useState<ExamDeliveryMode>("All");
   const [newReviewReleasePolicy, setNewReviewReleasePolicy] = React.useState<ReviewReleasePolicy>("Immediate");
+  const [newAllowedLayouts, setNewAllowedLayouts] = React.useState<ExamLayoutPolicy>("Both");
+  const [newDefaultLayout, setNewDefaultLayout] = React.useState<ExamLayout>("Sequential");
 
   // Blueprint Editor Drawer / Dialog
   const [selectedExam, setSelectedExam] = React.useState<ExamDto | null>(null);
@@ -97,6 +101,8 @@ export default function ExamStudioPage() {
       passingScorePercentage: Number(newPassingScore),
       modeAllowed: newMode,
       reviewReleasePolicy: newReviewReleasePolicy,
+      allowedLayouts: newAllowedLayouts,
+      defaultLayout: newDefaultLayout,
       instructions: "Read all questions thoroughly. Calculator and exhibits are accessible during testing.",
     };
 
@@ -148,6 +154,8 @@ export default function ExamStudioPage() {
       timeLimitMinutes: selectedExam.timeLimitMinutes,
       passingScorePercentage: selectedExam.passingScorePercentage,
       reviewReleasePolicy: selectedExam.currentVersion?.reviewReleasePolicy || "Immediate",
+      allowedLayouts: selectedExam.currentVersion?.allowedLayouts || "Both",
+      defaultLayout: selectedExam.currentVersion?.defaultLayout || "Sequential",
       targetQuestionCount: assignedQuestionIds.length,
       assignedQuestionIds,
       concurrencyToken: selectedExam.concurrencyToken,
@@ -509,6 +517,32 @@ export default function ExamStudioPage() {
                     >
                       <option value="Immediate">Immediate — release with results</option>
                       <option value="ManualRelease">Manual — staff release required</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="font-semibold text-foreground block mb-1">Navigation Layouts</label>
+                    <select
+                      value={newAllowedLayouts}
+                      onChange={(e) => setNewAllowedLayouts(e.target.value as ExamLayoutPolicy)}
+                      className="w-full px-3 py-1.5 rounded-lg border border-border bg-background focus:ring-1 focus:ring-brand-teal"
+                    >
+                      <option value="Both">Both — learner may choose</option>
+                      <option value="AllInOneOnly">All-in-One only</option>
+                      <option value="SequentialOnly">Sequential only</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="font-semibold text-foreground block mb-1">Default Layout</label>
+                    <select
+                      value={newDefaultLayout}
+                      onChange={(e) => setNewDefaultLayout(e.target.value as ExamLayout)}
+                      disabled={newAllowedLayouts !== "Both"}
+                      className="w-full px-3 py-1.5 rounded-lg border border-border bg-background focus:ring-1 focus:ring-brand-teal disabled:opacity-50"
+                    >
+                      <option value="Sequential">Sequential (recommended)</option>
+                      <option value="AllInOne">All-in-One</option>
                     </select>
                   </div>
                 </div>

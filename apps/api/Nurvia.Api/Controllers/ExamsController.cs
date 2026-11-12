@@ -12,12 +12,46 @@ namespace Nurvia.Api.Controllers;
 public class ExamsController : ControllerBase
 {
     private readonly IExamService _examService;
+    private readonly IExamAttemptService _attemptService;
     private readonly ILogger<ExamsController> _logger;
 
-    public ExamsController(IExamService examService, ILogger<ExamsController> logger)
+    public ExamsController(IExamService examService, IExamAttemptService attemptService, ILogger<ExamsController> logger)
     {
         _examService = examService;
+        _attemptService = attemptService;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Learner review-mode content for a published examination (answer keys and
+    /// rationales for study, without creating a graded attempt). Gated by the
+    /// exam version's review release policy.
+    /// </summary>
+    [HttpGet("{id:guid}/review-content")]
+    public async Task<ActionResult<ApiResponse<ExamReviewContentDto>>> GetExamReviewContent(Guid id, CancellationToken ct)
+    {
+        var user = HttpContext.GetCurrentUser();
+        if (!user.IsAuthenticated)
+            return Unauthorized(ApiResponse<ExamReviewContentDto>.Error("Authentication is required to review an examination."));
+        if (!user.Role.Equals("Learner", StringComparison.OrdinalIgnoreCase) &&
+            !user.Role.Equals("Superadmin", StringComparison.OrdinalIgnoreCase))
+        {
+            return Forbid();
+        }
+
+        try
+        {
+            var result = await _attemptService.GetExamReviewContentAsync(id, user.Id, ct);
+            return Ok(ApiResponse<ExamReviewContentDto>.Ok(result));
+        }
+        catch (ReviewNotReleasedException ex)
+        {
+            return StatusCode(403, ApiResponse<ExamReviewContentDto>.Error(ex.Message));
+        }
+        catch (DomainException ex)
+        {
+            return BadRequest(ApiResponse<ExamReviewContentDto>.Error(ex.Message));
+        }
     }
 
     [HttpGet]

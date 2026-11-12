@@ -3,6 +3,7 @@ using Nurvia.Api.Common;
 using Nurvia.Application.Common;
 using Nurvia.Application.Exams;
 using Nurvia.Application.Interfaces;
+using Nurvia.Domain.Enums;
 using Nurvia.Domain.Exceptions;
 
 namespace Nurvia.Api.Controllers;
@@ -21,7 +22,7 @@ public class ExamAttemptsController : ControllerBase
     }
 
     [HttpPost("start/{examId:guid}")]
-    public async Task<ActionResult<ApiResponse<StartAttemptResultDto>>> StartAttempt(Guid examId, CancellationToken ct)
+    public async Task<ActionResult<ApiResponse<StartAttemptResultDto>>> StartAttempt(Guid examId, [FromBody] StartAttemptRequest? request, CancellationToken ct)
     {
         var user = HttpContext.GetCurrentUser();
         if (!user.IsAuthenticated)
@@ -35,9 +36,12 @@ public class ExamAttemptsController : ControllerBase
             return Forbid();
         }
 
+        var deliveryMode = request?.DeliveryMode ?? ExamDeliveryMode.Exam;
+        var layoutMode = request?.LayoutMode;
+
         try
         {
-            var result = await _attemptService.StartAttemptAsync(examId, user.Id, user.Name, ct);
+            var result = await _attemptService.StartAttemptAsync(examId, user.Id, user.Name, deliveryMode, layoutMode, ct);
             return Ok(ApiResponse<StartAttemptResultDto>.Ok(result, "Examination attempt initialized."));
         }
         catch (DomainException ex)

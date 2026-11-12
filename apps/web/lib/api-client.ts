@@ -5,12 +5,14 @@ import {
   ExamDto,
   QuestionVersionDto,
   StartAttemptResultDto,
+  ExamReviewContentDto,
   AutosaveResponseRequest,
   AutosaveResultDto,
   SubmittedExamResultDto,
   ExamAttemptSummaryDto,
   AuthUserDto,
   UserProfileDto,
+  ExamLayout,
 } from './api-types';
 import { classifyError, ErrorType } from './utils/error-utils';
 
@@ -317,10 +319,21 @@ export const nurviaApi = {
   },
 
   // Exam Attempts (Learner Experience)
-  async startAttempt(examId: string): Promise<ApiResponse<StartAttemptResultDto>> {
+  async startAttempt(
+    examId: string,
+    options?: { deliveryMode?: 'Exam' | 'Tutor'; layoutMode?: ExamLayout | null }
+  ): Promise<ApiResponse<StartAttemptResultDto>> {
+    const body = options
+      ? { deliveryMode: options.deliveryMode || 'Exam', layoutMode: options.layoutMode ?? null }
+      : undefined;
     return request<StartAttemptResultDto>(`/api/attempts/start/${examId}`, {
       method: 'POST',
+      body: body ? JSON.stringify(body) : undefined,
     });
+  },
+
+  async getExamReviewContent(examId: string): Promise<ApiResponse<ExamReviewContentDto>> {
+    return request<ExamReviewContentDto>(`/api/exams/${examId}/review-content`);
   },
 
   async getActiveAttempt(attemptId: string): Promise<ApiResponse<StartAttemptResultDto>> {

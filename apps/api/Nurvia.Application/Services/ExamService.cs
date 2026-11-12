@@ -96,6 +96,8 @@ public class ExamService : IExamService
             TimeLimitMinutes = request.TimeLimitMinutes,
             PassingScorePercentage = request.PassingScorePercentage,
             ReviewReleasePolicy = request.ReviewReleasePolicy,
+            AllowedLayouts = request.AllowedLayouts,
+            DefaultLayout = request.DefaultLayout,
             Status = ExamStatus.Draft,
             Blueprint = new ExamBlueprint(Guid.NewGuid(), request.TargetQuestionCount)
         };
@@ -167,6 +169,8 @@ public class ExamService : IExamService
             exam.CurrentVersion.TimeLimitMinutes = request.TimeLimitMinutes;
             exam.CurrentVersion.PassingScorePercentage = request.PassingScorePercentage;
             exam.CurrentVersion.ReviewReleasePolicy = request.ReviewReleasePolicy;
+            exam.CurrentVersion.AllowedLayouts = request.AllowedLayouts;
+            exam.CurrentVersion.DefaultLayout = request.DefaultLayout;
             exam.CurrentVersion.UpdatedAtUtc = DateTime.UtcNow;
             exam.CurrentVersion.UpdatedBy = author;
 
@@ -384,6 +388,8 @@ public class ExamService : IExamService
                 ValidationErrors = e.CurrentVersion.ValidationErrors,
                 ReviewReleasePolicy = e.CurrentVersion.ReviewReleasePolicy,
                 ReviewReleasedAtUtc = e.CurrentVersion.ReviewReleasedAtUtc,
+                AllowedLayouts = e.CurrentVersion.AllowedLayouts,
+                DefaultLayout = e.CurrentVersion.DefaultLayout,
                 CreatedAtUtc = e.CurrentVersion.CreatedAtUtc,
                 CreatedBy = e.CurrentVersion.CreatedBy,
                 Blueprint = e.CurrentVersion.Blueprint != null ? new ExamBlueprintDto

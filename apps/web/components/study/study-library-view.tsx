@@ -144,24 +144,66 @@ export function StudyLibraryView({
       {!loading && !error && exams.length > 0 && (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {exams.map((exam) => (
-            <Card key={exam.id} className="flex flex-col justify-between gap-5 p-5">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-brand-teal">
-                  {exam.pathway.replace("_", " ")} · {exam.category.replace(/([a-z])([A-Z])/g, "$1 $2")}
-                </p>
-                <h2 className="mt-2 font-brand text-lg font-bold text-foreground">{exam.title}</h2>
-                <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-foreground-secondary">{exam.description}</p>
-                <p className="mt-3 text-xs text-foreground-muted">
-                  {exam.totalQuestions} questions · {exam.timeLimitMinutes} minutes
-                </p>
-              </div>
-              <Link href={`/exam-session?examId=${encodeURIComponent(exam.id)}`}>
-                <Button className="w-full">Start this exam</Button>
-              </Link>
-            </Card>
+            <ExamCard key={exam.id} exam={exam} />
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+function ExamCard({ exam }: { exam: ExamDto }) {
+  // Direct mode access: each card action resolves the mode against the exam's
+  // configured delivery modes so unavailable modes are never offered.
+  const modeAllowed = exam.modeAllowed;
+  const canExam = modeAllowed === "All" || modeAllowed === "Exam";
+  const canReview = modeAllowed === "All" || modeAllowed === "Review";
+  const canTutor = modeAllowed === "All" || modeAllowed === "Tutor";
+
+  const currentVersion = exam.currentVersion;
+  const layoutPolicy = currentVersion?.allowedLayouts ?? "Both";
+
+  const buildSessionHref = (mode: "Exam" | "Review" | "Tutor") => {
+    const params = new URLSearchParams({ examId: exam.id, mode });
+    // Restricted-layout exams start directly in their only permitted layout;
+    // when both layouts are permitted the session shows the layout selector
+    // before starting so the learner makes an explicit choice.
+    if (layoutPolicy === "AllInOneOnly") params.set("layout", "AllInOne");
+    else if (layoutPolicy === "SequentialOnly") params.set("layout", "Sequential");
+    return `/exam-session?${params.toString()}`;
+  };
+
+  return (
+    <Card className="flex flex-col justify-between gap-5 p-5">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-brand-teal">
+          {exam.pathway.replace("_", " ")} · {exam.category.replace(/([a-z])([A-Z])/g, "$1 $2")}
+        </p>
+        <h2 className="mt-2 font-brand text-lg font-bold text-foreground">{exam.title}</h2>
+        <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-foreground-secondary">{exam.description}</p>
+        <p className="mt-3 text-xs text-foreground-muted">
+          {exam.totalQuestions} questions · {exam.timeLimitMinutes} minutes
+        </p>
+      </div>
+      <div className="space-y-2">
+        {canExam && (
+          <Link href={buildSessionHref("Exam")} className="block">
+            <Button className="w-full">Start this exam</Button>
+          </Link>
+        )}
+        <div className="grid grid-cols-2 gap-2">
+          {canReview && (
+            <Link href={buildSessionHref("Review")} className="block">
+              <Button variant="outline" size="sm" className="w-full">Review</Button>
+            </Link>
+          )}
+          {canTutor && (
+            <Link href={buildSessionHref("Tutor")} className="block">
+              <Button variant="outline" size="sm" className="w-full">Tutor</Button>
+            </Link>
+          )}
+        </div>
+      </div>
+    </Card>
   );
 }

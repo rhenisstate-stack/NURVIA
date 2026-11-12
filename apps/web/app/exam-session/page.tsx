@@ -9,32 +9,31 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  CheckCircle2,
-  XCircle,
-  HelpCircle,
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
   Bookmark,
-  FileText,
-  Activity,
   ClipboardList,
   Sparkles,
-  Lightbulb,
-  Check,
-  RotateCcw,
   Trophy,
+  LayoutList,
+  Rows3,
+  CheckCircle2,
+  Lightbulb,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { nurviaApi } from "@/lib/api-client";
 import {
-  ActiveExamQuestionDto,
   StartAttemptResultDto,
   SubmittedExamResultDto,
-  ReviewQuestionDto,
+  ExamReviewContentDto,
+  ExamLayout,
 } from "@/lib/api-types";
 import { QuestionRendererRegistry, RendererQuestion } from "@/components/exam/renderers";
 import { useAuth } from "@/components/auth/auth-provider";
+
+type DeliveryMode = "Review" | "Exam" | "Tutor";
+type LayoutPolicy = "AllInOneOnly" | "SequentialOnly" | "Both" | null;
 
 function ExamSessionContent() {
   const searchParams = useSearchParams();
@@ -43,7 +42,8 @@ function ExamSessionContent() {
 
   const attemptIdParam = searchParams?.get("attemptId");
   const examIdParam = searchParams?.get("examId");
-  const modeParam = searchParams?.get("mode") as "Review" | "Exam" | "Tutor" | null;
+  const modeParam = searchParams?.get("mode") as DeliveryMode | null;
+  const layoutParam = searchParams?.get("layout") as ExamLayout | null;
 
   // Session state
   const [attemptId, setAttemptId] = React.useState<string | null>(attemptIdParam);
@@ -53,9 +53,17 @@ function ExamSessionContent() {
   const [answers, setAnswers] = React.useState<Record<string, string>>({});
   const [flags, setFlags] = React.useState<Record<string, boolean>>({});
   const [secondsRemaining, setSecondsRemaining] = React.useState<number>(5400); // 90 min default
-  const [deliveryMode, setDeliveryMode] = React.useState<"Review" | "Exam" | "Tutor">(modeParam || "Exam");
+  const [deliveryMode, setDeliveryMode] = React.useState<DeliveryMode>(modeParam || "Exam");
   const [autosaveStatus, setAutosaveStatus] = React.useState<"saving" | "saved" | "idle" | "error">("idle");
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
+
+  // Layout state — persisted on the attempt server-side so resume keeps the choice.
+  const [layout, setLayout] = React.useState<ExamLayout>(layoutParam || "Sequential");
+  const [layoutPolicy, setLayoutPolicy] = React.useState<LayoutPolicy>(null);
+  const [isLayoutModalOpen, setIsLayoutModalOpen] = React.useState<boolean>(false);
+
+  // Review-mode study session (no graded attempt) and Tutor reveal state.
+  const [isReviewContent, setIsReviewContent] = React.useState<boolean>(false);
 
   // Review & Submit state
   const [isSubmitModalOpen, setIsSubmitModalOpen] = React.useState<boolean>(false);
@@ -68,6 +76,8 @@ function ExamSessionContent() {
   // Autosave debounce timers, keyed per question so that answering a new
   // question can never cancel a pending save for a previous one.
   const autosaveTimeoutsRef = React.useRef<Record<string, NodeJS.Timeout | null>>({});
+  const autosaveRetryTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const allInOneRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
 
   React.useEffect(() => {
     if (status === "unauthenticated") {
@@ -80,15 +90,17 @@ function ExamSessionContent() {
     }
   }, [status, user, router]);
 
-  // 1. Initialize attempt from API
+  // 1. Initialize session from the API
   React.useEffect(() => {
-    async function loadAttempt() {
+    let cancelled = false;
+
+    async function loadSession() {
       if (attemptIdParam) {
         setIsLoading(true);
         setLoadError(null);
         if (modeParam === "Review") {
           const reviewRes = await nurviaApi.getAttemptReview(attemptIdParam);
-          if (reviewRes.success && reviewRes.data) {
+          if (!cancelled && reviewRes.success && reviewRes.data) {
             hydrateFromReview(reviewRes.data);
             setIsLoading(false);
             return;
@@ -96,9 +108,9 @@ function ExamSessionContent() {
         }
 
         const res = await nurviaApi.getActiveAttempt(attemptIdParam);
-        if (res.success && res.data) {
+        if (!cancelled && res.success && res.data) {
           hydrateFromAttempt(res.data);
-        } else {
+        } else if (!cancelled) {
           // Attempt may already be submitted, try loading completed review
           const reviewRes = await nurviaApi.getAttemptReview(attemptIdParam);
           if (reviewRes.success && reviewRes.data) {
@@ -107,25 +119,51 @@ function ExamSessionContent() {
             setLoadError(reviewRes.message || res.message || "Unable to load this exam attempt.");
           }
         }
-        setIsLoading(false);
-      } else if (examIdParam) {
+        if (!cancelled) setIsLoading(false);
+      } else if (examIdParam && modeParam === "Review") {
+        // Review mode: study the published exam's approved answer keys without
+        // creating any graded attempt.
         setIsLoading(true);
         setLoadError(null);
-        const res = await nurviaApi.startAttempt(examIdParam);
-        if (res.success && res.data) {
-          setAttemptId(res.data.attemptId);
-          hydrateFromAttempt(res.data);
-        } else {
-          setLoadError(res.message || "Unable to start this exam. Please choose another published exam.");
+        const res = await nurviaApi.getExamReviewContent(examIdParam);
+        if (!cancelled && res.success && res.data) {
+          hydrateFromReviewContent(res.data);
+        } else if (!cancelled) {
+          setLoadError(res.message || "Review is not available for this examination.");
         }
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
+      } else if (examIdParam && layoutParam) {
+        // Layout already chosen (e.g. from an exam card) — start immediately.
+        await startFreshAttempt(layoutParam);
+      } else if (examIdParam) {
+        // Ask the learner to choose a permitted navigation layout first.
+        setIsLayoutModalOpen(true);
       } else {
         setLoadError("Choose a published exam before opening an exam session.");
       }
     }
 
-    loadAttempt();
-  }, [attemptIdParam, examIdParam, modeParam]);
+    async function startFreshAttempt(chosenLayout: ExamLayout) {
+      setIsLoading(true);
+      setLoadError(null);
+      const res = await nurviaApi.startAttempt(examIdParam!, {
+        deliveryMode: modeParam === "Tutor" ? "Tutor" : "Exam",
+        layoutMode: chosenLayout,
+      });
+      if (cancelled) return;
+      if (res.success && res.data) {
+        setAttemptId(res.data.attemptId);
+        setIsLayoutModalOpen(false);
+        hydrateFromAttempt(res.data);
+      } else {
+        setLoadError(res.message || "Unable to start this exam. Please choose another published exam.");
+      }
+      setIsLoading(false);
+    }
+
+    loadSession();
+    return () => { cancelled = true; };
+  }, [attemptIdParam, examIdParam, modeParam, layoutParam]);
 
   // Cancel pending autosaves when the exam session is unmounted.
   React.useEffect(() => {
@@ -134,8 +172,36 @@ function ExamSessionContent() {
       Object.values(timeouts).forEach((timer) => {
         if (timer) clearTimeout(timer);
       });
+      if (autosaveRetryTimerRef.current) clearTimeout(autosaveRetryTimerRef.current);
     };
   }, []);
+
+  const hydrateFromReviewContent = (data: ExamReviewContentDto) => {
+    setExamTitle(data.examTitle);
+    setIsReviewContent(true);
+    setDeliveryMode("Review");
+
+    const mapped: RendererQuestion[] = data.questions.map((q) => ({
+      id: q.questionId,
+      orderIndex: q.orderIndex,
+      stem: q.stem,
+      questionType: q.questionType,
+      cognitiveSkill: q.cognitiveSkill,
+      clientNeedCategory: q.clientNeedCategory,
+      generalRationale: q.generalRationale,
+      options: q.options.map((o) => ({
+        id: o.id,
+        optionIndex: o.optionIndex,
+        optionText: o.optionText,
+        isCorrect: o.isCorrect,
+        specificRationale: o.specificRationale,
+        wasSelected: o.wasSelected,
+        displayOrder: o.optionIndex,
+      })),
+      exhibits: q.exhibits,
+    }));
+    setQuestions(mapped);
+  };
 
   const hydrateFromReview = (data: SubmittedExamResultDto) => {
     setAttemptId(data.attemptId);
@@ -180,6 +246,9 @@ function ExamSessionContent() {
     setAttemptId(data.attemptId);
     setExamTitle(data.examTitle);
     setSecondsRemaining(data.remainingSeconds);
+    setLayoutPolicy(data.allowedLayouts);
+    setLayout(data.layoutMode);
+    setDeliveryMode(data.deliveryMode === "Tutor" ? "Tutor" : "Exam");
 
     if (data.questions && data.questions.length > 0) {
       const mapped: RendererQuestion[] = data.questions.map((q) => ({
@@ -190,11 +259,14 @@ function ExamSessionContent() {
         cognitiveSkill: q.cognitiveSkill,
         clientNeedCategory: q.clientNeedCategory,
         contentJsonData: q.contentJsonData,
+        generalRationale: q.generalRationale,
         options: q.options.map((o) => ({
           id: o.id,
           optionIndex: o.optionIndex,
           optionText: o.optionText,
           displayOrder: o.displayOrder,
+          isCorrect: o.isCorrect,
+          specificRationale: o.specificRationale,
         })),
         exhibits: q.exhibits,
       }));
@@ -215,13 +287,19 @@ function ExamSessionContent() {
   };
 
   // 2. Debounced Autosave Handler
-  const persistResponse = async (questionId: string, payloadJson: string | null, isFlagged: boolean) => {
+  const persistResponse = async (
+    questionId: string,
+    payloadJson: string | null,
+    isFlagged: boolean,
+    layoutMode?: ExamLayout
+  ) => {
     if (!attemptId) return;
     try {
       const res = await nurviaApi.autosaveResponse(attemptId, {
         questionId,
         responseJson: payloadJson,
         isFlagged,
+        layoutMode: layoutMode ?? null,
       });
       setAutosaveStatus(res.success ? "saved" : "error");
     } catch {
@@ -229,24 +307,48 @@ function ExamSessionContent() {
     }
   };
 
+  // Retries a failed save for the latest pending answer. Safe to repeat: the
+  // backend autosave is an idempotent per-question update.
+  const scheduleSaveRetry = (questionId: string, payloadJson: string | null, isFlagged: boolean) => {
+    if (autosaveRetryTimerRef.current) clearTimeout(autosaveRetryTimerRef.current);
+    autosaveRetryTimerRef.current = setTimeout(async () => {
+      autosaveRetryTimerRef.current = null;
+      setAutosaveStatus("saving");
+      await persistResponse(questionId, payloadJson, isFlagged);
+    }, 4000);
+  };
+
+  React.useEffect(() => {
+    // Schedule a safe retry whenever a save fails while an attempt is active.
+    if (autosaveStatus !== "error" || !attemptId || isSubmitted) return;
+    const qid = questions[currentIndex]?.id;
+    if (!qid) return;
+    scheduleSaveRetry(qid, answers[qid] ?? null, flags[qid] || false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autosaveStatus]);
+
   // Immediately persists a debounced-but-unsaved response (used before
-  // navigating to another question or opening the submit dialog).
-  const flushPendingAutosave = (questionId: string) => {
+  // navigating to another question or opening the submit dialog). Returns a
+  // promise so submission can await reconciliation of every pending save.
+  const flushPendingAutosave = (questionId: string): Promise<void> => {
     const pending = autosaveTimeoutsRef.current[questionId];
-    if (pending) {
-      clearTimeout(pending);
-      autosaveTimeoutsRef.current[questionId] = null;
-      void persistResponse(questionId, answers[questionId] ?? null, flags[questionId] || false);
-    }
+    if (!pending) return Promise.resolve();
+    clearTimeout(pending);
+    autosaveTimeoutsRef.current[questionId] = null;
+    return persistResponse(questionId, answers[questionId] ?? null, flags[questionId] || false);
   };
 
   const handleAnswerChange = (questionId: string, payloadJson: string) => {
     setAnswers((prev) => ({ ...prev, [questionId]: payloadJson }));
 
-    if (!attemptId) return;
+    if (!attemptId || isReviewContent) return;
 
     setAutosaveStatus("saving");
     if (autosaveTimeoutsRef.current[questionId]) clearTimeout(autosaveTimeoutsRef.current[questionId]);
+    if (autosaveRetryTimerRef.current) {
+      clearTimeout(autosaveRetryTimerRef.current);
+      autosaveRetryTimerRef.current = null;
+    }
 
     autosaveTimeoutsRef.current[questionId] = setTimeout(async () => {
       autosaveTimeoutsRef.current[questionId] = null;
@@ -273,6 +375,21 @@ function ExamSessionContent() {
     }
   };
 
+  // Layout switch: permitted only when the exam allows both layouts. Switching
+  // never touches persisted responses; the choice is persisted on the attempt.
+  const handleLayoutChange = async (nextLayout: ExamLayout) => {
+    if (layoutPolicy && layoutPolicy !== "Both") return;
+    if (nextLayout === layout) return;
+    setLayout(nextLayout);
+    if (attemptId && !isSubmitted) {
+      const currentQ = questions[currentIndex];
+      if (currentQ) {
+        setAutosaveStatus("saving");
+        await persistResponse(currentQ.id, answers[currentQ.id] ?? null, flags[currentQ.id] || false, nextLayout);
+      }
+    }
+  };
+
   // 4. Submit Examination Handler
   const handleSubmitExam = async () => {
     setIsSubmitModalOpen(false);
@@ -284,6 +401,12 @@ function ExamSessionContent() {
     setIsLoading(true);
 
     try {
+      // Reconcile every debounced-but-unsaved response before submitting so the
+      // authoritative backend grading uses the learner's latest answers.
+      await Promise.all(
+        Object.keys(autosaveTimeoutsRef.current).map((qid) => flushPendingAutosave(qid))
+      );
+
       const response = await nurviaApi.submitAttempt(attemptId);
       if (!response.success || !response.data) {
         setSubmissionError(response.message || "The exam could not be submitted. Your attempt has not been marked complete.");
@@ -308,13 +431,27 @@ function ExamSessionContent() {
   const unansweredCount = questions.length - answeredCount;
   const flaggedCount = Object.values(flags).filter(Boolean).length;
 
+  // Tutor immediate feedback: reveal correctness + rationale once the learner
+  // answers. Approved content only — the key arrives from the backend for
+  // Tutor attempts and is never fabricated client-side.
+  const isTutorRevealed = (q: RendererQuestion) =>
+    deliveryMode === "Tutor" && !isSubmitted && Boolean(answers[q.id]);
+
+  const reviewStateFor = (q: RendererQuestion) =>
+    isSubmitted || isReviewContent || deliveryMode === "Review" || isTutorRevealed(q);
+
+  const scrollToQuestion = (qId: string) => {
+    const el = allInOneRefs.current[qId];
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   if (status !== "authenticated" ||
       (user?.role !== "Learner" && user?.role !== "Superadmin")) {
-    return <main className="flex min-h-screen items-center justify-center px-6 text-sm text-foreground-secondary" aria-live="polite">Checking your learner accessâ€¦</main>;
+    return <main className="flex min-h-screen items-center justify-center px-6 text-sm text-foreground-secondary" aria-live="polite">Checking your learner access…</main>;
   }
 
   if (isLoading) {
-    return <main className="flex min-h-screen items-center justify-center px-6 text-sm text-foreground-secondary" aria-live="polite">Loading your saved examinationâ€¦</main>;
+    return <main className="flex min-h-screen items-center justify-center px-6 text-sm text-foreground-secondary" aria-live="polite">Loading your saved examination…</main>;
   }
 
   if (loadError && !attemptId && !questions.length) {
@@ -322,24 +459,102 @@ function ExamSessionContent() {
       <main className="mx-auto flex min-h-screen max-w-xl flex-col items-center justify-center gap-4 px-6 text-center">
         <h1 className="font-brand text-2xl font-bold text-foreground">No exam session available</h1>
         <p role="alert" className="text-sm text-foreground-secondary">{loadError}</p>
-        <Link href="/learner/exams"><Button>Choose a published exam</Button></Link>
+        <Link href="/learner/library"><Button>Choose a published exam</Button></Link>
       </main>
     );
   }
+
+  const renderQuestion = (q: RendererQuestion, index: number, isSequential: boolean) => {
+    const showReview = reviewStateFor(q);
+    return (
+      <Card
+        key={q.id}
+        ref={(el) => { if (!isSequential) allInOneRefs.current[q.id] = el; }}
+        className={cn("p-6 space-y-6", !isSequential && "scroll-mt-24")}
+      >
+        <div className="space-y-3">
+          <div className="flex items-center justify-between text-xs text-foreground-muted">
+            <span className="font-semibold text-brand-teal">
+              Item {index + 1}
+              {!isSequential && ` of ${questions.length}`}
+            </span>
+            <div className="flex items-center gap-2">
+              {q.cognitiveSkill && (
+                <Badge variant="outline" className="text-[10px]">
+                  <Sparkles className="w-3 h-3 mr-1 text-brand-teal" />
+                  {String(q.cognitiveSkill)}
+                </Badge>
+              )}
+              {isSequential && flags[q.id] && (
+                <Badge variant="destructive" className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
+                  <Bookmark className="w-3 h-3 mr-1 fill-amber-500" /> Flagged
+                </Badge>
+              )}
+            </div>
+          </div>
+
+          <h2 className="font-brand text-base sm:text-lg font-bold text-foreground leading-relaxed">
+            {q.stem}
+          </h2>
+        </div>
+
+        {/* Modular Renderer Registry */}
+        <div className="pt-2">
+          <QuestionRendererRegistry
+            question={q}
+            value={answers[q.id] ?? null}
+            onChange={(val) => handleAnswerChange(q.id, val)}
+            disabled={isSubmitted || isReviewContent}
+            isReview={showReview}
+          />
+        </div>
+
+        {/* Tutor immediate feedback panel (approved content delivered by the backend) */}
+        {isTutorRevealed(q) && q.generalRationale && (
+          <div className="p-4 rounded-xl bg-brand-teal/10 border border-brand-teal/20 text-xs text-foreground-secondary space-y-1">
+            <div className="font-bold text-brand-teal flex items-center gap-1.5">
+              <Lightbulb className="w-4 h-4" />
+              <span>Tutor Guidance — Approved Rationale</span>
+            </div>
+            <p className="pt-1 leading-relaxed">{q.generalRationale}</p>
+          </div>
+        )}
+
+        {/* All-in-One inline flag control */}
+        {!isSequential && !isSubmitted && !isReviewContent && attemptId && (
+          <button
+            type="button"
+            onClick={async () => {
+              const nextFlag = !flags[q.id];
+              setFlags((prev) => ({ ...prev, [q.id]: nextFlag }));
+              setAutosaveStatus("saving");
+              await persistResponse(q.id, answers[q.id] ?? null, nextFlag);
+            }}
+            className={cn(
+              "text-xs font-semibold inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-colors",
+              flags[q.id]
+                ? "border-amber-500 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                : "border-border text-foreground-secondary hover:bg-surface-muted"
+            )}
+          >
+            <Bookmark className={cn("w-3.5 h-3.5", flags[q.id] && "fill-amber-500")} />
+            {flags[q.id] ? "Flagged" : "Flag for review"}
+          </button>
+        )}
+      </Card>
+    );
+  };
 
   return (
     <ExamShell
       examTitle={examTitle}
       totalQuestions={questions.length}
-      currentQuestion={currentIndex + 1}
+      currentQuestion={layout === "Sequential" ? currentIndex + 1 : Math.min(answeredCount + 1, questions.length)}
       mode={deliveryMode}
       onModeChange={setDeliveryMode}
       isFlagged={isCurrentFlagged}
       onToggleFlag={handleToggleFlag}
       onSubmitExam={() => {
-        // Persist every debounced-but-unsaved response before reviewing
-        // the submission status.
-        Object.keys(autosaveTimeoutsRef.current).forEach((qid) => flushPendingAutosave(qid));
         setIsSubmitModalOpen(true);
       }}
       secondsRemaining={secondsRemaining}
@@ -347,6 +562,10 @@ function ExamSessionContent() {
       autosaveStatus={autosaveStatus}
       answeredCount={answeredCount}
       onOpenQuestionGrid={() => setIsQuestionGridOpen(true)}
+      showTimer={!isReviewContent}
+      showSubmitExam={!isReviewContent && !isSubmitted}
+      showFlag={layout === "Sequential" && !isReviewContent && !isSubmitted}
+      modeBadge={deliveryMode === "Tutor" ? "Tutor Mode · Immediate Feedback" : undefined}
     >
       <div className="space-y-6">
         {/* Post-Submission Result Hero Banner */}
@@ -408,99 +627,131 @@ function ExamSessionContent() {
           </div>
         )}
 
-        {/* Question Header Bar */}
-        <div className="flex items-center justify-between border-b border-border pb-3">
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs font-mono">
-              Item {currentIndex + 1} of {questions.length}
-            </Badge>
-            {isCurrentFlagged && (
-              <Badge variant="destructive" className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
-                <Bookmark className="w-3 h-3 mr-1 fill-amber-500" /> Flagged
-              </Badge>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsQuestionGridOpen(true)}
-              className="text-xs font-semibold text-brand-teal hover:underline flex items-center gap-1"
-            >
-              <ClipboardList className="w-3.5 h-3.5" />
-              <span>Question List ({answeredCount}/{questions.length})</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Question Stem & Active Renderer Canvas */}
-        {currentQ ? (
-          <Card className="p-6 space-y-6">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-xs text-foreground-muted">
-                <span className="font-semibold text-brand-teal">
-                  Canonical Type: {String(currentQ.questionType)}
-                </span>
-                {currentQ.cognitiveSkill && (
-                  <Badge variant="outline" className="text-[10px]">
-                    <Sparkles className="w-3 h-3 mr-1 text-brand-teal" />
-                    {String(currentQ.cognitiveSkill)}
-                  </Badge>
-                )}
-              </div>
-
-              <h2 className="font-brand text-base sm:text-lg font-bold text-foreground leading-relaxed">
-                {currentQ.stem}
-              </h2>
+        {/* Review-mode study banner (no graded attempt) */}
+        {isReviewContent && (
+          <div className="p-4 rounded-2xl border border-brand-teal/30 bg-brand-teal/5 flex items-start gap-3">
+            <CheckCircle2 className="w-5 h-5 text-brand-teal shrink-0 mt-0.5" />
+            <div className="text-xs text-foreground-secondary space-y-1">
+              <p className="font-brand font-bold text-sm text-foreground">Review Mode — Study Session</p>
+              <p>
+                Study each question with its approved correct answers and clinical rationales.
+                This session is separate from any graded examination attempt and is not scored.
+              </p>
             </div>
-
-            {/* Modular Renderer Registry */}
-            <div className="pt-2">
-              <QuestionRendererRegistry
-                question={currentQ}
-                value={currentAnswer}
-                onChange={(val) => handleAnswerChange(currentQ.id, val)}
-                disabled={isSubmitted}
-                isReview={isSubmitted || deliveryMode === "Review"}
-              />
-            </div>
-          </Card>
-        ) : (
-          <div className="p-12 text-center text-xs text-foreground-muted">
-            No questions available for this session.
           </div>
         )}
 
-        {/* Question Stepper Navigation Footer */}
-        <div className="flex items-center justify-between pt-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={currentIndex === 0}
-            onClick={() => {
-              if (currentQ) flushPendingAutosave(currentQ.id);
-              setCurrentIndex((prev) => Math.max(0, prev - 1));
-            }}
-            className="text-xs gap-1"
-          >
-            <ChevronLeft className="w-4 h-4" /> Previous Item
-          </Button>
+        {/* Layout selector — only when the exam permits both layouts */}
+        {layoutPolicy === "Both" && !isSubmitted && !isReviewContent && (
+          <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
+            <div className="flex items-center gap-1" role="group" aria-label="Navigation layout">
+              <Button
+                variant={layout === "Sequential" ? "primary" : "outline"}
+                size="sm"
+                className="text-xs gap-1.5"
+                aria-pressed={layout === "Sequential"}
+                onClick={() => void handleLayoutChange("Sequential")}
+              >
+                <Rows3 className="w-3.5 h-3.5" /> Sequential
+              </Button>
+              <Button
+                variant={layout === "AllInOne" ? "primary" : "outline"}
+                size="sm"
+                className="text-xs gap-1.5"
+                aria-pressed={layout === "AllInOne"}
+                onClick={() => void handleLayoutChange("AllInOne")}
+              >
+                <LayoutList className="w-3.5 h-3.5" /> All-in-One
+              </Button>
+            </div>
+            <span className="text-[11px] text-foreground-muted hidden sm:block">
+              Switching layout never loses your answers.
+            </span>
+          </div>
+        )}
 
-          <span className="text-xs font-medium text-foreground-muted">
-            Question {currentIndex + 1} of {questions.length}
-          </span>
+        {/* Sequential View — one question at a time */}
+        {layout === "Sequential" ? (
+          <>
+            {/* Question Header Bar */}
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-xs font-mono">
+                  Item {currentIndex + 1} of {questions.length}
+                </Badge>
+              </div>
 
-          <Button
-            size="sm"
-            disabled={currentIndex === questions.length - 1}
-            onClick={() => {
-              if (currentQ) flushPendingAutosave(currentQ.id);
-              setCurrentIndex((prev) => Math.min(questions.length - 1, prev + 1));
-            }}
-            className="text-xs gap-1 bg-brand-navy hover:bg-brand-navyDeep text-white dark:bg-brand-teal"
-          >
-            Next Item <ChevronRight className="w-4 h-4" />
-          </Button>
-        </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsQuestionGridOpen(true)}
+                  className="text-xs font-semibold text-brand-teal hover:underline flex items-center gap-1"
+                >
+                  <ClipboardList className="w-3.5 h-3.5" />
+                  <span>Question List ({answeredCount}/{questions.length})</span>
+                </button>
+              </div>
+            </div>
+
+            {currentQ ? (
+              renderQuestion(currentQ, currentIndex, true)
+            ) : (
+              <div className="p-12 text-center text-xs text-foreground-muted">
+                No questions available for this session.
+              </div>
+            )}
+
+            {/* Question Stepper Navigation Footer */}
+            <div className="flex items-center justify-between pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentIndex === 0}
+                onClick={async () => {
+                  if (currentQ) await flushPendingAutosave(currentQ.id);
+                  setCurrentIndex((prev) => Math.max(0, prev - 1));
+                }}
+                className="text-xs gap-1"
+              >
+                <ChevronLeft className="w-4 h-4" /> Previous Item
+              </Button>
+
+              <span className="text-xs font-medium text-foreground-muted">
+                Question {currentIndex + 1} of {questions.length}
+              </span>
+
+              <Button
+                size="sm"
+                disabled={currentIndex === questions.length - 1}
+                onClick={async () => {
+                  if (currentQ) await flushPendingAutosave(currentQ.id);
+                  setCurrentIndex((prev) => Math.min(questions.length - 1, prev + 1));
+                }}
+                className="text-xs gap-1 bg-brand-navy hover:bg-brand-navyDeep text-white dark:bg-brand-teal"
+              >
+                Next Item <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </>
+        ) : (
+          /* All-in-One View — continuous vertical scroll over the same attempt data */
+          <>
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <Badge variant="outline" className="text-xs font-mono">
+                All-in-One View · {questions.length} items
+              </Badge>
+              <button
+                onClick={() => setIsQuestionGridOpen(true)}
+                className="text-xs font-semibold text-brand-teal hover:underline flex items-center gap-1"
+              >
+                <ClipboardList className="w-3.5 h-3.5" />
+                <span>Question List ({answeredCount}/{questions.length})</span>
+              </button>
+            </div>
+            <div className="space-y-6">
+              {questions.map((q, idx) => renderQuestion(q, idx, false))}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Question Grid Modal / Drawer */}
@@ -518,7 +769,7 @@ function ExamSessionContent() {
                 onClick={() => setIsQuestionGridOpen(false)}
                 className="text-foreground-secondary hover:text-foreground text-sm font-bold p-1"
               >
-                âœ•
+                ✕
               </button>
             </div>
 
@@ -542,14 +793,19 @@ function ExamSessionContent() {
               {questions.map((q, idx) => {
                 const isAns = Boolean(answers[q.id]);
                 const isFlg = Boolean(flags[q.id]);
-                const isCurr = idx === currentIndex;
+                const isCurr = layout === "Sequential" && idx === currentIndex;
 
                 return (
                   <button
                     key={q.id}
                     onClick={() => {
-                      setCurrentIndex(idx);
                       setIsQuestionGridOpen(false);
+                      if (layout === "AllInOne") {
+                        setCurrentIndex(idx);
+                        scrollToQuestion(q.id);
+                      } else {
+                        setCurrentIndex(idx);
+                      }
                     }}
                     className={cn(
                       "h-10 rounded-lg text-xs font-bold transition-all relative flex items-center justify-center border",
@@ -571,7 +827,7 @@ function ExamSessionContent() {
 
             <div className="pt-2 border-t border-border flex justify-end">
               <Button size="sm" onClick={() => setIsQuestionGridOpen(false)} className="text-xs">
-                Resume Exam
+                Resume
               </Button>
             </div>
           </div>
@@ -644,8 +900,59 @@ function ExamSessionContent() {
           </div>
         </div>
       )}
+
+      {/* Layout Selection Modal — shown before starting a fresh attempt */}
+      {isLayoutModalOpen && examIdParam && !loadError && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-xl space-y-5">
+            <div>
+              <h3 className="font-brand font-bold text-base text-foreground">Choose your navigation layout</h3>
+              <p className="text-xs text-foreground-secondary pt-1">
+                Select how you want to move through this examination. Your choice is saved with the attempt.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={() => void startFreshAttemptFromModal("Sequential")}
+                className="w-full text-left p-4 rounded-xl border border-border bg-background hover:border-brand-teal/60 transition-colors space-y-1"
+              >
+                <div className="flex items-center gap-2 font-brand font-bold text-sm text-foreground">
+                  <Rows3 className="w-4 h-4 text-brand-teal" /> Sequential
+                  <Badge variant="outline" className="text-[10px]">Recommended</Badge>
+                </div>
+                <p className="text-xs text-foreground-secondary">One question at a time with Previous and Next controls.</p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void startFreshAttemptFromModal("AllInOne")}
+                className="w-full text-left p-4 rounded-xl border border-border bg-background hover:border-brand-teal/60 transition-colors space-y-1"
+              >
+                <div className="flex items-center gap-2 font-brand font-bold text-sm text-foreground">
+                  <LayoutList className="w-4 h-4 text-brand-teal" /> All-in-One
+                </div>
+                <p className="text-xs text-foreground-secondary">All questions on one continuous scrolling page.</p>
+              </button>
+            </div>
+
+            <div className="pt-1 text-[11px] text-foreground-muted text-center">
+              {modeParam === "Tutor" ? "Tutor mode" : "Exam mode"} · {examTitle}
+            </div>
+          </div>
+        </div>
+      )}
     </ExamShell>
   );
+
+  async function startFreshAttemptFromModal(chosenLayout: ExamLayout) {
+    // Reuse the shared start routine for modal-initiated attempts.
+    setIsLayoutModalOpen(false);
+    const url = new URL(window.location.href);
+    url.searchParams.set("layout", chosenLayout);
+    router.replace(url.toString());
+  }
 }
 
 export default function ExamSessionPage() {

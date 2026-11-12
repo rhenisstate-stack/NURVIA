@@ -20,7 +20,12 @@ public class ExamAttemptService : IExamAttemptService
         _context = context;
     }
 
-    public async Task<StartAttemptResultDto> StartAttemptAsync(Guid examId, string learnerId, string learnerName, CancellationToken ct = default)
+    public Task<StartAttemptResultDto> StartAttemptAsync(Guid examId, string learnerId, string learnerName, CancellationToken ct = default)
+    {
+        return StartAttemptAsync(examId, learnerId, learnerName, ExamDeliveryMode.Exam, null, ct);
+    }
+
+    public async Task<StartAttemptResultDto> StartAttemptAsync(Guid examId, string learnerId, string learnerName, ExamDeliveryMode deliveryMode, ExamLayout? requestedLayout, CancellationToken ct = default)
     {
         var exam = await _context.Exams
             .Include(e => e.CurrentVersion)
@@ -43,6 +48,23 @@ public class ExamAttemptService : IExamAttemptService
             throw new DomainException("This examination has not yet been configured with an active version.");
         if (exam.Status != ExamStatus.Published)
             throw new DomainException("Only published examinations are available to learners.");
+
+        // Mode authorization: the exam's configured delivery modes must permit the
+        // requested mode. Review is a study experience served without a graded
+        // attempt (see GetExamReviewContentAsync) and therefore never starts one.
+        if (deliveryMode != ExamDeliveryMode.Exam && deliveryMode != ExamDeliveryMode.Tutor)
+            throw new DomainException("Only Exam and Tutor modes start a persisted examination attempt.");
+
+        if (exam.ModeAllowed != ExamDeliveryMode.All && exam.ModeAllowed != deliveryMode)
+            throw new DomainException($"This examination does not permit {deliveryMode} mode.");
+
+        // Layout authorization: resolve the learner's requested layout against the
+        // exam version's permitted layouts; fall back to the configured default.
+        var layoutMode = requestedLayout ?? version.DefaultLayout;
+        if (version.AllowedLayouts == ExamLayoutPolicy.SequentialOnly && layoutMode != ExamLayout.Sequential)
+            throw new DomainException("This examination is configured for the Sequential layout only.");
+        if (version.AllowedLayouts == ExamLayoutPolicy.AllInOneOnly && layoutMode != ExamLayout.AllInOne)
+            throw new DomainException("This examination is configured for the All-in-One layout only.");
 
         // Check for an ongoing active attempt for this learner
         var existingAttempt = await _context.ExamAttempts
@@ -73,7 +95,9 @@ public class ExamAttemptService : IExamAttemptService
             learnerName,
             version.TimeLimitMinutes > 0 ? version.TimeLimitMinutes : 90,
             version.PassingScorePercentage > 0 ? version.PassingScorePercentage : 75.0m,
-            totalQuestions
+            totalQuestions,
+            deliveryMode,
+            layoutMode
         );
 
         int order = 1;
@@ -159,6 +183,24 @@ public class ExamAttemptService : IExamAttemptService
         if (response == null)
             throw new DomainException($"Question with ID '{request.QuestionId}' is not part of this examination attempt.");
 
+        // Optional layout switch. Permitted only when the exam version allows both
+        // layouts; switching never touches the learner's persisted responses.
+        if (request.LayoutMode.HasValue)
+        {
+            var versionPolicy = await _context.ExamVersions
+                .AsNoTracking()
+                .Where(v => v.Id == attempt.ExamVersionId)
+                .Select(v => (ExamLayoutPolicy?)v.AllowedLayouts)
+                .FirstOrDefaultAsync(ct);
+
+            if (versionPolicy == ExamLayoutPolicy.SequentialOnly && request.LayoutMode.Value != ExamLayout.Sequential)
+                throw new DomainException("This examination is configured for the Sequential layout only.");
+            if (versionPolicy == ExamLayoutPolicy.AllInOneOnly && request.LayoutMode.Value != ExamLayout.AllInOne)
+                throw new DomainException("This examination is configured for the All-in-One layout only.");
+
+            attempt.LayoutMode = request.LayoutMode.Value;
+        }
+
         response.UpdateResponse(request.ResponseJson, request.IsFlagged);
         await _context.SaveChangesAsync(ct);
 
@@ -210,8 +252,12 @@ public class ExamAttemptService : IExamAttemptService
             if (qv == null)
                 continue;
 
-            bool isCorrect = EvaluateQuestionResponse(qv, response.ResponseJson);
-            decimal points = isCorrect ? response.MaxPoints : 0.0m;
+            bool isCorrect = EvaluateQuestionResponse(qv, response.ResponseJson, out decimal fraction);
+            // Partial credit: multi-part question types award a proportional share of
+            // the question's points. Aggregate scoring still counts a question as
+            // "correct" only when the full key is matched, preserving the existing
+            // overall score policy.
+            decimal points = Math.Round(response.MaxPoints * fraction, 2);
 
             response.Grade(isCorrect, points);
             if (isCorrect)
@@ -276,8 +322,124 @@ public class ExamAttemptService : IExamAttemptService
             .ToListAsync(ct);
     }
 
-    private static bool EvaluateQuestionResponse(QuestionVersion qv, string? responseJson)
+    /// <summary>
+    /// Authoritative per-type grading.
+    ///
+    /// Returns whether the response matches the approved answer key and, through
+    /// <paramref name="fraction"/>, the earned share (0–1) of the question's points
+    /// for multi-part question types.
+    ///
+    /// Grading keys by question type:
+    ///   - Single-answer types (MCQ, True/False, Image-Based): option IsCorrect.
+    ///   - SATA / Multiple-Image Selection: exact set equality against correct options.
+    ///   - Numeric Calculation: decimal comparison with 0.01 tolerance.
+    ///   - Cloze / Short Answer: case-insensitive text match against correct options.
+    ///   - Ordered Response: sequence must equal the options' DisplayOrder sequence.
+    ///   - Matching: premise at even index must map to the response option at the
+    ///     following odd index (each premise listed directly before its correct match).
+    ///   - Tabular Response: SelectedOptionId must reference a correct option.
+    ///   - Multiple True/False, Matrix Grid, Drag-and-Drop, Bow-Tie: the approved key
+    ///     is read from ContentJsonData ("CorrectTrueFalse"/"CorrectSelections"/
+    ///     "CorrectBuckets"/"CorrectActions"+"CorrectCondition"+"CorrectParameters").
+    ///     When an approved key is absent the legacy policy applies (a non-empty
+    ///     response earns credit) so historical question content is never silently
+    ///     re-scored as incorrect.
+    ///   - Extended Response / Clinical Case Study: legacy policy retained (a
+    ///     non-empty response earns credit); these types require human evaluation.
+    /// </summary>
+    /// <summary>
+    /// Review-mode study content for a published examination. Serves the approved
+    /// answer key and rationales so learners can study without creating a graded
+    /// attempt. Access requires the exam version's review release policy to permit
+    /// review (Immediate, or ManualRelease already released by staff).
+    /// </summary>
+    public async Task<ExamReviewContentDto> GetExamReviewContentAsync(Guid examId, string learnerId, CancellationToken ct = default)
     {
+        var exam = await _context.Exams
+            .Include(e => e.CurrentVersion)
+                .ThenInclude(v => v!.ExamQuestions)
+                    .ThenInclude(eq => eq.Question)
+                        .ThenInclude(q => q!.CurrentVersion)
+                            .ThenInclude(qv => qv!.Options)
+            .Include(e => e.CurrentVersion)
+                .ThenInclude(v => v!.ExamQuestions)
+                    .ThenInclude(eq => eq.Question)
+                        .ThenInclude(q => q!.CurrentVersion)
+                            .ThenInclude(qv => qv!.Exhibits)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(e => e.Id == examId, ct);
+
+        if (exam == null)
+            throw new DomainException($"Examination with ID '{examId}' was not found.");
+
+        var version = exam.CurrentVersion;
+        if (exam.Status != ExamStatus.Published || version == null)
+            throw new DomainException("Review content is only available for published examinations.");
+
+        var reviewReleased = version.ReviewReleasePolicy == ReviewReleasePolicy.Immediate || version.ReviewReleasedAtUtc != null;
+        if (!reviewReleased)
+            throw new ReviewNotReleasedException();
+
+        var questions = new List<ReviewQuestionDto>();
+        int order = 1;
+
+        foreach (var eq in version.ExamQuestions.OrderBy(x => x.OrderIndex))
+        {
+            var q = eq.Question;
+            var qv = q?.CurrentVersion;
+            if (q == null || qv == null)
+                continue;
+
+            questions.Add(new ReviewQuestionDto
+            {
+                QuestionId = q.Id,
+                OrderIndex = order++,
+                Stem = qv.Stem,
+                QuestionType = qv.QuestionType,
+                CognitiveSkill = qv.CognitiveSkill,
+                ClientNeedCategory = qv.ClientNeedCategory,
+                GeneralRationale = qv.GeneralRationale,
+                LearnerResponse = null,
+                IsCorrect = false,
+                PointsAwarded = 0m,
+                MaxPoints = eq.Points > 0 ? eq.Points : 1.0m,
+                Options = qv.Options.OrderBy(o => o.DisplayOrder).Select(o => new ReviewOptionDto
+                {
+                    Id = o.Id,
+                    OptionIndex = o.OptionIndex,
+                    OptionText = o.OptionText,
+                    IsCorrect = o.IsCorrect,
+                    SpecificRationale = o.SpecificRationale,
+                    WasSelected = false
+                }).ToList(),
+                Exhibits = qv.Exhibits.OrderBy(e => e.DisplayOrder).Select(e => new QuestionExhibitDto
+                {
+                    Id = e.Id,
+                    Type = e.Type,
+                    Title = e.Title,
+                    Content = e.Content,
+                    DisplayOrder = e.DisplayOrder
+                }).ToList()
+            });
+        }
+
+        return new ExamReviewContentDto
+        {
+            ExamId = exam.Id,
+            ExamTitle = exam.Title,
+            Pathway = exam.Pathway,
+            Category = exam.Category,
+            Instructions = version.Instructions,
+            TimeLimitMinutes = version.TimeLimitMinutes,
+            ReviewReleased = true,
+            Questions = questions
+        };
+    }
+
+    private static bool EvaluateQuestionResponse(QuestionVersion qv, string? responseJson, out decimal fraction)
+    {
+        fraction = 0m;
+
         if (string.IsNullOrWhiteSpace(responseJson) || responseJson == "null")
             return false;
 
@@ -289,16 +451,25 @@ public class ExamAttemptService : IExamAttemptService
                 case QuestionType.SingleChoice:
                 case QuestionType.TrueFalse:
                 case QuestionType.ImageBased:
+                {
                     var selectedOpt = FindSelectedOption(qv.Options, responseJson);
-                    return selectedOpt?.IsCorrect == true;
+                    fraction = selectedOpt?.IsCorrect == true ? 1m : 0m;
+                    return fraction == 1m;
+                }
 
                 case QuestionType.MultipleResponse: // SATA
+                case QuestionType.MultipleImageSelection:
                     var chosenOpts = FindSelectedOptions(qv.Options, responseJson);
                     var correctOpts = qv.Options.Where(o => o.IsCorrect).Select(o => o.Id).ToHashSet();
                     var chosenIds = chosenOpts.Select(o => o.Id).ToHashSet();
-                    return chosenIds.Count > 0 && chosenIds.SetEquals(correctOpts);
+                    if (chosenIds.Count == 0 || correctOpts.Count == 0)
+                        return false;
+                    fraction = Math.Round((decimal)chosenIds.Count(intersect => correctOpts.Contains(intersect)) / correctOpts.Count, 4);
+                    var sataCorrect = chosenIds.SetEquals(correctOpts);
+                    return sataCorrect;
 
                 case QuestionType.NumericCalculation:
+                {
                     var trimmedResponse = responseJson.Trim('\"', ' ', '\'');
                     if (trimmedResponse.StartsWith("{"))
                     {
@@ -311,14 +482,22 @@ public class ExamAttemptService : IExamAttemptService
                         }
                     }
                     var targetOption = qv.Options.FirstOrDefault(o => o.IsCorrect)?.OptionText?.Trim();
+                    var numericCorrect = false;
                     if (targetOption != null && decimal.TryParse(targetOption, out var targetNum) && decimal.TryParse(trimmedResponse, out var candidateNum))
                     {
-                        return Math.Abs(targetNum - candidateNum) < 0.01m;
+                        numericCorrect = Math.Abs(targetNum - candidateNum) < 0.01m;
                     }
-                    return string.Equals(trimmedResponse, targetOption, StringComparison.OrdinalIgnoreCase);
+                    else
+                    {
+                        numericCorrect = string.Equals(trimmedResponse, targetOption, StringComparison.OrdinalIgnoreCase);
+                    }
+                    fraction = numericCorrect ? 1m : 0m;
+                    return numericCorrect;
+                }
 
                 case QuestionType.Cloze:
                 case QuestionType.ShortAnswer:
+                {
                     var textResponse = responseJson.Trim('\"', ' ', '\'').ToLowerInvariant();
                     if (textResponse.StartsWith("{"))
                     {
@@ -330,23 +509,300 @@ public class ExamAttemptService : IExamAttemptService
                             textResponse = tprop.GetString()?.Trim().ToLowerInvariant() ?? "";
                         }
                     }
-                    return qv.Options.Any(o => o.IsCorrect && o.OptionText.Trim().ToLowerInvariant() == textResponse);
+                    var textCorrect = qv.Options.Any(o => o.IsCorrect && o.OptionText.Trim().ToLowerInvariant() == textResponse);
+                    fraction = textCorrect ? 1m : 0m;
+                    return textCorrect;
+                }
+
+                case QuestionType.OrderedResponse:
+                {
+                    var orderedIds = ParseStringList(responseJson, "OrderedOptionIds", "orderedOptionIds");
+                    var keyOrder = qv.Options.OrderBy(o => o.DisplayOrder).Select(o => o.Id.ToString()).ToList();
+                    if (orderedIds.Count == 0 || keyOrder.Count == 0)
+                        return false;
+
+                    int positionalMatches = orderedIds
+                        .Where((id, idx) => idx < keyOrder.Count && string.Equals(id, keyOrder[idx], StringComparison.OrdinalIgnoreCase))
+                        .Count();
+                    fraction = Math.Round((decimal)positionalMatches / keyOrder.Count, 4);
+                    return positionalMatches == keyOrder.Count && orderedIds.Count == keyOrder.Count;
+                }
+
+                case QuestionType.Matching:
+                {
+                    var pairs = ParseStringDictionary(responseJson, "Pairs", "pairs");
+                    var options = qv.Options.OrderBy(o => o.OptionIndex).ToList();
+                    if (pairs.Count == 0 || options.Count < 2)
+                        return false;
+
+                    // Canonical key: premises occupy the even option positions and each
+                    // premise's correct response is the option directly following it.
+                    int premises = options.Count / 2;
+                    int correctPairs = 0;
+                    for (int i = 0; i < premises; i++)
+                    {
+                        var premiseId = options[i * 2].Id.ToString();
+                        var correctResponseId = options[i * 2 + 1].Id.ToString();
+                        if (pairs.TryGetValue(premiseId, out var chosen) &&
+                            string.Equals(chosen, correctResponseId, StringComparison.OrdinalIgnoreCase))
+                        {
+                            correctPairs++;
+                        }
+                    }
+                    fraction = Math.Round((decimal)correctPairs / premises, 4);
+                    return correctPairs == premises;
+                }
+
+                case QuestionType.TabularResponse:
+                {
+                    var selectedOpt = FindSelectedOption(qv.Options, responseJson);
+                    fraction = selectedOpt?.IsCorrect == true ? 1m : 0m;
+                    return fraction == 1m;
+                }
+
+                case QuestionType.MultipleTrueFalse:
+                {
+                    var selections = ParseStringDictionary(responseJson, "TrueFalseMap", "trueFalseMap");
+                    var key = ParseContentKeyMap(qv.ContentJsonData, "CorrectTrueFalse", "TrueFalseMap", "Correct");
+                    if (key == null)
+                        return LegacyCredit(responseJson, out fraction); // No approved key authored: legacy policy.
+
+                    int correctStatements = 0;
+                    foreach (var (optionId, expected) in key)
+                    {
+                        if (selections.TryGetValue(optionId, out var chosen) &&
+                            string.Equals(chosen, expected, StringComparison.OrdinalIgnoreCase))
+                        {
+                            correctStatements++;
+                        }
+                    }
+                    fraction = key.Count == 0 ? 0m : Math.Round((decimal)correctStatements / key.Count, 4);
+                    return correctStatements == key.Count;
+                }
+
+                case QuestionType.MatrixGrid:
+                {
+                    var selections = ParseStringDictionary(responseJson, "MatrixSelections", "matrixSelections");
+                    var key = ParseContentKeyMap(qv.ContentJsonData, "CorrectSelections", "MatrixSelections", "Correct");
+                    if (key == null)
+                        return LegacyCredit(responseJson, out fraction);
+
+                    int correctRows = 0;
+                    foreach (var (rowId, expected) in key)
+                    {
+                        if (selections.TryGetValue(rowId, out var chosen) &&
+                            string.Equals(chosen, expected, StringComparison.OrdinalIgnoreCase))
+                        {
+                            correctRows++;
+                        }
+                    }
+                    fraction = key.Count == 0 ? 0m : Math.Round((decimal)correctRows / key.Count, 4);
+                    return correctRows == key.Count;
+                }
+
+                case QuestionType.DragAndDrop:
+                {
+                    var classifications = ParseStringDictionary(responseJson, "Buckets", "buckets");
+                    var key = ParseContentKeyMap(qv.ContentJsonData, "CorrectBuckets", "Buckets", "Correct");
+                    if (key == null)
+                        return LegacyCredit(responseJson, out fraction);
+
+                    int correctItems = 0;
+                    foreach (var (itemId, expected) in key)
+                    {
+                        if (classifications.TryGetValue(itemId, out var chosen) &&
+                            string.Equals(chosen, expected, StringComparison.OrdinalIgnoreCase))
+                        {
+                            correctItems++;
+                        }
+                    }
+                    fraction = key.Count == 0 ? 0m : Math.Round((decimal)correctItems / key.Count, 4);
+                    return correctItems == key.Count;
+                }
+
+                case QuestionType.BowTie: // Also DynamicLabBowTie (same enum value)
+                {
+                    var parsed = ParseJsonObject(responseJson);
+                    var key = ParseJsonObject(qv.ContentJsonData);
+                    var keyActions = GetStringList(key, "CorrectActions", "correctActions");
+                    var keyCondition = GetSingleString(key, "CorrectCondition", "correctCondition");
+                    var keyParameters = GetStringList(key, "CorrectParameters", "correctParameters");
+
+                    if (keyActions.Count == 0 && string.IsNullOrEmpty(keyCondition) && keyParameters.Count == 0)
+                        return LegacyCredit(responseJson, out fraction); // No approved key authored: legacy policy.
+
+                    const int totalSlots = 5; // 2 actions + 1 condition + 2 parameters
+                    int correctSlots = 0;
+
+                    var learnerActions = GetStringList(parsed, "Actions", "actions") ?? new List<string>();
+                    correctSlots += learnerActions.Count(id => keyActions.Contains(id, StringComparer.OrdinalIgnoreCase))
+                                  - Math.Max(0, learnerActions.Count - keyActions.Count);
+
+                    var learnerCondition = GetSingleString(parsed, "Condition", "condition");
+                    if (!string.IsNullOrEmpty(keyCondition) &&
+                        string.Equals(learnerCondition, keyCondition, StringComparison.OrdinalIgnoreCase))
+                    {
+                        correctSlots++;
+                    }
+
+                    var learnerParameters = GetStringList(parsed, "Parameters", "parameters") ?? new List<string>();
+                    correctSlots += learnerParameters.Count(id => keyParameters.Contains(id, StringComparer.OrdinalIgnoreCase))
+                                  - Math.Max(0, learnerParameters.Count - keyParameters.Count);
+
+                    correctSlots = Math.Max(0, correctSlots);
+                    fraction = Math.Round((decimal)correctSlots / totalSlots, 4);
+                    return correctSlots == totalSlots;
+                }
 
                 default:
-                    // For remaining types, check non-empty response
-                    return !string.IsNullOrWhiteSpace(responseJson) && responseJson != "[]" && responseJson != "{}";
+                    // Extended Response, Clinical Case Study, and any future type keep
+                    // the legacy policy: a non-empty response earns credit and requires
+                    // human/AI-assisted evaluation outside the automated engine.
+                    return LegacyCredit(responseJson, out fraction);
             }
         }
         catch
         {
+            fraction = 0m;
             return false;
         }
+    }
+
+    /// <summary>Legacy scoring policy: any substantive non-empty response earns full credit.</summary>
+    private static bool LegacyCredit(string? responseJson, out decimal fraction)
+    {
+        fraction = !string.IsNullOrWhiteSpace(responseJson) && responseJson != "[]" && responseJson != "{}" ? 1m : 0m;
+        return fraction == 1m;
+    }
+
+    /// <summary>Reads a string-to-string key map from the approved ContentJsonData; null when no key was authored.</summary>
+    private static Dictionary<string, string>? ParseContentKeyMap(string? contentJsonData, params string[] propertyNames)
+    {
+        if (string.IsNullOrWhiteSpace(contentJsonData))
+            return null;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(contentJsonData);
+            foreach (var name in propertyNames)
+            {
+                if (doc.RootElement.ValueKind == JsonValueKind.Object &&
+                    doc.RootElement.TryGetProperty(name, out var prop) &&
+                    prop.ValueKind == JsonValueKind.Object)
+                {
+                    var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var item in prop.EnumerateObject())
+                    {
+                        map[item.Name] = item.Value.ValueKind == JsonValueKind.String
+                            ? item.Value.GetString() ?? ""
+                            : item.Value.ToString();
+                    }
+                    return map;
+                }
+            }
+        }
+        catch
+        {
+            return null;
+        }
+
+        return null;
+    }
+
+    private static Dictionary<string, string> ParseStringDictionary(string responseJson, params string[] propertyNames)
+    {
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        using var doc = JsonDocument.Parse(responseJson.Trim());
+        if (doc.RootElement.ValueKind != JsonValueKind.Object)
+            return result;
+
+        foreach (var name in propertyNames)
+        {
+            if (doc.RootElement.TryGetProperty(name, out var prop) && prop.ValueKind == JsonValueKind.Object)
+            {
+                foreach (var item in prop.EnumerateObject())
+                {
+                    result[item.Name] = item.Value.ValueKind == JsonValueKind.String
+                        ? item.Value.GetString() ?? ""
+                        : item.Value.ToString();
+                }
+                break;
+            }
+        }
+        return result;
+    }
+
+    private static List<string> ParseStringList(string responseJson, params string[] propertyNames)
+    {
+        var result = new List<string>();
+        using var doc = JsonDocument.Parse(responseJson.Trim());
+        if (doc.RootElement.ValueKind != JsonValueKind.Object)
+            return result;
+
+        foreach (var name in propertyNames)
+        {
+            if (doc.RootElement.TryGetProperty(name, out var prop) && prop.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in prop.EnumerateArray())
+                {
+                    if (item.ValueKind == JsonValueKind.String)
+                        result.Add(item.GetString() ?? "");
+                    else
+                        result.Add(item.ToString());
+                }
+                break;
+            }
+        }
+        return result;
+    }
+
+    private static JsonElement ParseJsonObject(string json)
+    {
+        using var doc = JsonDocument.Parse(json.Trim());
+        return doc.RootElement.Clone();
+    }
+
+    private static List<string>? GetStringList(JsonElement obj, params string[] propertyNames)
+    {
+        if (obj.ValueKind != JsonValueKind.Object)
+            return null;
+        foreach (var name in propertyNames)
+        {
+            if (obj.TryGetProperty(name, out var prop) && prop.ValueKind == JsonValueKind.Array)
+            {
+                var list = new List<string>();
+                foreach (var item in prop.EnumerateArray())
+                {
+                    list.Add(item.ValueKind == JsonValueKind.String ? item.GetString() ?? "" : item.ToString());
+                }
+                return list;
+            }
+        }
+        return null;
+    }
+
+    private static string? GetSingleString(JsonElement obj, params string[] propertyNames)
+    {
+        if (obj.ValueKind != JsonValueKind.Object)
+            return null;
+        foreach (var name in propertyNames)
+        {
+            if (obj.TryGetProperty(name, out var prop) && prop.ValueKind == JsonValueKind.String)
+                return prop.GetString();
+        }
+        return null;
     }
 
     private static StartAttemptResultDto BuildStartAttemptDto(ExamAttempt attempt, Exam exam, ExamVersion version, int remainingSecs)
     {
         var questions = new List<ActiveExamQuestionDto>();
         var savedResponses = new Dictionary<Guid, LearnerAnswerStateDto>();
+
+        // Tutor attempts are learning sessions: the approved answer key and rationales
+        // are delivered so the runtime can give immediate feedback. Exam attempts are
+        // strictly sanitized regardless of any client hint — this decision is made
+        // exclusively from the persisted attempt record.
+        var revealAnswers = attempt.DeliveryMode == ExamDeliveryMode.Tutor;
 
         var sortedExamQuestions = version.ExamQuestions.OrderBy(eq => eq.OrderIndex).ToList();
         int order = 1;
@@ -358,7 +814,9 @@ public class ExamAttemptService : IExamAttemptService
             if (q == null || qv == null)
                 continue;
 
-            // Strict DTO Sanitization: Active exam questions NEVER contain IsCorrect, specific rationales, or general rationales
+            // Strict DTO Sanitization: Exam-mode questions NEVER contain IsCorrect,
+            // specific rationales, or general rationales. Tutor-mode questions carry
+            // the approved key for immediate learning feedback.
             var activeQuestion = new ActiveExamQuestionDto
             {
                 Id = q.Id,
@@ -368,12 +826,15 @@ public class ExamAttemptService : IExamAttemptService
                 CognitiveSkill = qv.CognitiveSkill,
                 ClientNeedCategory = qv.ClientNeedCategory,
                 ContentJsonData = qv.ContentJsonData,
+                GeneralRationale = revealAnswers ? qv.GeneralRationale : null,
                 Options = qv.Options.OrderBy(o => o.DisplayOrder).Select(o => new ActiveExamOptionDto
                 {
                     Id = o.Id,
                     OptionIndex = o.OptionIndex,
                     OptionText = o.OptionText,
-                    DisplayOrder = o.DisplayOrder
+                    DisplayOrder = o.DisplayOrder,
+                    IsCorrect = revealAnswers && o.IsCorrect,
+                    SpecificRationale = revealAnswers ? o.SpecificRationale : null
                 }).ToList(),
                 Exhibits = qv.Exhibits.OrderBy(e => e.DisplayOrder).Select(e => new QuestionExhibitDto
                 {
@@ -410,6 +871,9 @@ public class ExamAttemptService : IExamAttemptService
             StartedAtUtc = attempt.StartedAtUtc,
             DeadlineUtc = attempt.DeadlineUtc,
             TotalQuestions = questions.Count,
+            DeliveryMode = attempt.DeliveryMode,
+            LayoutMode = attempt.LayoutMode,
+            AllowedLayouts = version.AllowedLayouts,
             Questions = questions,
             SavedResponses = savedResponses
         };
