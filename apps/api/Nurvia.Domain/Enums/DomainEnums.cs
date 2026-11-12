@@ -138,3 +138,23 @@ public enum ReviewReleasePolicy
     Immediate = 1,
     ManualRelease = 2
 }
+
+/// <summary>
+/// Admin configuration for which learner navigation layouts an examination permits.
+/// Layout and navigation restrictions are independent concerns.
+/// </summary>
+public enum ExamLayoutPolicy
+{
+    AllInOneOnly = 1,
+    SequentialOnly = 2,
+    Both = 3
+}
+
+/// <summary>
+/// The concrete navigation layout used for a specific examination attempt.
+/// </summary>
+public enum ExamLayout
+{
+    AllInOne = 1,
+    Sequential = 2
+}

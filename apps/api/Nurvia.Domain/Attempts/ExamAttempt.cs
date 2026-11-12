@@ -22,6 +22,16 @@ public class ExamAttempt : Entity, IAuditableEntity
     public int TotalQuestions { get; set; }
     public int CorrectQuestions { get; set; }
 
+    /// <summary>
+    /// The delivery mode this attempt was started under (Exam or Tutor).
+    /// Tutor attempts are learning sessions in which the approved answer key and
+    /// rationales are delivered to the learner; Exam attempts are strictly sanitized.
+    /// </summary>
+    public ExamDeliveryMode DeliveryMode { get; set; } = ExamDeliveryMode.Exam;
+
+    /// <summary>The navigation layout chosen for this attempt, persisted so resume keeps the learner's choice.</summary>
+    public ExamLayout LayoutMode { get; set; } = ExamLayout.Sequential;
+
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public string CreatedBy { get; set; } = string.Empty;
     public DateTime? UpdatedAtUtc { get; set; }
@@ -40,7 +50,9 @@ public class ExamAttempt : Entity, IAuditableEntity
         string learnerName,
         int timeLimitMinutes,
         decimal passingScorePercentage,
-        int totalQuestions)
+        int totalQuestions,
+        ExamDeliveryMode deliveryMode = ExamDeliveryMode.Exam,
+        ExamLayout layoutMode = ExamLayout.Sequential)
     {
         ExamId = examId;
         ExamVersionId = examVersionId;
@@ -49,6 +61,8 @@ public class ExamAttempt : Entity, IAuditableEntity
         TimeLimitMinutes = timeLimitMinutes;
         PassingScorePercentage = passingScorePercentage;
         TotalQuestions = totalQuestions;
+        DeliveryMode = deliveryMode;
+        LayoutMode = layoutMode;
         Status = ExamAttemptStatus.InProgress;
         StartedAtUtc = DateTime.UtcNow;
         DeadlineUtc = StartedAtUtc.AddMinutes(timeLimitMinutes);

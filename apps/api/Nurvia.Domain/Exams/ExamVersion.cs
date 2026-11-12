@@ -21,6 +21,12 @@ public class ExamVersion : Entity, IAuditableEntity
     /// <summary>UTC timestamp at which staff released review for ManualRelease exams; null while withheld.</summary>
     public DateTime? ReviewReleasedAtUtc { get; set; }
 
+    /// <summary>Navigation layouts the learner is permitted to use for this version (All-in-One, Sequential, or Both).</summary>
+    public ExamLayoutPolicy AllowedLayouts { get; set; } = ExamLayoutPolicy.Both;
+
+    /// <summary>Layout presented by default when learners may choose; must be permitted by AllowedLayouts.</summary>
+    public ExamLayout DefaultLayout { get; set; } = ExamLayout.Sequential;
+
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public string CreatedBy { get; set; } = string.Empty;
     public DateTime? UpdatedAtUtc { get; set; }
@@ -58,6 +64,11 @@ public class ExamVersion : Entity, IAuditableEntity
 
         if (ExamQuestions.Count == 0)
             errors.Add("Exam blueprint requires at least one question assigned.");
+
+        if (DefaultLayout == ExamLayout.AllInOne && AllowedLayouts == ExamLayoutPolicy.SequentialOnly)
+            errors.Add("Default layout (All-in-One) is not permitted when the exam restricts learners to the Sequential layout.");
+        if (DefaultLayout == ExamLayout.Sequential && AllowedLayouts == ExamLayoutPolicy.AllInOneOnly)
+            errors.Add("Default layout (Sequential) is not permitted when the exam restricts learners to the All-in-One layout.");
 
         ValidationErrors = errors.Count > 0 ? string.Join("; ", errors) : null;
         return errors.Count == 0;
