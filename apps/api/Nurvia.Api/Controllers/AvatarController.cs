@@ -1,5 +1,6 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Nurvia.Application.Common;
+using Nurvia.Application.Interfaces;
 using Nurvia.Application.Security;
 using Nurvia.Api.Common;
 
@@ -10,10 +11,14 @@ namespace Nurvia.Api.Controllers;
 public sealed class AvatarController : ControllerBase
 {
     private readonly IAvatarService _avatarService;
+    private readonly IFileStorageService _fileStorageService;
 
-    public AvatarController(IAvatarService avatarService)
+    public AvatarController(
+        IAvatarService avatarService,
+        IFileStorageService fileStorageService)
     {
         _avatarService = avatarService;
+        _fileStorageService = fileStorageService;
     }
 
     [HttpPost]
@@ -77,4 +82,49 @@ public sealed class AvatarController : ControllerBase
 
         return Ok(ApiResponse<string>.Ok("Avatar removed successfully"));
     }
-}
+
+    [HttpGet("{storageKey}")]
+    public async Task<IActionResult> GetAvatarImage(
+        string storageKey,
+        CancellationToken cancellationToken)
+    {
+        var currentUser = HttpContext.GetCurrentUser();
+
+        if (!currentUser.IsAuthenticated)
+            return Unauthorized();
+
+        var avatar = await _avatarService.GetAvatarAsync(
+            currentUser.Id,
+            cancellationToken);
+
+        if (avatar == null ||
+            string.IsNullOrWhiteSpace(avatar.StorageKey) ||
+            !string.Equals(storageKey, avatar.StorageKey, StringComparison.Ordinal))
+        {
+            return NotFound();
+        }
+
+        var contentType = Path.GetExtension(storageKey).ToLowerInvariant() switch
+        {
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".png" => "image/png",
+            ".webp" => "image/webp",
+            _ => null
+        };
+
+        if (contentType == null)
+            return NotFound();
+
+        var imageStream = await _fileStorageService.GetFileStreamAsync(
+            avatar.StorageKey,
+            cancellationToken);
+
+        if (imageStream == null)
+            return NotFound();
+
+        Response.Headers["X-Content-Type-Options"] = "nosniff";
+        Response.Headers["Cache-Control"] = "private, no-store";
+
+        return File(imageStream, contentType);
+    }}
+

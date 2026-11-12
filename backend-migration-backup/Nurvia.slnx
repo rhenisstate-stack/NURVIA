@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="Nurvia.Api/Nurvia.Api.csproj" />
+  <Project Path="Nurvia.Application/Nurvia.Application.csproj" />
+  <Project Path="Nurvia.Domain/Nurvia.Domain.csproj" />
+  <Project Path="Nurvia.Infrastructure/Nurvia.Infrastructure.csproj" />
+  <Project Path="Nurvia.Tests/Nurvia.Tests.csproj" />
+</Solution>

@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <NuGetAudit>false</NuGetAudit>
+    <RollForward>Major</RollForward>
+    <BuildInParallel>false</BuildInParallel>
+  </PropertyGroup>
+</Project>

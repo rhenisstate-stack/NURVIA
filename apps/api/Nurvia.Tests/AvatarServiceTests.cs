@@ -1,127 +1,236 @@
-using System.IO;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Moq;
 using Nurvia.Application.Interfaces;
-using Nurvia.Application.Services;
 using Nurvia.Application.Security;
+using Nurvia.Application.Services;
 using Nurvia.Domain.Accounts;
+using Nurvia.Infrastructure.Persistence;
 using Xunit;
 
 namespace Nurvia.Tests;
 
 public class AvatarServiceTests
 {
-    [Fact]
-    public async Task UploadAvatarAsync_WithValidFile_ReturnsSuccess()
+    private static NurviaDbContext CreateContext()
     {
-        // Arrange
-        var mockContext = new Mock<INurviaDbContext>();
-        var mockFileStorageService = new Mock<IFileStorageService>();
+        var options = new DbContextOptionsBuilder<NurviaDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
 
-        var avatarService = new AvatarService(mockContext.Object, mockFileStorageService.Object);
+        return new NurviaDbContext(options);
+    }
 
-        // Act
-        var result = await avatarService.UploadAvatarAsync(
-            "123e4567-e89b-12d3-a456-426614174000",
-            new MemoryStream(),
+    private static Mock<IAvatarImageValidator> CreateValidImageValidator()
+    {
+        var validator = new Mock<IAvatarImageValidator>();
+
+        validator
+            .Setup(x => x.Validate(
+                It.IsAny<Stream>(),
+                ".jpg",
+                "image/jpeg"))
+            .Returns(new AvatarImageValidationResult(true, null));
+
+        return validator;
+    }
+
+    [Fact]
+    public async Task UploadAvatarAsync_WithValidFile_PersistsAvatarProfile()
+    {
+        using var context = CreateContext();
+        var storage = new Mock<IFileStorageService>();
+        var validator = CreateValidImageValidator();
+
+        storage
+            .Setup(x => x.SaveFileAsync(
+                It.IsAny<Stream>(),
+                "test.jpg",
+                "image/jpeg",
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync("avatar-storage-key.jpg");
+
+        var service = new AvatarService(
+            context,
+            storage.Object,
+            validator.Object);
+
+        var userId = Guid.NewGuid();
+        using var stream = new MemoryStream(new byte[] { 1, 2, 3, 4 });
+
+        var result = await service.UploadAvatarAsync(
+            userId.ToString(),
+            stream,
             "test.jpg",
             "image/jpeg",
-            default);
+            CancellationToken.None);
 
-        // Assert
-        Assert.NotNull(result);
-        Assert.NotEmpty(result.StorageKey);
+        Assert.Equal("avatar-storage-key.jpg", result.StorageKey);
         Assert.Equal("Avatar uploaded successfully.", result.Message);
+
+        var profile = await context.UserProfiles
+            .SingleAsync(x => x.UserId == userId);
+
+        Assert.Equal("avatar-storage-key.jpg", profile.AvatarStorageKey);
+
+        storage.Verify(x => x.SaveFileAsync(
+            It.IsAny<Stream>(),
+            "test.jpg",
+            "image/jpeg",
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task UploadAvatarAsync_WithInvalidUserId_ReturnsError()
     {
-        // Arrange
-        var mockContext = new Mock<INurviaDbContext>();
-        var mockFileStorageService = new Mock<IFileStorageService>();
+        using var context = CreateContext();
+        var storage = new Mock<IFileStorageService>();
+        var validator = CreateValidImageValidator();
 
-        var avatarService = new AvatarService(mockContext.Object, mockFileStorageService.Object);
+        var service = new AvatarService(
+            context,
+            storage.Object,
+            validator.Object);
 
-        // Act
-        var result = await avatarService.UploadAvatarAsync(
+        using var stream = new MemoryStream(new byte[] { 1, 2, 3 });
+
+        var result = await service.UploadAvatarAsync(
             "invalid-guid",
-            new MemoryStream(),
+            stream,
             "test.jpg",
             "image/jpeg",
-            default);
+            CancellationToken.None);
 
-        // Assert
-        Assert.NotNull(result);
         Assert.Equal("Invalid user ID format.", result.Message);
+        Assert.Empty(result.StorageKey);
+
+        storage.Verify(x => x.SaveFileAsync(
+            It.IsAny<Stream>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
     public async Task UploadAvatarAsync_WithEmptyFile_ReturnsError()
     {
-        // Arrange
-        var mockContext = new Mock<INurviaDbContext>();
-        var mockFileStorageService = new Mock<IFileStorageService>();
+        using var context = CreateContext();
+        var storage = new Mock<IFileStorageService>();
+        var validator = CreateValidImageValidator();
 
-        var avatarService = new AvatarService(mockContext.Object, mockFileStorageService.Object);
+        var service = new AvatarService(
+            context,
+            storage.Object,
+            validator.Object);
 
-        // Act
-        var result = await avatarService.UploadAvatarAsync(
-            "123e4567-e89b-12d3-a456-426614174000",
-            new MemoryStream(),
+        using var stream = new MemoryStream();
+
+        var result = await service.UploadAvatarAsync(
+            Guid.NewGuid().ToString(),
+            stream,
             "test.jpg",
             "image/jpeg",
-            default);
+            CancellationToken.None);
 
-        // Assert
-        Assert.NotNull(result);
-        Assert.NotEmpty(result.StorageKey);
-        Assert.Equal("Avatar uploaded successfully.", result.Message);
+        Assert.Equal("No file was uploaded.", result.Message);
+        Assert.Empty(result.StorageKey);
+
+        validator.Verify(x => x.Validate(
+            It.IsAny<Stream>(),
+            It.IsAny<string>(),
+            It.IsAny<string>()), Times.Never);
     }
 
     [Fact]
     public async Task UploadAvatarAsync_WithInvalidExtension_ReturnsError()
     {
-        // Arrange
-        var mockContext = new Mock<INurviaDbContext>();
-        var mockFileStorageService = new Mock<IFileStorageService>();
+        using var context = CreateContext();
+        var storage = new Mock<IFileStorageService>();
+        var validator = CreateValidImageValidator();
 
-        var avatarService = new AvatarService(mockContext.Object, mockFileStorageService.Object);
+        var service = new AvatarService(
+            context,
+            storage.Object,
+            validator.Object);
 
-        // Act
-        var result = await avatarService.UploadAvatarAsync(
-            "123e4567-e89b-12d3-a456-426614174000",
-            new MemoryStream(),
+        using var stream = new MemoryStream(new byte[] { 1, 2, 3 });
+
+        var result = await service.UploadAvatarAsync(
+            Guid.NewGuid().ToString(),
+            stream,
             "test.txt",
             "text/plain",
-            default);
+            CancellationToken.None);
 
-        // Assert
-        Assert.NotNull(result);
-        Assert.Contains("Only JPG, PNG and WebP image formats are allowed", result.Message);
+        Assert.Equal(
+            "Only JPG, PNG and WebP image formats are allowed.",
+            result.Message);
+
+        validator.Verify(x => x.Validate(
+            It.IsAny<Stream>(),
+            It.IsAny<string>(),
+            It.IsAny<string>()), Times.Never);
     }
 
     [Fact]
     public async Task UploadAvatarAsync_WithOversizedFile_ReturnsError()
     {
-        // Arrange
-        var mockContext = new Mock<INurviaDbContext>();
-        var mockFileStorageService = new Mock<IFileStorageService>();
-        var largeStream = new MemoryStream(new byte[6 * 1024 * 1024]); // 6MB
+        using var context = CreateContext();
+        var storage = new Mock<IFileStorageService>();
+        var validator = CreateValidImageValidator();
 
-        var avatarService = new AvatarService(mockContext.Object, mockFileStorageService.Object);
+        var service = new AvatarService(
+            context,
+            storage.Object,
+            validator.Object);
 
-        // Act
-        var result = await avatarService.UploadAvatarAsync(
-            "123e4567-e89b-12d3-a456-426614174000",
-            largeStream,
+        using var stream = new MemoryStream(new byte[(5 * 1024 * 1024) + 1]);
+
+        var result = await service.UploadAvatarAsync(
+            Guid.NewGuid().ToString(),
+            stream,
             "test.jpg",
             "image/jpeg",
-            default);
+            CancellationToken.None);
 
-        // Assert
+        Assert.Equal(
+            "File size exceeds the maximum limit of 5MB.",
+            result.Message);
+
+        validator.Verify(x => x.Validate(
+            It.IsAny<Stream>(),
+            It.IsAny<string>(),
+            It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetAvatarAsync_WithExistingAvatar_ReturnsStoredAvatarDetails()
+    {
+        using var context = CreateContext();
+        var storage = new Mock<IFileStorageService>();
+        var validator = CreateValidImageValidator();
+
+        var userId = Guid.NewGuid();
+        var profile = new UserProfile(userId)
+        {
+            AvatarStorageKey = "existing-avatar.jpg"
+        };
+
+        context.UserProfiles.Add(profile);
+        await context.SaveChangesAsync();
+
+        var service = new AvatarService(
+            context,
+            storage.Object,
+            validator.Object);
+
+        var result = await service.GetAvatarAsync(
+            userId.ToString(),
+            CancellationToken.None);
+
         Assert.NotNull(result);
-        Assert.Contains("File size exceeds the maximum limit of 5MB", result.Message);
+        Assert.Equal("existing-avatar.jpg", result.StorageKey);
+        Assert.Equal(
+            "/api/avatar/existing-avatar.jpg",
+            result.Url);
     }
 }

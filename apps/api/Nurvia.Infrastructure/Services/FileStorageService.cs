@@ -1,6 +1,6 @@
-using System.IO;
+﻿using System.IO;
 using System.Security.Cryptography;
-using Microsoft.Extensions.FileProviders;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Nurvia.Application.Interfaces;
@@ -10,93 +10,180 @@ namespace Nurvia.Infrastructure.Services;
 
 public sealed class FileStorageService : IFileStorageService
 {
+    private static readonly Regex StorageKeyPattern =
+        new(@"^[A-Za-z0-9_-]{43}\.[A-Za-z0-9]{1,10}$",
+            RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
     private readonly string _storagePath;
-    private readonly IHostEnvironment _environment;
 
-    public FileStorageService(IOptions<FileStorageOptions> options, IHostEnvironment environment)
+    public FileStorageService(
+        IOptions<FileStorageOptions> options,
+        IHostEnvironment environment)
     {
-        _storagePath = options.Value.StoragePath;
-        _environment = environment;
+        ArgumentNullException.ThrowIfNull(options);
 
-        // Ensure the storage directory exists
+        if (string.IsNullOrWhiteSpace(options.Value.StoragePath))
+            throw new InvalidOperationException("File storage path is not configured.");
+
+        _storagePath = Path.GetFullPath(options.Value.StoragePath);
+
         Directory.CreateDirectory(_storagePath);
     }
 
-    public async Task<string> SaveFileAsync(Stream fileStream, string fileName, string contentType, CancellationToken cancellationToken)
+    public async Task<string> SaveFileAsync(
+        Stream fileStream,
+        string fileName,
+        string contentType,
+        CancellationToken cancellationToken)
     {
-        // Generate a secure, unpredictable storage key
+        ArgumentNullException.ThrowIfNull(fileStream);
+
+        if (!fileStream.CanRead)
+            throw new ArgumentException("The supplied stream is not readable.", nameof(fileStream));
+
+        cancellationToken.ThrowIfCancellationRequested();
+
         var storageKey = GenerateStorageKey(fileName);
+        var filePath = ResolveStoragePath(storageKey);
 
-        // Construct the full file path
-        var filePath = Path.Combine(_storagePath, storageKey);
-
-        // Copy the stream to the file
-        using var fileStreamCopy = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, 4096, true);
-        await fileStream.CopyToAsync(fileStreamCopy, cancellationToken);
-
-        return storageKey;
-    }
-
-    public async Task<Stream?> GetFileStreamAsync(string storageKey, CancellationToken cancellationToken)
-    {
-        var filePath = Path.Combine(_storagePath, storageKey);
-
-        // Check if file exists
-        if (!File.Exists(filePath))
-            return null;
-
-        // Return the file stream
-        return new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous);
-    }
-
-    public async Task<bool> DeleteFileAsync(string storageKey, CancellationToken cancellationToken)
-    {
-        var filePath = Path.Combine(_storagePath, storageKey);
-
-        // Check if file exists and delete it
-        if (File.Exists(filePath))
+        var fileCreated = false;
+        try
         {
-            try
+            await using var destination = new FileStream(
+                filePath,
+                FileMode.CreateNew,
+                FileAccess.Write,
+                FileShare.None,
+                81920,
+                FileOptions.Asynchronous | FileOptions.SequentialScan);
+            fileCreated = true;
+
+            await fileStream.CopyToAsync(destination, cancellationToken);
+            await destination.FlushAsync(cancellationToken);
+
+            return storageKey;
+        }
+        catch
+        {
+            if (fileCreated && File.Exists(filePath))
             {
-                File.Delete(filePath);
-                return true;
+                try
+                {
+                    File.Delete(filePath);
+                }
+                catch
+                {
+                    // Preserve the original save exception if cleanup fails.
+                }
             }
-            catch
-            {
-                // Log the exception if logging is available
-                return false;
-            }
+
+            throw;
+        }
+    }
+
+    public Task<Stream?> GetFileStreamAsync(
+        string storageKey,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var filePath = ResolveStoragePath(storageKey);
+
+        if (!File.Exists(filePath))
+            return Task.FromResult<Stream?>(null);
+
+        Stream stream = new FileStream(
+            filePath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            81920,
+            FileOptions.Asynchronous | FileOptions.SequentialScan);
+
+        return Task.FromResult<Stream?>(stream);
+    }
+
+    public Task<bool> DeleteFileAsync(
+        string storageKey,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var filePath = ResolveStoragePath(storageKey);
+
+        if (!File.Exists(filePath))
+            return Task.FromResult(false);
+
+        try
+        {
+            File.Delete(filePath);
+            return Task.FromResult(true);
+        }
+        catch (IOException)
+        {
+            return Task.FromResult(false);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Task.FromResult(false);
+        }
+    }
+
+    public Task<bool> FileExistsAsync(
+        string storageKey,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var filePath = ResolveStoragePath(storageKey);
+
+        return Task.FromResult(File.Exists(filePath));
+    }
+
+    private string ResolveStoragePath(string storageKey)
+    {
+        if (string.IsNullOrWhiteSpace(storageKey) ||
+            !StorageKeyPattern.IsMatch(storageKey) ||
+            !string.Equals(
+                Path.GetFileName(storageKey),
+                storageKey,
+                StringComparison.Ordinal))
+        {
+            throw new ArgumentException("Invalid file storage key.", nameof(storageKey));
         }
 
-        return false;
+        var filePath = Path.GetFullPath(Path.Combine(_storagePath, storageKey));
+        var rootPrefix = _storagePath.TrimEnd(
+            Path.DirectorySeparatorChar,
+            Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+
+        var comparison = OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+
+        if (!filePath.StartsWith(rootPrefix, comparison))
+            throw new ArgumentException("Storage key resolves outside the storage directory.", nameof(storageKey));
+
+        return filePath;
     }
 
-    public async Task<bool> FileExistsAsync(string storageKey, CancellationToken cancellationToken)
+    private static string GenerateStorageKey(string originalFileName)
     {
-        var filePath = Path.Combine(_storagePath, storageKey);
-        return File.Exists(filePath);
-    }
+        var extension = Path.GetExtension(originalFileName);
 
-    private string GenerateStorageKey(string originalFileName)
-    {
-        // Generate a secure, unpredictable key
-        var randomBytes = new byte[32];
-        using var rng = RandomNumberGenerator.Create();
-        rng.GetBytes(randomBytes);
+        if (string.IsNullOrWhiteSpace(extension))
+            extension = ".bin";
+
+        extension = extension.ToLowerInvariant();
+
+        var randomBytes = RandomNumberGenerator.GetBytes(32);
 
         var base64Key = Convert.ToBase64String(randomBytes)
             .Replace("/", "_")
             .Replace("+", "-")
             .TrimEnd('=');
 
-        // Extract file extension from original filename
-        var extension = Path.GetExtension(originalFileName);
-        if (string.IsNullOrEmpty(extension))
-        {
-            extension = ".bin";
-        }
-
-        // Combine key and extension
         return $"{base64Key}{extension}";
     }
 }
+

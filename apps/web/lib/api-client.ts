@@ -1,4 +1,4 @@
-import {
+﻿import {
   ApiResponse,
   PagedResult,
   QuestionDto,
@@ -16,7 +16,18 @@ import {
 } from './api-types';
 import { classifyError, ErrorType } from './utils/error-utils';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5055';
+const API_BASE =
+  typeof window !== 'undefined'
+    ? '/api/backend'
+    : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5055';
+
+function buildApiUrl(endpoint: string): string {
+  if (API_BASE === '/api/backend') {
+    return `${API_BASE}${endpoint.replace(/^\/api(?=\/)/, '')}`;
+  }
+
+  return `${API_BASE}${endpoint}`;
+}
 let csrfTokenPromise: Promise<string> | null = null;
 
 function buildQuery(params?: Record<string, unknown>) {
@@ -31,7 +42,7 @@ function buildQuery(params?: Record<string, unknown>) {
 
 async function getCsrfToken(): Promise<string> {
   if (!csrfTokenPromise) {
-    csrfTokenPromise = fetch(`${API_BASE}/api/auth/csrf`, {
+    csrfTokenPromise = fetch(buildApiUrl('/api/auth/csrf'), {
       credentials: 'include',
       cache: 'no-store',
     })
@@ -52,18 +63,22 @@ async function getCsrfToken(): Promise<string> {
 }
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string>),
-  };
+  const headers = new Headers(options.headers);
+
+  if (options.body instanceof FormData) {
+    // Let the browser generate multipart/form-data and its boundary.
+    headers.delete('Content-Type');
+  } else if (!headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
 
   try {
     const method = (options.method || 'GET').toUpperCase();
     if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
-      headers['X-CSRF-TOKEN'] = await getCsrfToken();
+      headers.set('X-CSRF-TOKEN', await getCsrfToken());
     }
 
-    const res = await fetch(`${API_BASE}${endpoint}`, {
+    const res = await fetch(buildApiUrl(endpoint), {
       ...options,
       headers,
       credentials: 'include',
@@ -361,3 +376,4 @@ export const nurviaApi = {
     return request<ExamAttemptSummaryDto[]>('/api/attempts/history');
   },
 };
+

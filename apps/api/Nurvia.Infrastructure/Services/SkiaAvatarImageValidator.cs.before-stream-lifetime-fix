@@ -1,0 +1,80 @@
+using Nurvia.Application.Interfaces;
+using SkiaSharp;
+
+namespace Nurvia.Infrastructure.Services;
+
+public sealed class SkiaAvatarImageValidator : IAvatarImageValidator
+{
+    private const int MaxDimension = 4096;
+    private const long MaxPixelCount = 16_777_216;
+
+    public AvatarImageValidationResult Validate(
+        Stream stream,
+        string fileExtension,
+        string contentType)
+    {
+        if (stream is null || !stream.CanRead || !stream.CanSeek)
+            return Invalid("The image stream is not readable or seekable.");
+
+        var extension = fileExtension.ToLowerInvariant();
+        var expected = extension switch
+        {
+            ".jpg" or ".jpeg" => ("image/jpeg", SKEncodedImageFormat.Jpeg),
+            ".png" => ("image/png", SKEncodedImageFormat.Png),
+            ".webp" => ("image/webp", SKEncodedImageFormat.Webp),
+            _ => ((string, SKEncodedImageFormat)?)null
+        };
+
+        if (expected is null)
+            return Invalid("Only JPG, PNG, and WebP images are supported.");
+
+        if (!string.Equals(contentType, expected.Value.Item1, StringComparison.OrdinalIgnoreCase))
+            return Invalid("The file extension and MIME type do not match.");
+
+        try
+        {
+            stream.Position = 0;
+
+            using var codec = SKCodec.Create(stream);
+            if (codec is null)
+                return Invalid("The uploaded file is not a valid image.");
+
+            if (codec.EncodedFormat != expected.Value.Item2)
+                return Invalid("The file contents do not match the declared image type.");
+
+            // SkiaSharp reports zero for a normal single-frame image.
+            if (codec.FrameCount > 1)
+                return Invalid("Animated images are not supported for avatars.");
+
+            var info = codec.Info;
+
+            if (info.Width <= 0 || info.Height <= 0 ||
+                info.Width > MaxDimension || info.Height > MaxDimension ||
+                (long)info.Width * info.Height > MaxPixelCount)
+            {
+                return Invalid("The image dimensions exceed the allowed limits.");
+            }
+
+            using var bitmap = SKBitmap.Decode(codec);
+            if (bitmap is null || bitmap.Width != info.Width || bitmap.Height != info.Height)
+                return Invalid("The uploaded image could not be decoded.");
+
+            return new AvatarImageValidationResult(true, null);
+        }
+        catch (Exception ex) when (
+            ex is ArgumentException ||
+            ex is InvalidOperationException)
+        {
+            return Invalid("The uploaded image is corrupt or unsupported.");
+        }
+        finally
+        {
+            stream.Position = 0;
+        }
+    }
+
+    private static AvatarImageValidationResult Invalid(string message) =>
+        new(false, message);
+}
+
+

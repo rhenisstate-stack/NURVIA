@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import Link from "next/link";
@@ -42,8 +42,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth/auth-provider";
-import { SuperadminSwitcher } from "@/components/layout/superadmin-switcher";
-
+import { UserAccountMenu } from "@/components/layout/user-account-menu";
+import { nurviaApi } from "@/lib/api-client";
 interface NavSubItem {
   name: string;
   href: string;
@@ -157,17 +157,12 @@ export const learnerNavigation: NavSection[] = [
 export function LearnerShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
-  const [expandedSections, setExpandedSections] = React.useState<Record<string, boolean>>({
-    "RN Exams": true,
-    "LPN / PN Exams": false,
-    "RN Exit": false,
-    "LPN Exit": false,
-  });
+  const [expandedSections, setExpandedSections] = React.useState<Record<string, boolean>>({});
   const [topSearch, setTopSearch] = React.useState("");
-  const [signOutError, setSignOutError] = React.useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = React.useState<string | null>(null);
   const router = useRouter();
   const pathname = usePathname();
-  const { status, user, error, signOut } = useAuth();
+  const { status, user, error } = useAuth();
 
   React.useEffect(() => {
     if (status === "unauthenticated") {
@@ -179,6 +174,42 @@ export function LearnerShell({ children }: { children: React.ReactNode }) {
       router.replace("/access-denied");
     }
   }, [status, user, pathname, router]);
+React.useEffect(() => {
+    if (status !== "authenticated" || !user) {
+      setAvatarUrl(null);
+      return;
+    }
+
+    let active = true;
+
+    const loadAvatar = async () => {
+      try {
+        const response = await nurviaApi.getAvatar();
+
+        if (active) {
+          setAvatarUrl(
+            response.success && response.data?.storageKey
+              ? `/api/avatar/${response.data.storageKey}`
+              : null
+          );
+        }
+      } catch {
+        if (active) setAvatarUrl(null);
+      }
+    };
+
+    const handleAvatarUpdated = () => {
+      void loadAvatar();
+    };
+
+    void loadAvatar();
+    window.addEventListener("nurvia:avatar-updated", handleAvatarUpdated);
+
+    return () => {
+      active = false;
+      window.removeEventListener("nurvia:avatar-updated", handleAvatarUpdated);
+    };
+  }, [status, user?.id]);
 
   const toggleSubmenu = (itemName: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -196,16 +227,6 @@ export function LearnerShell({ children }: { children: React.ReactNode }) {
     }
   };
 
-  async function handleSignOut() {
-    setSignOutError(null);
-    const response = await signOut();
-    if (!response.success) {
-      setSignOutError(response.message || "Unable to sign out. Please try again.");
-      return;
-    }
-    router.replace("/");
-  }
-
   // Superadmin is explicitly admitted to the learner experience with the same
   // authenticated identity; other staff roles are redirected to access-denied.
   if (status === "loading" || status === "unauthenticated" ||
@@ -213,7 +234,7 @@ export function LearnerShell({ children }: { children: React.ReactNode }) {
         user?.role !== "Learner" && user?.role !== "Superadmin")) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-background px-6 text-sm text-foreground-secondary" aria-live="polite">
-        {status === "loading" ? "Checking your session…" : "Redirecting to the appropriate page…"}
+        {status === "loading" ? "Checking your sessionâ€¦" : "Redirecting to the appropriate pageâ€¦"}
       </main>
     );
   }
@@ -427,24 +448,10 @@ export function LearnerShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-3">
-            <SuperadminSwitcher />
-            <ThemeToggle />
-            <Button type="button" variant="outline" size="sm" className="text-xs" onClick={handleSignOut}>
-              Sign Out
-            </Button>
-
-            <div className="flex items-center gap-2 pl-2 border-l border-border">
-              <div className="h-8 w-8 rounded-full bg-brand-navy text-white flex items-center justify-center font-bold text-xs shadow-sm">
-                {user?.name.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase()}
-              </div>
-              <div className="hidden xl:block text-left">
-                <div className="max-w-40 truncate text-xs font-bold leading-none text-foreground">{user?.name}</div>
-                <div className="text-[10px] text-foreground-muted">{user?.email}</div>
-              </div>
-            </div>
-          </div>
+  <ThemeToggle />
+  <UserAccountMenu avatarUrl={avatarUrl} />
+</div>
         </header>
-        {signOutError && <p role="alert" className="px-4 pt-3 text-sm text-rose-700 dark:text-rose-300">{signOutError}</p>}
 
         {/* Page Content Body */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
@@ -454,3 +461,7 @@ export function LearnerShell({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+
+
+
+

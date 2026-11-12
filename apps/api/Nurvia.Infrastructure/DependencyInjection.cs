@@ -44,7 +44,9 @@ public static class DependencyInjection
             options.StoragePath = Path.Combine(Directory.GetCurrentDirectory(), "storage", "avatars");
         });
         services.AddScoped<IFileStorageService, FileStorageService>();
+        services.AddSingleton<IAvatarImageValidator, SkiaAvatarImageValidator>();
 
         return services;
     }
 }
+

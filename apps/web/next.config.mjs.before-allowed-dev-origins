@@ -1,0 +1,23 @@
+﻿/** @type {import('next').NextConfig} */
+const apiBase = (
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5055'
+).replace(/\/+$/, '');
+
+const nextConfig = {
+  reactStrictMode: true,
+  cleanDistDir: false,
+  async rewrites() {
+    return [
+      {
+        source: '/api/backend/:path*',
+        destination: `${apiBase}/api/:path*`,
+      },
+      {
+        source: '/api/avatar/:storageKey',
+        destination: `${apiBase}/api/avatar/:storageKey`,
+      },
+    ];
+  },
+};
+
+export default nextConfig;

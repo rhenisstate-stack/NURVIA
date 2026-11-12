@@ -30,7 +30,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth/auth-provider";
-import { SuperadminSwitcher } from "@/components/layout/superadmin-switcher";
+import { UserAccountMenu } from "@/components/layout/user-account-menu";
+import { nurviaApi } from "@/lib/api-client";
 
 interface AdminNavGroup {
   title: string;
@@ -84,6 +85,39 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { status, user, error } = useAuth();
+  const [avatarUrl, setAvatarUrl] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (status !== "authenticated") {
+      setAvatarUrl(null);
+      return;
+    }
+
+    let active = true;
+
+    const loadAvatar = async () => {
+      try {
+        const response = await nurviaApi.getAvatar();
+        if (!active) return;
+        const storageKey = response.data?.storageKey;
+        setAvatarUrl(storageKey ? `/api/avatar/${storageKey}` : null);
+      } catch {
+        if (active) setAvatarUrl(null);
+      }
+    };
+
+    const handleAvatarUpdated = () => {
+      void loadAvatar();
+    };
+
+    void loadAvatar();
+    window.addEventListener("nurvia:avatar-updated", handleAvatarUpdated);
+
+    return () => {
+      active = false;
+      window.removeEventListener("nurvia:avatar-updated", handleAvatarUpdated);
+    };
+  }, [status]);
   const staffRoles = ["Author", "Reviewer", "Publisher", "Administrator", "Superadmin"];
 
   React.useEffect(() => {
@@ -234,15 +268,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-3">
-            <SuperadminSwitcher />
-            <ThemeToggle />
-            <div className="flex items-center gap-2 pl-2 border-l border-border text-xs">
-              <div className="w-7 h-7 rounded-full bg-brand-teal text-white font-bold flex items-center justify-center text-xs">
-                SA
-              </div>
-              <span className="hidden sm:inline font-semibold">Admin Workspace</span>
-            </div>
-          </div>
+  <ThemeToggle />
+  <UserAccountMenu avatarUrl={avatarUrl} />
+</div>
         </header>
 
         {/* Admin Content */}
@@ -253,3 +281,4 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+

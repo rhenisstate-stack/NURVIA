@@ -110,31 +110,56 @@ export default function ProfilePage() {
   };
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setAvatarFile(file);
-      
-      // Create preview
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setAvatarPreview(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
+    if (!allowedTypes.includes(file.type)) {
+      setAvatarFile(null);
+      setAvatarPreview(null);
+      e.target.value = "";
+      setError("Please select a JPG, PNG, or WebP image.");
+      return;
     }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setAvatarFile(null);
+      setAvatarPreview(null);
+      e.target.value = "";
+      setError("The avatar image must not exceed 5MB.");
+      return;
+    }
+
+    setError(null);
+    setAvatarFile(file);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (typeof event.target?.result === "string") {
+        setAvatarPreview(event.target.result);
+      }
+    };
+    reader.onerror = () => {
+      setAvatarFile(null);
+      setAvatarPreview(null);
+      setError("Unable to preview the selected image.");
+      e.target.value = "";
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleUploadAvatar = async () => {
     if (!avatarFile || !user) return;
-    
+
     setIsUploading(true);
     setMessage(null);
     setError(null);
-    
+
     try {
       const response = await nurviaApi.uploadAvatar(avatarFile);
       if (response.success && response.data) {
         setMessage("Avatar uploaded successfully!");
-        // Update profile with new avatar info
         const storageKey = response.data.storageKey;
 
         setProfile(prev =>
@@ -142,6 +167,12 @@ export default function ProfilePage() {
             ? { ...prev, avatarStorageKey: storageKey }
             : prev
         );
+
+        window.dispatchEvent(new Event("nurvia:avatar-updated"));
+        setAvatarFile(null);
+        setAvatarPreview(null);
+        const fileInput = document.getElementById("avatar-upload") as HTMLInputElement | null;
+        if (fileInput) fileInput.value = "";
       } else {
         setError(response.message || "Failed to upload avatar");
       }
@@ -154,21 +185,27 @@ export default function ProfilePage() {
 
   const handleRemoveAvatar = async () => {
     if (!user) return;
-    
+
     setIsUploading(true);
     setMessage(null);
     setError(null);
-    
+
     try {
       const response = await nurviaApi.removeAvatar();
       if (response.success) {
         setMessage("Avatar removed successfully!");
-        // Update profile to remove avatar info
+
         setProfile(prev =>
           prev
             ? { ...prev, avatarStorageKey: undefined }
             : prev
         );
+
+        window.dispatchEvent(new Event("nurvia:avatar-updated"));
+        setAvatarFile(null);
+        setAvatarPreview(null);
+        const fileInput = document.getElementById("avatar-upload") as HTMLInputElement | null;
+        if (fileInput) fileInput.value = "";
       } else {
         setError(response.message || "Failed to remove avatar");
       }
@@ -178,7 +215,6 @@ export default function ProfilePage() {
       setIsUploading(false);
     }
   };
-
   if (isLoading) {
     return (
       <LearnerShell>
@@ -351,7 +387,7 @@ export default function ProfilePage() {
               <div className="flex flex-col items-center space-y-4">
                 <UserAvatar 
                   name={formData.displayName || user?.name} 
-                  avatarUrl={profile?.avatarStorageKey ? `/api/avatar/${profile.avatarStorageKey}` : null}
+                  avatarUrl={avatarPreview || (profile?.avatarStorageKey ? `/api/avatar/${profile.avatarStorageKey}` : null)}
                   size="lg"
                 />
                 
@@ -369,7 +405,7 @@ export default function ProfilePage() {
                     <input
                       id="avatar-upload"
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp"
                       className="hidden"
                       onChange={handleAvatarChange}
                     />
@@ -449,3 +485,4 @@ export default function ProfilePage() {
     </LearnerShell>
   );
 }
+
