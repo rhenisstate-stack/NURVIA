@@ -58,6 +58,7 @@ export default function EditQuestionPage() {
   const [difficulty, setDifficulty] = React.useState<DifficultyLevel>("Intermediate");
   const [options, setOptions] = React.useState<QuestionOptionDto[]>([]);
   const [exhibits, setExhibits] = React.useState<QuestionExhibitDto[]>([]);
+  const [contentJsonData, setContentJsonData] = React.useState("");
 
   React.useEffect(() => {
     async function load() {
@@ -79,6 +80,7 @@ export default function EditQuestionPage() {
           setClientNeed(v.clientNeedCategory);
           setOptions(v.options || []);
           setExhibits(v.exhibits || []);
+          setContentJsonData(v.contentJsonData || "");
         }
       }
       setLoading(false);
@@ -125,6 +127,7 @@ export default function EditQuestionPage() {
       cognitiveSkill,
       clientNeedCategory: clientNeed,
       generalRationale,
+      contentJsonData: contentJsonData.trim() || undefined,
       concurrencyToken: question.concurrencyToken,
       options,
       exhibits,
@@ -302,6 +305,9 @@ export default function EditQuestionPage() {
                         className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-border bg-background focus:ring-1 focus:ring-brand-teal focus:outline-none disabled:opacity-75"
                       />
                     </div>
+                    {"id" in opt && opt.id && (
+                      <p className="pl-10 text-[10px] font-mono text-foreground-muted">id: {opt.id}</p>
+                    )}
                   </div>
                 ))}
               </div>
@@ -317,6 +323,32 @@ export default function EditQuestionPage() {
                 value={generalRationale}
                 onChange={(e) => setGeneralRationale(e.target.value)}
                 className="w-full p-3 text-sm rounded-xl border border-border bg-background focus:ring-2 focus:ring-brand-teal focus:outline-none leading-relaxed disabled:opacity-75"
+              />
+            </Card>
+
+            <Card className="p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold uppercase tracking-wider text-foreground-muted">
+                  Approved Answer Key (Structured JSON)
+                </label>
+                <Badge variant="outline" className="text-[10px]">Server-validated</Badge>
+              </div>
+              <p className="text-xs text-foreground-secondary">
+                Required for MultipleTrueFalse, MatrixGrid, DragAndDrop, and BowTie items. Use the option
+                IDs shown above to record the approved correct key:
+              </p>
+              <ul className="text-[11px] text-foreground-muted list-disc pl-4 space-y-0.5">
+                <li><strong>MultipleTrueFalse</strong>: <code>{'{"CorrectTrueFalse": {"&lt;optionId&gt;": "True"}}'}</code></li>
+                <li><strong>MatrixGrid</strong>: <code>{'{"CorrectSelections": {"&lt;rowOptionId&gt;": "Indicated"}}'}</code></li>
+                <li><strong>DragAndDrop</strong>: <code>{'{"CorrectBuckets": {"&lt;optionId&gt;": "A"}}'}</code></li>
+                <li><strong>BowTie</strong>: <code>{'{"CorrectActions": [], "CorrectCondition": "&lt;id&gt;", "CorrectParameters": []}'}</code></li>
+              </ul>
+              <textarea
+                rows={5}
+                disabled={isPublished}
+                value={contentJsonData}
+                onChange={(e) => setContentJsonData(e.target.value)}
+                className="w-full p-3 text-xs font-mono rounded-xl border border-border bg-background focus:ring-2 focus:ring-brand-teal focus:outline-none leading-relaxed disabled:opacity-75"
               />
             </Card>
           </div>

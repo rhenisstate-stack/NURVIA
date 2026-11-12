@@ -467,10 +467,9 @@ function ExamSessionContent() {
   const renderQuestion = (q: RendererQuestion, index: number, isSequential: boolean) => {
     const showReview = reviewStateFor(q);
     return (
+      <div key={q.id} ref={(el) => { if (!isSequential) allInOneRefs.current[q.id] = el; }} className="scroll-mt-24">
       <Card
-        key={q.id}
-        ref={(el) => { if (!isSequential) allInOneRefs.current[q.id] = el; }}
-        className={cn("p-6 space-y-6", !isSequential && "scroll-mt-24")}
+        className={cn("p-6 space-y-6")}
       >
         <div className="space-y-3">
           <div className="flex items-center justify-between text-xs text-foreground-muted">
@@ -542,6 +541,7 @@ function ExamSessionContent() {
           </button>
         )}
       </Card>
+      </div>
     );
   };
 
