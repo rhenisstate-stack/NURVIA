@@ -19,7 +19,8 @@ namespace Nurvia.Tests;
 /// </summary>
 public class ReviewReleasePolicyTests : IAsyncLifetime
 {
-    private const string ConnectionString = "Host=localhost;Port=5432;Database=nurvia_db;Username=nurvia_user;Password=nurvia_secure_password_dev2026!;Include Error Detail=true";
+    // Loopback IP literal: see the note in AttemptLifecycleTests.
+    private const string ConnectionString = "Host=127.0.0.1;Port=5432;Database=nurvia_db;Username=nurvia_user;Password=nurvia_secure_password_dev2026!;Include Error Detail=true";
     private readonly List<Guid> _createdExamIds = new();
     private readonly List<Guid> _createdQuestionIds = new();
     private readonly List<Guid> _createdAttemptIds = new();

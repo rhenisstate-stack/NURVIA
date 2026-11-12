@@ -17,7 +17,10 @@ namespace Nurvia.Tests;
 
 public class AttemptLifecycleTests : IAsyncLifetime
 {
-    private const string ConnectionString = "Host=localhost;Port=5432;Database=nurvia_db;Username=nurvia_user;Password=nurvia_secure_password_dev2026!;Include Error Detail=true";
+    // Host is the loopback IP literal, not "localhost": in some local environments
+    // (this workspace included) the test-host assembly mix crashes inside Dns
+    // resolution, and Npgsql skips DNS entirely for IP literals.
+    private const string ConnectionString = "Host=127.0.0.1;Port=5432;Database=nurvia_db;Username=nurvia_user;Password=nurvia_secure_password_dev2026!;Include Error Detail=true";
     private readonly List<Guid> _createdExamIds = new();
     private readonly List<Guid> _createdQuestionIds = new();
     private readonly List<Guid> _createdAttemptIds = new();
@@ -306,7 +309,10 @@ public class AttemptLifecycleTests : IAsyncLifetime
 
         var q2Review = review.ReviewQuestions.First(q => q.QuestionId == q2Id);
         Assert.False(q2Review.IsCorrect);
-        Assert.Equal(0.0m, q2Review.PointsAwarded);
+        // Partial-credit policy: selecting 1 of the 2 correct SATA options earns a
+        // proportional share (fraction 0.5) of the question's points, while the
+        // question still counts as not fully correct for the aggregate score.
+        Assert.Equal(0.5m, q2Review.PointsAwarded);
         Assert.Equal("Digoxin toxicity causes visual disturbances and nausea/vomiting.", q2Review.GeneralRationale);
     }
 

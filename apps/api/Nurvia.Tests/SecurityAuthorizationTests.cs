@@ -1,7 +1,14 @@
 using System.Security.Claims;
 using Microsoft.Extensions.Options;
+using Nurvia.Application.Exams;
+using Nurvia.Application.Interfaces;
 using Nurvia.Application.Questions;
 using Nurvia.Application.Security;
+using Nurvia.Application.Services;
+using Nurvia.Domain.Attempts;
+using Nurvia.Domain.Enums;
+using Nurvia.Domain.Exams;
+using Nurvia.Domain.Questions;
 using Xunit;
 
 namespace Nurvia.Tests;
@@ -167,19 +174,51 @@ public class SecurityAuthorizationTests
     }
 
     [Fact]
-    public void Active_Exam_Question_And_Option_DTOs_Never_Expose_Answer_Key_Or_Rationales()
+    public void ActiveExamDtos_SanitizationIsDecidedByPersistedDeliveryMode()
     {
-        // Reflection test proving contract guarantees
-        var optionType = typeof(ActiveExamOptionDto);
-        var isCorrectProp = optionType.GetProperty("IsCorrect");
-        var specificRationaleProp = optionType.GetProperty("SpecificRationale");
+        // The DTO contract deliberately carries the answer-key fields; whether they
+        // are populated is decided server-side from the persisted attempt's
+        // DeliveryMode. Exam attempts are always sanitized, Tutor attempts receive
+        // the approved key for immediate learning feedback.
+        var method = typeof(ExamAttemptService).GetMethod(
+            "BuildStartAttemptDto",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        Assert.NotNull(method);
 
-        Assert.Null(isCorrectProp);
-        Assert.Null(specificRationaleProp);
+        var qv = new QuestionVersion(Guid.NewGuid(), 1, "A clinical question stem for sanitization.", QuestionType.SingleChoice, "tester")
+        {
+            GeneralRationale = "General rationale text"
+        };
+        qv.Options.Add(new QuestionOption(1, "Correct answer", true, "Specific rationale text"));
 
-        var questionType = typeof(ActiveExamQuestionDto);
-        var generalRationaleProp = questionType.GetProperty("GeneralRationale");
+        var question = new Question { Code = "SANITIZE-1", CurrentVersion = qv, CurrentVersionId = qv.Id };
+        var exam = new Exam();
+        var version = new ExamVersion(exam.Id, 1, "Exam Title", "Description", "tester");
+        version.ExamQuestions.Add(new ExamQuestion(version.Id, question.Id, qv.Id, 0)
+        {
+            Question = question,
+            QuestionVersion = qv
+        });
 
-        Assert.Null(generalRationaleProp);
+        // Exam attempt: persisted DeliveryMode = Exam (default) -> strictly sanitized.
+        var examModeAttempt = new ExamAttempt(exam.Id, version.Id, "learner-1", "Learner One", 60, 75, 1);
+        var examDto = (StartAttemptResultDto)method!.Invoke(null, new object[] { examModeAttempt, exam, version, 3600 })!;
+
+        Assert.Equal(ExamDeliveryMode.Exam, examDto.DeliveryMode);
+        var examOption = Assert.Single(examDto.Questions.Single().Options);
+        Assert.False(examOption.IsCorrect);
+        Assert.Null(examOption.SpecificRationale);
+        Assert.Null(examDto.Questions.Single().GeneralRationale);
+
+        // Tutor attempt: persisted DeliveryMode = Tutor -> approved key revealed.
+        var tutorAttempt = new ExamAttempt(exam.Id, version.Id, "learner-2", "Learner Two", 60, 75, 1,
+            deliveryMode: ExamDeliveryMode.Tutor);
+        var tutorDto = (StartAttemptResultDto)method.Invoke(null, new object[] { tutorAttempt, exam, version, 3600 })!;
+
+        Assert.Equal(ExamDeliveryMode.Tutor, tutorDto.DeliveryMode);
+        var tutorOption = Assert.Single(tutorDto.Questions.Single().Options);
+        Assert.True(tutorOption.IsCorrect);
+        Assert.Equal("Specific rationale text", tutorOption.SpecificRationale);
+        Assert.Equal("General rationale text", tutorDto.Questions.Single().GeneralRationale);
     }
 }

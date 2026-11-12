@@ -26,5 +26,15 @@ public sealed class UserAccountConfiguration : IEntityTypeConfiguration<UserAcco
             .IsUnique()
             .HasFilter($"\"{nameof(UserAccount.Role)}\" = 'Superadmin'")
             .HasDatabaseName("IX_UserAccounts_Superadmin_Unique");
+
+        // One-to-one profile relationship. The foreign key lives on UserProfile.UserId
+        // (matching the AddUserProfile migration and the model snapshot). Without this
+        // explicit mapping EF conventions invent a shadow "ProfileId" column on
+        // UserAccounts that does not exist in the database and every UserAccounts
+        // materialization fails.
+        builder.HasOne(user => user.Profile)
+            .WithOne()
+            .HasForeignKey<UserProfile>(profile => profile.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
