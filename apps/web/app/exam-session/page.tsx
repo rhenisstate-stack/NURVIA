@@ -52,7 +52,7 @@ function ExamSessionContent() {
   const [answers, setAnswers] = React.useState<Record<string, string>>({});
   const [flags, setFlags] = React.useState<Record<string, boolean>>({});
   const [secondsRemaining, setSecondsRemaining] = React.useState<number>(5400); // 90 min default
-  const [deliveryMode, setDeliveryMode] = React.useState<DeliveryMode>(modeParam || "Exam");
+  const [deliveryMode, setDeliveryMode] = React.useState<DeliveryMode>(modeParam === "Tutor" ? "Tutor" : modeParam === "Preview" ? "Review" : modeParam || "Exam");
   const [autosaveStatus, setAutosaveStatus] = React.useState<"saving" | "saved" | "idle" | "error">("idle");
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
 
