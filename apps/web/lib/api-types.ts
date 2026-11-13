@@ -339,6 +339,7 @@ export interface SubmittedExamResultDto {
   startedAtUtc: string;
   submittedAtUtc: string;
   timeSpentSeconds: number;
+  timeLimitMinutes?: number;
   totalQuestions: number;
   correctQuestions: number;
   scorePercentage: number;

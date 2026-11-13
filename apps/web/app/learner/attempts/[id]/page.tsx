@@ -65,7 +65,7 @@ export default function AttemptResultPage() {
               <div>
                 <h2 className="font-brand text-xl font-bold text-foreground">{result.examTitle}</h2>
                 <p className="mt-1 text-sm text-foreground-secondary">
-                  Submitted {new Date(result.submittedAtUtc).toLocaleString()}
+                  Started {new Date(result.startedAtUtc).toLocaleString()} · Submitted {new Date(result.submittedAtUtc).toLocaleString()}
                 </p>
               </div>
               <div className="grid gap-4 sm:grid-cols-3">
@@ -79,8 +79,13 @@ export default function AttemptResultPage() {
                   <p className="mt-1 text-2xl font-bold text-foreground">{result.correctQuestions} / {result.totalQuestions}</p>
                 </div>
                 <div className="rounded-xl bg-surface-muted p-4">
-                  <p className="text-xs text-foreground-secondary">Time recorded</p>
+                  <p className="text-xs text-foreground-secondary">Time used</p>
                   <p className="mt-1 text-2xl font-bold text-foreground">{Math.max(0, Math.round(result.timeSpentSeconds / 60))} min</p>
+                  {(result.timeLimitMinutes ?? 0) > 0 && (
+                    <p className="mt-1 text-xs text-foreground-secondary">
+                      of {result.timeLimitMinutes} min allocated ({Math.round((result.timeSpentSeconds / ((result.timeLimitMinutes ?? 0) * 60)) * 100)}%)
+                    </p>
+                  )}
                 </div>
               </div>
             </Card>

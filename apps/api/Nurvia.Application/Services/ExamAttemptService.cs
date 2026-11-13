@@ -660,6 +660,7 @@ public class ExamAttemptService : IExamAttemptService
             StartedAtUtc = attempt.StartedAtUtc,
             SubmittedAtUtc = attempt.SubmittedAtUtc ?? DateTime.UtcNow,
             TimeSpentSeconds = timeSpent,
+            TimeLimitMinutes = attempt.TimeLimitMinutes,
             TotalQuestions = attempt.TotalQuestions,
             CorrectQuestions = attempt.CorrectQuestions,
             ScorePercentage = attempt.ScorePercentage ?? 0m,

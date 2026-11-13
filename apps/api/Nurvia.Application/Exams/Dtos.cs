@@ -142,6 +142,9 @@ public class SubmittedExamResultDto
     public DateTime StartedAtUtc { get; set; }
     public DateTime SubmittedAtUtc { get; set; }
     public int TimeSpentSeconds { get; set; }
+
+    /// <summary>The examination's configured time allocation, for allocated-vs-elapsed comparison.</summary>
+    public int TimeLimitMinutes { get; set; }
     public int TotalQuestions { get; set; }
     public int CorrectQuestions { get; set; }
     public decimal ScorePercentage { get; set; }
