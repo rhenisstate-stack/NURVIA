@@ -222,9 +222,7 @@ public class LectureService : ILectureService
 
         await _context.SaveChangesAsync(ct);
 
-        var action = request.Decision == ReviewDecision.Approved
-            ? "Approve"
-            : "Reject";
+        var action = request.Decision.ToString();
 
         await _audit.LogAsync(
             "Lecture",
@@ -233,7 +231,7 @@ public class LectureService : ILectureService
             reviewerId,
             reviewerName,
             "ContentReviewer",
-            $"{action}d lecture {lecture.Number}: {lecture.Title}. {request.Comments}",
+            $"{action} lecture {lecture.Number}: {lecture.Title}. {request.Comments}",
             ct);
 
         return MapToManagementDto(lecture);
@@ -376,3 +374,4 @@ public class LectureService : ILectureService
         };
     }
 }
+
