@@ -3,6 +3,7 @@ using Nurvia.Domain.Accounts;
 using Nurvia.Domain.Auditing;
 using Nurvia.Domain.Exams;
 using Nurvia.Domain.Questions;
+using Nurvia.Domain.Lectures;
 
 namespace Nurvia.Application.Interfaces;
 
@@ -11,6 +12,7 @@ public interface INurviaDbContext
     DbSet<UserAccount> UserAccounts { get; }
     DbSet<UserProfile> UserProfiles { get; }
     DbSet<Question> Questions { get; }
+    DbSet<Lecture> Lectures { get; }
     DbSet<QuestionVersion> QuestionVersions { get; }
     DbSet<QuestionOption> QuestionOptions { get; }
     DbSet<QuestionExhibit> QuestionExhibits { get; }

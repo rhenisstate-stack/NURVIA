@@ -6,6 +6,7 @@ using Nurvia.Domain.Auditing;
 using Nurvia.Domain.Common;
 using Nurvia.Domain.Exams;
 using Nurvia.Domain.Questions;
+using Nurvia.Domain.Lectures;
 
 namespace Nurvia.Infrastructure.Persistence;
 
@@ -17,6 +18,7 @@ public class NurviaDbContext : DbContext, INurviaDbContext
     }
 
     public DbSet<Question> Questions => Set<Question>();
+    public DbSet<Lecture> Lectures => Set<Lecture>();
     public DbSet<UserAccount> UserAccounts => Set<UserAccount>();
     public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
     public DbSet<QuestionVersion> QuestionVersions => Set<QuestionVersion>();
