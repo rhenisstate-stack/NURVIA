@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -35,6 +35,7 @@ public static class DependencyInjection
         services.AddScoped<IAvatarService, AvatarService>();
         services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<IQuestionService, QuestionService>();
+        services.AddScoped<ILectureService, LectureService>();
         services.AddScoped<IExamService, ExamService>();
         services.AddScoped<IExamAttemptService, ExamAttemptService>();
 
@@ -49,4 +50,5 @@ public static class DependencyInjection
         return services;
     }
 }
+
 

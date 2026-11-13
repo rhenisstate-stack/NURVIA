@@ -32,8 +32,7 @@ import {
 import { QuestionRendererRegistry, RendererQuestion } from "@/components/exam/renderers";
 import { useAuth } from "@/components/auth/auth-provider";
 
-type DeliveryMode = "Review" | "Exam" | "Tutor";
-type LayoutPolicy = "AllInOneOnly" | "SequentialOnly" | "Both" | null;
+type DeliveryMode = "Review" | "Exam" | "Tutor";type LayoutPolicy = "AllInOneOnly" | "SequentialOnly" | "Both" | null;
 
 function ExamSessionContent() {
   const searchParams = useSearchParams();
@@ -42,7 +41,7 @@ function ExamSessionContent() {
 
   const attemptIdParam = searchParams?.get("attemptId");
   const examIdParam = searchParams?.get("examId");
-  const modeParam = searchParams?.get("mode") as DeliveryMode | null;
+  const modeParam = searchParams?.get("mode") as "Exam" | "Tutor" | "Review" | "Preview" | null;
   const layoutParam = searchParams?.get("layout") as ExamLayout | null;
 
   // Session state
