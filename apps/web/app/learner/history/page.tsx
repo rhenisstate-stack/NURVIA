@@ -21,10 +21,8 @@ interface DisplayAttempt {
   passed?: boolean;
 }
 
-const fallbackAttempts: DisplayAttempt[] = [];
-
 export default function AttemptHistoryPage() {
-  const [attempts, setAttempts] = React.useState<DisplayAttempt[]>(fallbackAttempts);
+  const [attempts, setAttempts] = React.useState<DisplayAttempt[]>([]);
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [loadFailed, setLoadFailed] = React.useState<boolean>(false);
 
@@ -60,11 +58,13 @@ export default function AttemptHistoryPage() {
               status: a.status,
               passed: a.passed,
             };
-          });
-          setAttempts(mapped);
+          }));
+        } else {
+          setLoadFailed(true);
         }
       } catch (err) {
         console.error("Failed to load attempt history", err);
+        setLoadFailed(true);
       } finally {
         setIsLoading(false);
       }
@@ -109,7 +109,9 @@ export default function AttemptHistoryPage() {
                 ) : attempts.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="p-8 text-center text-foreground-muted">
-                      No examination attempts recorded yet.
+                      {loadFailed
+                        ? "Attempt history could not be loaded. Please try again later."
+                        : "No examination attempts recorded yet."}
                     </td>
                   </tr>
                 ) : (

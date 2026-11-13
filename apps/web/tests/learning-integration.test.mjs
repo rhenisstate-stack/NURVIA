@@ -28,7 +28,7 @@ function test(name, fn) {
 test('1. Study Library View lists only persisted published exams and starts by persisted exam id', () => {
   const libraryFile = fs.readFileSync(path.join(webRoot, 'components', 'study', 'study-library-view.tsx'), 'utf8');
   assert(libraryFile.includes('status: "Published"'), 'Published exam status query missing');
-  assert(libraryFile.includes('examId='), 'Live examId query parameter missing');
+  assert(libraryFile.includes('examId: exam.id'), 'Live examId query parameter missing');
   assert(!libraryFile.includes('initialStudySets'), 'Static study-set fallback must not be presented as live exams');
   assert(libraryFile.includes('setExams'), 'Published exam response is not rendered');
 });
