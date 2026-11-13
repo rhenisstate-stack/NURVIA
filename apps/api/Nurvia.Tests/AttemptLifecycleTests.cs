@@ -24,6 +24,7 @@ public class AttemptLifecycleTests : IAsyncLifetime
     private readonly List<Guid> _createdExamIds = new();
     private readonly List<Guid> _createdQuestionIds = new();
     private readonly List<Guid> _createdAttemptIds = new();
+    private readonly List<Guid> _createdProfileUserIds = new();
 
     private NurviaDbContext CreateDbContext()
     {
@@ -39,6 +40,13 @@ public class AttemptLifecycleTests : IAsyncLifetime
     public async Task DisposeAsync()
     {
         await using var context = CreateDbContext();
+
+        if (_createdProfileUserIds.Any())
+        {
+            var userIds = _createdProfileUserIds.ToArray();
+            await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM \"UserProfiles\" WHERE \"UserId\" = ANY(@p0)", (object)userIds);
+        }
 
         if (_createdAttemptIds.Any())
         {
@@ -78,7 +86,7 @@ public class AttemptLifecycleTests : IAsyncLifetime
         }
     }
 
-    private async Task<(Guid ExamId, Guid Question1Id, Guid Question2Id, Guid Q1CorrectOptionId, List<Guid> Q2CorrectOptionIds)> SeedPublishedExamWithQuestionsAsync(NurviaDbContext context)
+    private async Task<(Guid ExamId, Guid Question1Id, Guid Question2Id, Guid Q1CorrectOptionId, List<Guid> Q2CorrectOptionIds)> SeedPublishedExamWithQuestionsAsync(NurviaDbContext context, NursingPathway pathway = NursingPathway.RN)
     {
         var audit = new AuditService(context);
         var questionService = new QuestionService(context, audit);
@@ -89,7 +97,7 @@ public class AttemptLifecycleTests : IAsyncLifetime
         var q1Dto = await questionService.CreateDraftAsync(new CreateQuestionRequest
         {
             Code = q1Code,
-            Pathway = NursingPathway.RN,
+            Pathway = pathway,
             Category = ExamCategory.ATI,
             Subject = "Cardiology",
             Topic = "ECG",
@@ -116,7 +124,7 @@ public class AttemptLifecycleTests : IAsyncLifetime
         var q2Dto = await questionService.CreateDraftAsync(new CreateQuestionRequest
         {
             Code = q2Code,
-            Pathway = NursingPathway.RN,
+            Pathway = pathway,
             Category = ExamCategory.ATI,
             Subject = "Pharmacology",
             Topic = "Digoxin",
@@ -145,7 +153,7 @@ public class AttemptLifecycleTests : IAsyncLifetime
             Code = examCode,
             Title = "Cardio-Pharm Benchmark Exam",
             Description = "Assessment Description",
-            Pathway = NursingPathway.RN,
+            Pathway = pathway,
             Category = ExamCategory.ATI,
             TargetQuestionCount = 2,
             TimeLimitMinutes = 60,
@@ -191,6 +199,65 @@ public class AttemptLifecycleTests : IAsyncLifetime
                 Assert.NotEmpty(opt.OptionText);
             }
         }
+    }
+
+    [Fact]
+    public async Task StartAttempt_PathwayMismatch_IsRejected()
+    {
+        await using var context = CreateDbContext();
+        // Seed a PN/LPN examination, then attempt it as a learner whose profile
+        // declares the RN pathway — cross-pathway access must be rejected.
+        var (examId, _, _, _, _) = await SeedPublishedExamWithQuestionsAsync(context, NursingPathway.PN_LPN);
+
+        var rnLearnerId = Guid.NewGuid();
+        _createdProfileUserIds.Add(rnLearnerId);
+        context.UserProfiles.Add(new Nurvia.Domain.Accounts.UserProfile(rnLearnerId)
+        {
+            Pathway = NursingPathway.RN
+        });
+        await context.SaveChangesAsync();
+
+        var service = new ExamAttemptService(context);
+
+        var exception = await Assert.ThrowsAsync<DomainException>(
+            () => service.StartAttemptAsync(examId, rnLearnerId.ToString(), "RN Learner"));
+
+        Assert.Contains("pathway", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task StartAttempt_PathwayMatch_IsAllowed()
+    {
+        await using var context = CreateDbContext();
+        var (examId, _, _, _, _) = await SeedPublishedExamWithQuestionsAsync(context, NursingPathway.RN);
+
+        var rnLearnerId = Guid.NewGuid();
+        _createdProfileUserIds.Add(rnLearnerId);
+        context.UserProfiles.Add(new Nurvia.Domain.Accounts.UserProfile(rnLearnerId)
+        {
+            Pathway = NursingPathway.RN
+        });
+        await context.SaveChangesAsync();
+
+        var service = new ExamAttemptService(context);
+
+        var attemptDto = await service.StartAttemptAsync(examId, rnLearnerId.ToString(), "RN Learner");
+        _createdAttemptIds.Add(attemptDto.AttemptId);
+
+        Assert.Equal(2, attemptDto.TotalQuestions);
+    }
+
+    [Fact]
+    public async Task StartAttempt_UndeclaredPathway_IsAllowedTransitionally()
+    {
+        await using var context = CreateDbContext();
+        var (examId, _, _, _, _) = await SeedPublishedExamWithQuestionsAsync(context);
+
+        var service = new ExamAttemptService(context);
+        var attemptDto = await service.StartAttemptAsync(examId, "learner-no-pathway", "No Pathway Learner");
+        _createdAttemptIds.Add(attemptDto.AttemptId);
+
+        Assert.Equal(2, attemptDto.TotalQuestions);
     }
 
     [Fact]
