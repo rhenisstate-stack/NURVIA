@@ -351,6 +351,10 @@ export const nurviaApi = {
     return request<ExamReviewContentDto>(`/api/exams/${examId}/review-content`);
   },
 
+  async getExamPreviewContent(examId: string): Promise<ApiResponse<ExamReviewContentDto>> {
+    return request<ExamReviewContentDto>(`/api/exams/${examId}/preview`);
+  },
+
   async getActiveAttempt(attemptId: string): Promise<ApiResponse<StartAttemptResultDto>> {
     return request<StartAttemptResultDto>(`/api/attempts/${attemptId}`);
   },

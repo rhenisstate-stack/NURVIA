@@ -68,4 +68,11 @@ public interface IExamAttemptService
     Task<SubmittedExamResultDto> GetAttemptReviewAsync(Guid attemptId, string learnerId, CancellationToken ct = default);
     Task<List<ExamAttemptSummaryDto>> GetLearnerHistoryAsync(string learnerId, CancellationToken ct = default);
     Task<ExamReviewContentDto> GetExamReviewContentAsync(Guid examId, string learnerId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Admin preview of an examination in any status (draft through published).
+    /// Returns the full question content including answer keys and rationales,
+    /// without creating an attempt and without consulting the review release policy.
+    /// </summary>
+    Task<ExamReviewContentDto> GetExamPreviewContentAsync(Guid examId, CancellationToken ct = default);
 }

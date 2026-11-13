@@ -397,7 +397,7 @@ export default function ExamStudioPage() {
                       </Button>
                     ) : null}
 
-                    <Link href={`/exam-session?examId=${ex.id}&mode=Exam`}>
+                    <Link href={`/exam-session?examId=${ex.id}&mode=Preview`}>
                       <Button variant="ghost" size="sm" className="h-8 text-xs gap-1 text-foreground-muted hover:text-foreground">
                         <PlayCircle className="w-3.5 h-3.5 text-brand-teal" /> Preview Exam
                       </Button>

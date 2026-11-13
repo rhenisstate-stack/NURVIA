@@ -64,6 +64,7 @@ function ExamSessionContent() {
 
   // Review-mode study session (no graded attempt) and Tutor reveal state.
   const [isReviewContent, setIsReviewContent] = React.useState<boolean>(false);
+  const [isPreview, setIsPreview] = React.useState<boolean>(false);
 
   // Review & Submit state
   const [isSubmitModalOpen, setIsSubmitModalOpen] = React.useState<boolean>(false);
@@ -120,14 +121,19 @@ function ExamSessionContent() {
           }
         }
         if (!cancelled) setIsLoading(false);
-      } else if (examIdParam && modeParam === "Review") {
+      } else if (examIdParam && (modeParam === "Review" || modeParam === "Preview")) {
         // Review mode: study the published exam's approved answer keys without
-        // creating any graded attempt.
+        // creating any graded attempt. Preview mode is the admin equivalent:
+        // same read-only rendering, available for any exam status via the
+        // admin-only preview endpoint.
         setIsLoading(true);
         setLoadError(null);
-        const res = await nurviaApi.getExamReviewContent(examIdParam);
+        const res = modeParam === "Preview"
+          ? await nurviaApi.getExamPreviewContent(examIdParam)
+          : await nurviaApi.getExamReviewContent(examIdParam);
         if (!cancelled && res.success && res.data) {
           hydrateFromReviewContent(res.data);
+          if (modeParam === "Preview") setIsPreview(true);
         } else if (!cancelled) {
           setLoadError(res.message || "Review is not available for this examination.");
         }
@@ -632,10 +638,13 @@ function ExamSessionContent() {
           <div className="p-4 rounded-2xl border border-brand-teal/30 bg-brand-teal/5 flex items-start gap-3">
             <CheckCircle2 className="w-5 h-5 text-brand-teal shrink-0 mt-0.5" />
             <div className="text-xs text-foreground-secondary space-y-1">
-              <p className="font-brand font-bold text-sm text-foreground">Review Mode — Study Session</p>
+              <p className="font-brand font-bold text-sm text-foreground">
+                {isPreview ? "Admin Preview — Content Validation" : "Review Mode — Study Session"}
+              </p>
               <p>
-                Study each question with its approved correct answers and clinical rationales.
-                This session is separate from any graded examination attempt and is not scored.
+                {isPreview
+                  ? "Previewing every question with its approved answer keys and rationales. This preview does not create an attempt and never affects examination statistics."
+                  : "Study each question with its approved correct answers and clinical rationales. This session is separate from any graded examination attempt and is not scored."}
               </p>
             </div>
           </div>

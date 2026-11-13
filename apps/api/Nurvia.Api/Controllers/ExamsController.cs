@@ -54,6 +54,39 @@ public class ExamsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Admin preview of an examination in any status. Delivers the question content
+    /// with answer keys and rationales for validation purposes, without creating an
+    /// attempt and independent of the review release policy.
+    /// </summary>
+    [HttpGet("{id:guid}/preview")]
+    public async Task<ActionResult<ApiResponse<ExamReviewContentDto>>> GetExamPreview(Guid id, CancellationToken ct)
+    {
+        var user = HttpContext.GetCurrentUser();
+        if (!user.IsAuthenticated)
+            return Unauthorized(ApiResponse<ExamReviewContentDto>.Error("Authentication is required to preview an examination."));
+        if (!user.Role.Equals("Administrator", StringComparison.OrdinalIgnoreCase) &&
+            !user.Role.Equals("Superadmin", StringComparison.OrdinalIgnoreCase))
+        {
+            return Forbid();
+        }
+
+        try
+        {
+            var result = await _attemptService.GetExamPreviewContentAsync(id, ct);
+            return Ok(ApiResponse<ExamReviewContentDto>.Ok(result));
+        }
+        catch (DomainException ex)
+        {
+            return BadRequest(ApiResponse<ExamReviewContentDto>.Error(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error building preview content for exam {ExamId}", id);
+            return StatusCode(500, ApiResponse<ExamReviewContentDto>.Error("An error occurred while building the examination preview."));
+        }
+    }
+
     [HttpGet]
     public async Task<ActionResult<ApiResponse<PagedResult<ExamDto>>>> GetExams([FromQuery] ExamFilterRequest filter, CancellationToken ct)
     {

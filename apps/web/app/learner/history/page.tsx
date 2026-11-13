@@ -21,50 +21,20 @@ interface DisplayAttempt {
   passed?: boolean;
 }
 
-const fallbackAttempts: DisplayAttempt[] = [
-  {
-    id: "att-001",
-    title: "ATI Comprehensive Pharmacology Practice Exam",
-    date: "Today at 7:45 AM",
-    score: "81.5%",
-    mode: "Review Mode",
-    duration: "32 mins",
-    status: "Completed",
-    passed: true,
-  },
-  {
-    id: "att-002",
-    title: "RN Comprehensive Predictor Exit Examination",
-    date: "Yesterday at 4:15 PM",
-    score: "78.0%",
-    mode: "Timed Exam Mode",
-    duration: "58 mins",
-    status: "Completed",
-    passed: true,
-  },
-  {
-    id: "att-003",
-    title: "Dosage Calculations & Pediatric Math",
-    date: "3 days ago",
-    score: "92.0%",
-    mode: "Tutor Mode",
-    duration: "18 mins",
-    status: "Mastered",
-    passed: true,
-  },
-];
+const fallbackAttempts: DisplayAttempt[] = [];
 
 export default function AttemptHistoryPage() {
   const [attempts, setAttempts] = React.useState<DisplayAttempt[]>(fallbackAttempts);
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
+  const [loadFailed, setLoadFailed] = React.useState<boolean>(false);
 
   React.useEffect(() => {
     async function loadHistory() {
       try {
         setIsLoading(true);
         const res = await nurviaApi.getAttemptHistory();
-        if (res.success && res.data && res.data.length > 0) {
-          const mapped: DisplayAttempt[] = res.data.map((a: ExamAttemptSummaryDto) => {
+        if (res.success && res.data) {
+          setAttempts(res.data.map((a: ExamAttemptSummaryDto) => {
             const dateStr = a.submittedAtUtc || a.startedAtUtc;
             const formattedDate = dateStr
               ? new Date(dateStr).toLocaleDateString("en-US", {

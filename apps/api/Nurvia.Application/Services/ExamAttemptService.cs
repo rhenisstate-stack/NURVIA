@@ -381,6 +381,42 @@ public class ExamAttemptService : IExamAttemptService
         if (!reviewReleased)
             throw new ReviewNotReleasedException();
 
+        return BuildReviewContentDto(exam, version, reviewReleased);
+    }
+
+    /// <summary>
+    /// Admin preview: identical shape to learner review content, but available in any
+    /// exam status (draft through published) and independent of the review release
+    /// policy. Creates no attempt and never persists learner activity.
+    /// </summary>
+    public async Task<ExamReviewContentDto> GetExamPreviewContentAsync(Guid examId, CancellationToken ct = default)
+    {
+        var exam = await _context.Exams
+            .Include(e => e.CurrentVersion)
+                .ThenInclude(v => v!.ExamQuestions)
+                    .ThenInclude(eq => eq.Question)
+                        .ThenInclude(q => q!.CurrentVersion)
+                            .ThenInclude(qv => qv!.Options)
+            .Include(e => e.CurrentVersion)
+                .ThenInclude(v => v!.ExamQuestions)
+                    .ThenInclude(eq => eq.Question)
+                        .ThenInclude(q => q!.CurrentVersion)
+                            .ThenInclude(qv => qv!.Exhibits)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(e => e.Id == examId, ct);
+
+        if (exam == null)
+            throw new DomainException($"Examination with ID '{examId}' was not found.");
+
+        var version = exam.CurrentVersion;
+        if (version == null)
+            throw new DomainException("This examination has no version to preview yet.");
+
+        return BuildReviewContentDto(exam, version, reviewReleased: true);
+    }
+
+    private static ExamReviewContentDto BuildReviewContentDto(Exam exam, ExamVersion version, bool reviewReleased)
+    {
         var questions = new List<ReviewQuestionDto>();
         int order = 1;
 
@@ -432,7 +468,7 @@ public class ExamAttemptService : IExamAttemptService
             Category = exam.Category,
             Instructions = version.Instructions,
             TimeLimitMinutes = version.TimeLimitMinutes,
-            ReviewReleased = true,
+            ReviewReleased = reviewReleased,
             Questions = questions
         };
     }
