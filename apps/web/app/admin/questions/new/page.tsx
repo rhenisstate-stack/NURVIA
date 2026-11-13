@@ -636,7 +636,7 @@ export default function NewQuestionAuthoringPage() {
               </Card>
 
               {/* Structured answer-key payload for complex question types */}
-              {(questionType === "MultipleTrueFalse" || questionType === "MatrixGrid" || questionType === "DragAndDrop" || questionType === "BowTie" || questionType === "ClinicalCaseStudy" || questionType === "TabularResponse" || questionType === "ImageBased" || contentJsonData.trim() !== "") && (
+              {(questionType === "MultipleTrueFalse" || questionType === "MatrixGrid" || questionType === "DragAndDrop" || questionType === "BowTie" || questionType === "ClinicalCaseStudy" || questionType === "TabularResponse" || questionType === "ImageBased" || questionType === "Matching" || questionType === "ShortAnswer" || questionType === "MultipleImageSelection" || contentJsonData.trim() !== "") && (
                 <Card className="p-5 space-y-3">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold uppercase tracking-wider text-foreground-muted">
