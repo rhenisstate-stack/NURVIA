@@ -27,7 +27,7 @@ public class PostgreSqlIntegrationTests : IAsyncLifetime
     public PostgreSqlIntegrationTests(Xunit.Abstractions.ITestOutputHelper output)
     {
         _output = output;
-        _connectionString = Environment.GetEnvironmentVariable("TEST_CONNECTION_STRING");
+        _connectionString = Environment.GetEnvironmentVariable("TEST_CONNECTION_STRING") ?? string.Empty;
         if (string.IsNullOrEmpty(_connectionString))
         {
             throw new InvalidOperationException("TEST_CONNECTION_STRING environment variable is required for test execution. Please set this variable to point to the test database.");

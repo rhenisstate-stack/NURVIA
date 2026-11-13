@@ -14,7 +14,7 @@ namespace Nurvia.Tests
             Assert.False(DatabaseEnvironmentValidator.IsTestEnvironment("Development"), "Should reject Development environment");
             Assert.False(DatabaseEnvironmentValidator.IsTestEnvironment("Production"), "Should reject Production environment");
             Assert.False(DatabaseEnvironmentValidator.IsTestEnvironment(""), "Should reject empty environment");
-            Assert.False(DatabaseEnvironmentValidator.IsTestEnvironment(null), "Should reject null environment");
+            Assert.False(DatabaseEnvironmentValidator.IsTestEnvironment(null!), "Should reject null environment");
         }
 
         [Fact]
@@ -56,7 +56,7 @@ namespace Nurvia.Tests
             Assert.False(DatabaseEnvironmentValidator.IsNotProductionHost("prod-db.nurvia.com"), "Should reject production host");
             Assert.False(DatabaseEnvironmentValidator.IsNotProductionHost("production-db.nurvia.com"), "Should reject production host");
             Assert.True(DatabaseEnvironmentValidator.IsNotProductionHost(""), "Should accept empty host");
-            Assert.True(DatabaseEnvironmentValidator.IsNotProductionHost(null), "Should accept null host");
+            Assert.True(DatabaseEnvironmentValidator.IsNotProductionHost(null!), "Should accept null host");
         }
 
         [Fact]

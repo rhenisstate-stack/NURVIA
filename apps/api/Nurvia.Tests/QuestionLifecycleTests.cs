@@ -111,7 +111,7 @@ public class QuestionLifecycleTests
         question.Approve("rev-01", "Dr. Jenkins", "Approved");
         question.Publish("Publisher");
 
-        Assert.Equal(1, question.Versions.Count);
+        Assert.Single(question.Versions);
         Assert.Equal(ContentStatus.Published, question.Status);
 
         // Act: Author starts revision
