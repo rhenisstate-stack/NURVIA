@@ -58,6 +58,23 @@ public class ExamAttemptService : IExamAttemptService
         if (exam.ModeAllowed != ExamDeliveryMode.All && exam.ModeAllowed != deliveryMode)
             throw new DomainException($"This examination does not permit {deliveryMode} mode.");
 
+        // Pathway eligibility: a learner who declared RN or PN/LPN on their profile may
+        // only take examinations of their own pathway (including its exit predictor).
+        // A learner without a declared pathway is unrestricted until they complete
+        // their profile — an explicit transitional policy, not an oversight.
+        var learnerPathway = Guid.TryParse(learnerId, out var learnerGuid)
+            ? await _context.UserProfiles
+                .Where(p => p.UserId == learnerGuid)
+                .Select(p => (NursingPathway?)p.Pathway)
+                .FirstOrDefaultAsync(ct)
+            : null;
+        if (learnerPathway != null && !IsPathwayCompatible(learnerPathway.Value, exam.Pathway))
+        {
+            var allowedText = learnerPathway == NursingPathway.RN ? "RN" : "PN/LPN";
+            throw new DomainException(
+                $"This examination belongs to a different nursing pathway. Your profile is registered for the {allowedText} pathway.");
+        }
+
         // Layout authorization: resolve the learner's requested layout against the
         // exam version's permitted layouts; fall back to the configured default.
         var layoutMode = requestedLayout ?? version.DefaultLayout;
@@ -473,8 +490,22 @@ public class ExamAttemptService : IExamAttemptService
         };
     }
 
-    private static StartAttemptResultDto BuildStartAttemptDto(ExamAttempt attempt, Exam exam, ExamVersion version, int remainingSecs)
+    /// <summary>
+    /// Pathway compatibility rules: an RN learner may take RN and RN-exit
+    /// examinations; a PN/LPN learner may take PN/LPN and PN-exit examinations.
+    /// Cross-pathway access is rejected at attempt start.
+    /// </summary>
+    private static bool IsPathwayCompatible(NursingPathway learnerPathway, NursingPathway examPathway)
     {
+        return learnerPathway switch
+        {
+            NursingPathway.RN => examPathway == NursingPathway.RN || examPathway == NursingPathway.RN_Exit,
+            NursingPathway.PN_LPN => examPathway == NursingPathway.PN_LPN || examPathway == NursingPathway.PN_Exit,
+            _ => true
+        };
+    }
+
+    private static StartAttemptResultDto BuildStartAttemptDto(ExamAttempt attempt, Exam exam, ExamVersion version, int remainingSecs)    {
         var questions = new List<ActiveExamQuestionDto>();
         var savedResponses = new Dictionary<Guid, LearnerAnswerStateDto>();
 

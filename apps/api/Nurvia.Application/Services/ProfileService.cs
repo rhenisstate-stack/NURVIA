@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Nurvia.Application.Interfaces;
 using Nurvia.Application.Security;
 using Nurvia.Domain.Accounts;
+using Nurvia.Domain.Enums;
 
 namespace Nurvia.Application.Services;
 
@@ -36,6 +37,7 @@ public sealed class ProfileService : IProfileService
                 ProfessionalTitle = p.ProfessionalTitle,
                 Organization = p.Organization,
                 AvatarStorageKey = p.AvatarStorageKey,
+                Pathway = p.Pathway != null ? p.Pathway.ToString() : null,
                 CreatedAtUtc = p.CreatedAtUtc,
                 CreatedBy = p.CreatedBy,
                 UpdatedAtUtc = p.UpdatedAtUtc,
@@ -69,6 +71,23 @@ public sealed class ProfileService : IProfileService
             _context.UserProfiles.Add(userProfile);
         }
 
+        // Pathway is optional; only well-known values are accepted. An unset or
+        // unrecognized value leaves the previously persisted pathway untouched
+        // so a partial profile save cannot silently erase the declaration.
+        NursingPathway? pathway = userProfile.Pathway;
+        if (!string.IsNullOrWhiteSpace(request.Pathway))
+        {
+            if (!Enum.TryParse<NursingPathway>(request.Pathway.Trim(), ignoreCase: true, out var parsed) ||
+                (parsed != NursingPathway.RN && parsed != NursingPathway.PN_LPN))
+            {
+                return new UpdateProfileResponse
+                {
+                    Message = "Pathway must be either 'RN' or 'PN_LPN'."
+                };
+            }
+            pathway = parsed;
+        }
+
         userProfile.UpdateProfile(
             request.FirstName.Trim(),
             request.MiddleName?.Trim(),
@@ -80,6 +99,7 @@ public sealed class ProfileService : IProfileService
             request.City?.Trim(),
             request.ProfessionalTitle?.Trim(),
             request.Organization?.Trim(),
+            pathway,
             userId);
 
         await _context.SaveChangesAsync(cancellationToken);
@@ -101,6 +121,7 @@ public sealed class ProfileService : IProfileService
                 ProfessionalTitle = userProfile.ProfessionalTitle,
                 Organization = userProfile.Organization,
                 AvatarStorageKey = userProfile.AvatarStorageKey,
+                Pathway = userProfile.Pathway != null ? userProfile.Pathway.ToString() : null,
                 CreatedAtUtc = userProfile.CreatedAtUtc,
                 CreatedBy = userProfile.CreatedBy,
                 UpdatedAtUtc = userProfile.UpdatedAtUtc,

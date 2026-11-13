@@ -17,6 +17,7 @@ public sealed class UserProfileDto
     public string? ProfessionalTitle { get; init; }
     public string? Organization { get; init; }
     public string? AvatarStorageKey { get; init; }
+    public string? Pathway { get; init; }
     public DateTime CreatedAtUtc { get; init; }
     public string CreatedBy { get; init; } = string.Empty;
     public DateTime? UpdatedAtUtc { get; init; }
@@ -54,6 +55,13 @@ public sealed class UpdateProfileRequest
 
     [StringLength(200)]
     public string? Organization { get; set; }
+
+    /// <summary>
+    /// Optional nursing pathway declaration. Accepted values: "RN" or "PN_LPN".
+    /// Null leaves the pathway unchanged/undeclared.
+    /// </summary>
+    [StringLength(30)]
+    public string? Pathway { get; set; }
 }
 
 public sealed class UpdateProfileResponse
