@@ -323,6 +323,19 @@ function ExamSessionContent() {
     }, 4000);
   };
 
+  // Manual retry affordance: re-save the current question's latest answer right
+  // away when the automatic retry has not (yet) resolved a save failure.
+  const retrySaveNow = () => {
+    const qid = questions[currentIndex]?.id;
+    if (!qid || !attemptId || isSubmitted) return;
+    if (autosaveRetryTimerRef.current) {
+      clearTimeout(autosaveRetryTimerRef.current);
+      autosaveRetryTimerRef.current = null;
+    }
+    setAutosaveStatus("saving");
+    void persistResponse(qid, answers[qid] ?? null, flags[qid] || false);
+  };
+
   React.useEffect(() => {
     // Schedule a safe retry whenever a save fails while an attempt is active.
     if (autosaveStatus !== "error" || !attemptId || isSubmitted) return;
@@ -565,6 +578,7 @@ function ExamSessionContent() {
       secondsRemaining={secondsRemaining}
       onTimerExpired={handleSubmitExam}
       autosaveStatus={autosaveStatus}
+      onRetrySave={retrySaveNow}
       answeredCount={answeredCount}
       onOpenQuestionGrid={() => setIsQuestionGridOpen(true)}
       showTimer={!isReviewContent}

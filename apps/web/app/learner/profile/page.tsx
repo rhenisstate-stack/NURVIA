@@ -30,7 +30,8 @@ export default function ProfilePage() {
     country: "",
     city: "",
     professionalTitle: "",
-    organization: ""
+    organization: "",
+    pathway: ""
   });
   const [avatarPreview, setAvatarPreview] = React.useState<string | null>(null);
   const [avatarFile, setAvatarFile] = React.useState<File | null>(null);
@@ -54,7 +55,8 @@ export default function ProfilePage() {
             country: response.data.country || "",
             city: response.data.city || "",
             professionalTitle: response.data.professionalTitle || "",
-            organization: response.data.organization || ""
+            organization: response.data.organization || "",
+            pathway: response.data.pathway || ""
           });
         } else {
           setError("Failed to load profile data");
@@ -91,7 +93,8 @@ export default function ProfilePage() {
         country: formData.country,
         city: formData.city,
         professionalTitle: formData.professionalTitle,
-        organization: formData.organization
+        organization: formData.organization,
+        pathway: formData.pathway || undefined
       });
 
       if (response.success && response.data) {
@@ -367,6 +370,24 @@ export default function ProfilePage() {
                       onChange={handleChange}
                       maxLength={200}
                     />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="pathway">Nursing Pathway</Label>
+                    <select
+                      id="pathway"
+                      name="pathway"
+                      value={formData.pathway}
+                      onChange={handleChange}
+                      className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground"
+                    >
+                      <option value="">Not declared yet</option>
+                      <option value="RN">Registered Nurse (RN)</option>
+                      <option value="PN_LPN">Practical / Licensed Practical Nurse (PN/LPN)</option>
+                    </select>
+                    <p className="text-[11px] text-foreground-muted">
+                      Declaring your pathway restricts your examination catalog to matching RN or PN/LPN assessments.
+                    </p>
                   </div>
                 </div>
                 

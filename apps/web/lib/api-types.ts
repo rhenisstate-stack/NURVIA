@@ -374,6 +374,7 @@ export interface UserProfileDto {
   professionalTitle?: string;
   organization?: string;
   avatarStorageKey?: string;
+  pathway?: string;
   createdAtUtc: string;
   createdBy: string;
   updatedAtUtc?: string;

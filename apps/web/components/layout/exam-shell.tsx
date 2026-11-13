@@ -38,6 +38,7 @@ interface ExamShellProps {
   secondsRemaining?: number;
   onTimerExpired?: () => void;
   autosaveStatus?: "saving" | "saved" | "idle" | "error";
+  onRetrySave?: () => void;
   onOpenQuestionGrid?: () => void;
   answeredCount?: number;
   showTimer?: boolean;
@@ -59,6 +60,7 @@ export function ExamShell({
   secondsRemaining: propSecondsRemaining,
   onTimerExpired,
   autosaveStatus = "idle",
+  onRetrySave,
   onOpenQuestionGrid,
   answeredCount,
   showTimer = true,
@@ -177,10 +179,16 @@ export function ExamShell({
                   </span>
                 )}
                 {autosaveStatus === "error" && (
-                  <span className="flex items-center gap-1 text-rose-500">
+                  <button
+                    type="button"
+                    onClick={onRetrySave}
+                    className="flex items-center gap-1 text-rose-500 hover:text-rose-600 underline underline-offset-2"
+                    title="Retry saving your latest answer"
+                    aria-label="Retry saving your latest answer"
+                  >
                     <AlertTriangle className="w-3.5 h-3.5" />
-                    Save failed
-                  </span>
+                    Save failed — retry
+                  </button>
                 )}
               </div>
             )}
