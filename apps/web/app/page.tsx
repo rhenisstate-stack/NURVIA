@@ -486,7 +486,7 @@ export default function HomePage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-6 pt-0">
-                    <Link href={`/exam-session?mode=${m.mode.replace(" Mode", "")}`}>
+                    <Link href="/exams">
                       <Button variant="link" className="text-xs font-semibold p-0 text-brand-teal hover:underline">
                         Launch practice in {m.mode} →
                       </Button>
