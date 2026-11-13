@@ -201,7 +201,9 @@ public class ReviewQuestionDto
     public QuestionType QuestionType { get; set; }
     public CognitiveSkill CognitiveSkill { get; set; }
     public ClientNeedCategory ClientNeedCategory { get; set; }
-    public string GeneralRationale { get; set; } = string.Empty;
+
+    /// <summary>Null when the exam's review release policy withholds rationales until staff release.</summary>
+    public string? GeneralRationale { get; set; }
     public string? LearnerResponse { get; set; }
     public bool IsCorrect { get; set; }
     public decimal PointsAwarded { get; set; }
