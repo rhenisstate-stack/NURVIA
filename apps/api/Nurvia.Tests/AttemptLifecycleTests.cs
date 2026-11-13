@@ -46,6 +46,8 @@ public class AttemptLifecycleTests : IAsyncLifetime
             var userIds = _createdProfileUserIds.ToArray();
             await context.Database.ExecuteSqlRawAsync(
                 "DELETE FROM \"UserProfiles\" WHERE \"UserId\" = ANY(@p0)", (object)userIds);
+            await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM \"UserAccounts\" WHERE \"Id\" = ANY(@p0)", (object)userIds);
         }
 
         if (_createdAttemptIds.Any())
@@ -211,16 +213,20 @@ public class AttemptLifecycleTests : IAsyncLifetime
 
         var rnLearnerId = Guid.NewGuid();
         _createdProfileUserIds.Add(rnLearnerId);
-        context.UserProfiles.Add(new Nurvia.Domain.Accounts.UserProfile(rnLearnerId)
+        var account = new Nurvia.Domain.Accounts.UserAccount(
+            "RN Learner", $"rn-{rnLearnerId:N}@test.local", "test-hash");
+        context.UserAccounts.Add(account);
+        context.UserProfiles.Add(new Nurvia.Domain.Accounts.UserProfile(account.Id)
         {
             Pathway = NursingPathway.RN
         });
         await context.SaveChangesAsync();
+        var learnerId = account.Id.ToString();
 
         var service = new ExamAttemptService(context);
 
         var exception = await Assert.ThrowsAsync<DomainException>(
-            () => service.StartAttemptAsync(examId, rnLearnerId.ToString(), "RN Learner"));
+            () => service.StartAttemptAsync(examId, learnerId, "RN Learner"));
 
         Assert.Contains("pathway", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
@@ -233,15 +239,19 @@ public class AttemptLifecycleTests : IAsyncLifetime
 
         var rnLearnerId = Guid.NewGuid();
         _createdProfileUserIds.Add(rnLearnerId);
-        context.UserProfiles.Add(new Nurvia.Domain.Accounts.UserProfile(rnLearnerId)
+        var account = new Nurvia.Domain.Accounts.UserAccount(
+            "RN Learner", $"rn-{rnLearnerId:N}@test.local", "test-hash");
+        context.UserAccounts.Add(account);
+        context.UserProfiles.Add(new Nurvia.Domain.Accounts.UserProfile(account.Id)
         {
             Pathway = NursingPathway.RN
         });
         await context.SaveChangesAsync();
+        var learnerId = account.Id.ToString();
 
         var service = new ExamAttemptService(context);
 
-        var attemptDto = await service.StartAttemptAsync(examId, rnLearnerId.ToString(), "RN Learner");
+        var attemptDto = await service.StartAttemptAsync(examId, learnerId, "RN Learner");
         _createdAttemptIds.Add(attemptDto.AttemptId);
 
         Assert.Equal(2, attemptDto.TotalQuestions);
