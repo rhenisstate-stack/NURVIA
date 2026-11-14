@@ -21,8 +21,14 @@ export function ShortAnswerRenderer({
     try {
       if (value.startsWith("{")) {
         const parsed = JSON.parse(value);
-        return parsed.TextResponse || parsed.textResponse || parsed.value
-          ?? parsed.ShortAnswer ?? parsed.shortAnswer ?? "";
+        return (
+          parsed.TextResponse ??
+          parsed.textResponse ??
+          parsed.value ??
+          parsed.ShortAnswer ??
+          parsed.shortAnswer ??
+          ""
+        );
       }
       return value.replace(/^"(.*)"$/, "$1");
     } catch {
