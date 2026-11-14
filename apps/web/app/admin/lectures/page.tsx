@@ -21,6 +21,7 @@ import {
   CheckCircle2,
   Edit3,
   ExternalLink,
+  Eye,
   Plus,
   Send,
   ShieldCheck,
@@ -64,6 +65,11 @@ export default function AdminLecturesPage() {
 
   const [reviewingId, setReviewingId] = React.useState<string | null>(null);
   const [reviewComments, setReviewComments] = React.useState("");
+  const [previewId, setPreviewId] = React.useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = React.useState<{
+    id: string;
+    type: "publish" | "archive";
+  } | null>(null);
 
   const role = user?.role || "";
   const isAdmin = role === "Administrator" || role === "Superadmin";
@@ -383,6 +389,16 @@ export default function AdminLecturesPage() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPreviewId(previewId === lec.id ? null : lec.id)}
+                        className="text-xs"
+                      >
+                        <Eye className="w-3.5 h-3.5 mr-1" />
+                        {previewId === lec.id ? "Hide Preview" : "Preview"}
+                      </Button>
+
                       {lec.status === "Published" && (
                         <Link href={`/mark-k/${lec.slug}`} target="_blank">
                           <Button variant="outline" size="sm" className="text-xs">
@@ -427,31 +443,95 @@ export default function AdminLecturesPage() {
                       )}
 
                       {canPublish && lec.status === "Approved" && (
-                        <Button
-                          size="sm"
-                          disabled={isSaving}
-                          onClick={() => void runAction(() => nurviaApi.publishLecture(lec.id), "Lecture published.")}
-                          className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
-                        >
-                          <Upload className="w-3.5 h-3.5 mr-1" />
-                          Publish
-                        </Button>
+                        confirmAction?.id === lec.id && confirmAction.type === "publish" ? (
+                          <div className="flex items-center gap-1.5">
+                            <Button
+                              size="sm"
+                              disabled={isSaving}
+                              onClick={() => {
+                                setConfirmAction(null);
+                                void runAction(() => nurviaApi.publishLecture(lec.id), "Lecture published.");
+                              }}
+                              className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                            >
+                              Confirm Publish
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setConfirmAction(null)}
+                              className="text-xs"
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            size="sm"
+                            disabled={isSaving}
+                            onClick={() => setConfirmAction({ id: lec.id, type: "publish" })}
+                            className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                          >
+                            <Upload className="w-3.5 h-3.5 mr-1" />
+                            Publish
+                          </Button>
+                        )
                       )}
 
                       {canPublish && lec.status === "Published" && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={isSaving}
-                          onClick={() => void runAction(() => nurviaApi.archiveLecture(lec.id), "Lecture archived.")}
-                          className="text-xs text-rose-600 border-rose-500/30"
-                        >
-                          <Archive className="w-3.5 h-3.5 mr-1" />
-                          Archive
-                        </Button>
+                        confirmAction?.id === lec.id && confirmAction.type === "archive" ? (
+                          <div className="flex items-center gap-1.5">
+                            <Button
+                              size="sm"
+                              disabled={isSaving}
+                              onClick={() => {
+                                setConfirmAction(null);
+                                void runAction(() => nurviaApi.archiveLecture(lec.id), "Lecture archived.");
+                              }}
+                              className="text-xs bg-rose-600 hover:bg-rose-700 text-white"
+                            >
+                              Confirm Archive
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setConfirmAction(null)}
+                              className="text-xs"
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={isSaving}
+                            onClick={() => setConfirmAction({ id: lec.id, type: "archive" })}
+                            className="text-xs text-rose-600 border-rose-500/30"
+                          >
+                            <Archive className="w-3.5 h-3.5 mr-1" />
+                            Archive
+                          </Button>
+                        )
                       )}
                     </div>
                   </div>
+
+                  {previewId === lec.id && (
+                    <div className="pt-3 border-t border-border space-y-3">
+                      <p className="text-xs text-foreground-secondary">{lec.summary}</p>
+                      {lec.highYieldConcepts.length > 0 && (
+                        <ul className="list-disc pl-5 text-xs text-foreground-secondary space-y-1">
+                          {lec.highYieldConcepts.map((c, idx) => (
+                            <li key={idx}>{c}</li>
+                          ))}
+                        </ul>
+                      )}
+                      <pre className="p-3 rounded-xl bg-surface-muted border border-border text-xs whitespace-pre-wrap font-sans text-foreground-secondary max-h-64 overflow-y-auto">
+                        {lec.bodyMarkdown}
+                      </pre>
+                    </div>
+                  )}
 
                   {reviewingId === lec.id && (
                     <div className="pt-3 border-t border-border space-y-3">
