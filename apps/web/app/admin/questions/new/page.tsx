@@ -26,6 +26,7 @@ import {
   Info,
 } from "lucide-react";
 import { nurviaApi } from "@/lib/api-client";
+import { QuestionRendererRegistry, RendererQuestion } from "@/components/exam/renderers";
 import {
   QuestionType,
   NursingPathway,
@@ -74,7 +75,7 @@ export default function NewQuestionAuthoringPage() {
   // Preview & validation state
   const [previewMode, setPreviewMode] = React.useState(false);
   const [activeExhibitTab, setActiveExhibitTab] = React.useState(0);
-  const [selectedPreviewOption, setSelectedPreviewOption] = React.useState<number | null>(null);
+  const [previewResponse, setPreviewResponse] = React.useState<string | null>(null);
   const [showPreviewRationale, setShowPreviewRationale] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [feedbackError, setFeedbackError] = React.useState<string | null>(null);
@@ -362,47 +363,43 @@ export default function NewQuestionAuthoringPage() {
                 </div>
               )}
 
-              {/* Question Stem */}
-              <div className="space-y-2">
-                <div className="text-xs font-semibold text-brand-teal">
-                  {questionType === "MultipleResponse" ? "Select All That Apply (SATA)" : "Question Item"}
-                </div>
-                <div className="text-base font-medium text-foreground leading-relaxed">
-                  {stem || "Question stem preview will appear here..."}
-                </div>
-              </div>
+              {/* Canonical Learner Renderer Preview (shared with exam-session) */}
+              {(() => {
+                const previewQuestion: RendererQuestion = {
+                  id: "preview-draft",
+                  orderIndex: 1,
+                  stem: stem || "Question stem preview will appear here...",
+                  questionType,
+                  cognitiveSkill,
+                  clientNeedCategory: clientNeed,
+                  generalRationale: generalRationale || undefined,
+                  contentJsonData: contentJsonData.trim() || undefined,
+                  options: options.map((opt) => ({
+                    id: `preview-opt-${opt.optionIndex}`,
+                    optionIndex: opt.optionIndex,
+                    optionText: opt.optionText || `Option choice ${opt.optionIndex}`,
+                    displayOrder: opt.displayOrder ?? opt.optionIndex,
+                    isCorrect: showPreviewRationale ? opt.isCorrect : undefined,
+                    specificRationale: showPreviewRationale ? opt.specificRationale : undefined,
+                  })),
+                  exhibits: exhibits.map((exh, idx) => ({
+                    id: `preview-exh-${idx}`,
+                    type: exh.type,
+                    title: exh.title,
+                    content: exh.content,
+                    displayOrder: exh.displayOrder ?? idx + 1,
+                  })),
+                };
 
-              {/* Options Interactive Selector */}
-              <div className="space-y-2.5">
-                {options.map((opt) => {
-                  const isSelected = selectedPreviewOption === opt.optionIndex;
-                  return (
-                    <button
-                      key={opt.optionIndex}
-                      type="button"
-                      onClick={() => setSelectedPreviewOption(opt.optionIndex)}
-                      className={`w-full text-left p-3.5 rounded-xl border text-sm transition-all flex items-start gap-3 ${
-                        isSelected
-                          ? "border-brand-teal bg-brand-teal/10 font-medium"
-                          : "border-border hover:border-brand-teal/40 bg-surface"
-                      }`}
-                    >
-                      <div
-                        className={`w-6 h-6 rounded-full border flex items-center justify-center font-bold text-xs shrink-0 mt-0.5 ${
-                          isSelected
-                            ? "border-brand-teal bg-brand-teal text-white"
-                            : "border-border text-foreground-muted"
-                        }`}
-                      >
-                        {String.fromCharCode(64 + opt.optionIndex)}
-                      </div>
-                      <div className="flex-1 text-foreground leading-relaxed">
-                        {opt.optionText || `Option choice ${opt.optionIndex}`}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+                return (
+                  <QuestionRendererRegistry
+                    question={previewQuestion}
+                    value={previewResponse}
+                    onChange={setPreviewResponse}
+                    isReview={showPreviewRationale}
+                  />
+                );
+              })()}
 
               {/* Exam Interactive Action */}
               <div className="flex items-center justify-between pt-4 border-t border-border">
@@ -720,7 +717,10 @@ export default function NewQuestionAuthoringPage() {
                     <label className="font-semibold text-foreground block mb-1">Item Format Type</label>
                     <select
                       value={questionType}
-                      onChange={(e) => setQuestionType(e.target.value as QuestionType)}
+                      onChange={(e) => {
+                        setQuestionType(e.target.value as QuestionType);
+                        setPreviewResponse(null);
+                      }}
                       className="w-full px-3 py-1.5 rounded-lg border border-border bg-background focus:ring-1 focus:ring-brand-teal font-medium"
                     >
                       <option value="MultipleChoice">Multiple Choice (Single Response)</option>
