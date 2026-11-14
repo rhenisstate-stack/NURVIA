@@ -23,11 +23,13 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { nurviaApi } from "@/lib/api-client";
+import { TutorModePanel } from "@/components/exam/TutorModePanel";
 import {
   StartAttemptResultDto,
   SubmittedExamResultDto,
   ExamReviewContentDto,
   ExamLayout,
+  TutorEvaluateResponseDto,
 } from "@/lib/api-types";
 import { QuestionRendererRegistry, RendererQuestion } from "@/components/exam/renderers";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -92,6 +94,7 @@ function ExamSessionContent() {
   // Review-mode study session (no graded attempt) and Tutor reveal state.
   const [isReviewContent, setIsReviewContent] = React.useState<boolean>(false);
   const [isPreview, setIsPreview] = React.useState<boolean>(false);
+  const [tutorEvaluations, setTutorEvaluations] = React.useState<Record<string, TutorEvaluateResponseDto>>({});
 
   // Review & Submit state
   const [isSubmitModalOpen, setIsSubmitModalOpen] = React.useState<boolean>(false);
@@ -477,11 +480,10 @@ function ExamSessionContent() {
   const unansweredCount = questions.length - answeredCount;
   const flaggedCount = Object.values(flags).filter(Boolean).length;
 
-  // Tutor immediate feedback: reveal correctness + rationale once the learner
-  // answers. Approved content only — the key arrives from the backend for
-  // Tutor attempts and is never fabricated client-side.
+  // Tutor progressive learning: reveal correctness + rationale once the learner
+  // submits their answer for evaluation in TutorModePanel.
   const isTutorRevealed = (q: RendererQuestion) =>
-    deliveryMode === "Tutor" && !isSubmitted && Boolean(answers[q.id]);
+    deliveryMode === "Tutor" && !isSubmitted && Boolean(tutorEvaluations[q.id]);
 
   const reviewStateFor = (q: RendererQuestion) =>
     isSubmitted || isReviewContent || deliveryMode === "Review" || isTutorRevealed(q);
@@ -554,15 +556,18 @@ function ExamSessionContent() {
           />
         </div>
 
-        {/* Tutor immediate feedback panel (approved content delivered by the backend) */}
-        {isTutorRevealed(q) && q.generalRationale && (
-          <div className="p-4 rounded-xl bg-brand-teal/10 border border-brand-teal/20 text-xs text-foreground-secondary space-y-1">
-            <div className="font-bold text-brand-teal flex items-center gap-1.5">
-              <Lightbulb className="w-4 h-4" />
-              <span>Tutor Guidance — Approved Rationale</span>
-            </div>
-            <p className="pt-1 leading-relaxed">{q.generalRationale}</p>
-          </div>
+        {/* Progressive Tutor Mode Panel (Stages 1-6) */}
+        {deliveryMode === "Tutor" && !isSubmitted && attemptId && (
+          <TutorModePanel
+            attemptId={attemptId}
+            questionId={q.id}
+            hasSelectedAnswer={Boolean(answers[q.id])}
+            serializedAnswer={answers[q.id] ? JSON.stringify(answers[q.id]) : null}
+            evaluation={tutorEvaluations[q.id] ?? null}
+            onEvaluated={(result) =>
+              setTutorEvaluations((prev) => ({ ...prev, [q.id]: result }))
+            }
+          />
         )}
 
         {/* All-in-One inline flag control */}

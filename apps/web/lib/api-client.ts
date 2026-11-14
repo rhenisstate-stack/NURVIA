@@ -441,5 +441,67 @@ export const nurviaApi = {
       method: 'POST',
     });
   },
+
+  // Study Library & Personal Library
+  async getStudyLibrary(params?: Record<string, string | number | boolean | undefined>): Promise<ApiResponse<PagedResult<import('./api-types').StudySetCardDto>>> {
+    const query = buildQuery(params);
+    return request(`/api/study-library${query ? `?${query}` : ''}`);
+  },
+
+  async getStudyLibraryFilters(): Promise<ApiResponse<import('./api-types').StudyLibraryFiltersDto>> {
+    return request('/api/study-library/filters');
+  },
+
+  async getStudyLibrarySummary(): Promise<ApiResponse<import('./api-types').StudyLibrarySummaryDto>> {
+    return request('/api/study-library/summary');
+  },
+
+  async getStudySetDetail(examId: string): Promise<ApiResponse<import('./api-types').StudySetDetailDto>> {
+    return request(`/api/study-library/${examId}`);
+  },
+
+  async getSavedStudySets(): Promise<ApiResponse<import('./api-types').StudySetCardDto[]>> {
+    return request('/api/study-library/saved');
+  },
+
+  async saveStudySet(examId: string): Promise<ApiResponse<string>> {
+    return request(`/api/study-library/saved/${examId}`, { method: 'POST' });
+  },
+
+  async removeSavedStudySet(examId: string): Promise<ApiResponse<string>> {
+    return request(`/api/study-library/saved/${examId}`, { method: 'DELETE' });
+  },
+
+  async getStudySetReviews(examId: string, pageNumber = 1, pageSize = 10): Promise<ApiResponse<PagedResult<import('./api-types').ExamReviewDto>>> {
+    return request(`/api/study-library/${examId}/reviews?pageNumber=${pageNumber}&pageSize=${pageSize}`);
+  },
+
+  async submitStudySetReview(examId: string, payload: import('./api-types').SubmitExamReviewRequest): Promise<ApiResponse<import('./api-types').ExamReviewDto>> {
+    return request(`/api/study-library/${examId}/reviews`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  // Tutor Mode Progressive Guidance
+  async requestTutorHint(
+    attemptId: string,
+    payload: { questionId: string; stage: import('./api-types').TutorStage }
+  ): Promise<ApiResponse<import('./api-types').TutorHintResponseDto>> {
+    return request(`/api/attempts/${attemptId}/tutor/hint`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async evaluateTutorAnswer(
+    attemptId: string,
+    payload: { questionId: string; responseJson: string }
+  ): Promise<ApiResponse<import('./api-types').TutorEvaluateResponseDto>> {
+    return request(`/api/attempts/${attemptId}/tutor/evaluate`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
 };
 

@@ -8,13 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { BookMarked, Play, Eye, ArrowRight, Clock, CheckCircle2 } from "lucide-react";
 import { nurviaApi } from "@/lib/api-client";
-import { ExamAttemptSummaryDto } from "@/lib/api-types";
+import { ExamAttemptSummaryDto, StudySetCardDto } from "@/lib/api-types";
+import { StudySetCard } from "@/components/study/StudySetCard";
 
-// My Library is driven entirely by the learner's persisted attempt history.
-// In-progress attempts can be resumed; completed attempts can be reviewed.
-// No static or fabricated content is presented as learner data.
+// My Library is driven by the learner's persisted saved study sets and attempt history.
 export default function MyExamsPage() {
   const [attempts, setAttempts] = React.useState<ExamAttemptSummaryDto[]>([]);
+  const [savedSets, setSavedSets] = React.useState<StudySetCardDto[]>([]);
   const [isLoading, setIsLoading] = React.useState<boolean>(true);
   const [loadFailed, setLoadFailed] = React.useState<boolean>(false);
 
@@ -22,12 +22,18 @@ export default function MyExamsPage() {
     let cancelled = false;
     async function loadLibrary() {
       try {
-        const res = await nurviaApi.getAttemptHistory();
+        const [attemptsRes, savedRes] = await Promise.all([
+          nurviaApi.getAttemptHistory(),
+          nurviaApi.getSavedStudySets(),
+        ]);
         if (!cancelled) {
-          if (res.success && res.data) {
-            setAttempts(res.data);
+          if (attemptsRes.success && attemptsRes.data) {
+            setAttempts(attemptsRes.data);
           } else {
             setLoadFailed(true);
+          }
+          if (savedRes.success && savedRes.data) {
+            setSavedSets(savedRes.data);
           }
         }
       } catch {
@@ -39,6 +45,13 @@ export default function MyExamsPage() {
     void loadLibrary();
     return () => { cancelled = true; };
   }, []);
+
+  const handleToggleSave = async (studySet: StudySetCardDto) => {
+    const res = await nurviaApi.removeSavedStudySet(studySet.id);
+    if (res.success) {
+      setSavedSets((prev) => prev.filter((item) => item.id !== studySet.id));
+    }
+  };
 
   const inProgress = attempts.filter((a) => a.status === "InProgress");
   const completed = attempts.filter((a) => a.status !== "InProgress").slice(0, 6);
@@ -73,7 +86,7 @@ export default function MyExamsPage() {
               </Card>
             ))}
           </div>
-        ) : attempts.length === 0 ? (
+        ) : attempts.length === 0 && savedSets.length === 0 ? (
           <Card className="p-10 text-center space-y-3">
             <BookMarked className="w-8 h-8 mx-auto text-foreground-muted" />
             <p className="font-brand font-bold text-sm text-foreground">
@@ -82,9 +95,9 @@ export default function MyExamsPage() {
             <p className="text-xs text-foreground-secondary">
               {loadFailed
                 ? "Please try again later."
-                : "Start an examination from the Study Library and it will appear here with your progress."}
+                : "Save study sets or start an examination from the Study Library to see them here."}
             </p>
-            <Link href="/learner/exams">
+            <Link href="/learner/library">
               <Button size="sm" className="text-xs bg-brand-teal hover:bg-brand-tealDark text-white">
                 Open the Study Library
               </Button>
@@ -92,6 +105,22 @@ export default function MyExamsPage() {
           </Card>
         ) : (
           <div className="space-y-8">
+            {savedSets.length > 0 && (
+              <section aria-labelledby="saved-sets-heading" className="space-y-4">
+                <h2 id="saved-sets-heading" className="font-brand text-base font-bold text-foreground flex items-center gap-2">
+                  <BookMarked className="w-4 h-4 text-brand-teal" /> Saved Study Sets
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {savedSets.map((studySet) => (
+                    <StudySetCard
+                      key={studySet.id}
+                      studySet={studySet}
+                      onToggleSave={handleToggleSave}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
             {inProgress.length > 0 && (
               <section aria-labelledby="continue-heading" className="space-y-4">
                 <h2 id="continue-heading" className="font-brand text-base font-bold text-foreground flex items-center gap-2">

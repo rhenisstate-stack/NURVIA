@@ -25,12 +25,15 @@ function test(name, fn) {
 }
 
 // 1. Study Library View & Catalog Wiring
-test('1. Study Library View lists only persisted published exams and starts by persisted exam id', () => {
+test('1. Study Library View lists only persisted published study sets and starts by persisted exam id', () => {
   const libraryFile = fs.readFileSync(path.join(webRoot, 'components', 'study', 'study-library-view.tsx'), 'utf8');
-  assert(libraryFile.includes('status: "Published"'), 'Published exam status query missing');
-  assert(libraryFile.includes('examId: exam.id'), 'Live examId query parameter missing');
+  const actionsFile = fs.readFileSync(path.join(webRoot, 'components', 'study', 'StudySetCardActions.tsx'), 'utf8');
+  assert(libraryFile.includes('nurviaApi.getStudyLibrary'), 'getStudyLibrary API call missing');
+  assert(libraryFile.includes('nurviaApi.getStudyLibraryFilters'), 'getStudyLibraryFilters API call missing');
+  assert(libraryFile.includes('nurviaApi.getStudyLibrarySummary'), 'getStudyLibrarySummary API call missing');
+  assert(actionsFile.includes('examId'), 'Live examId query parameter missing');
   assert(!libraryFile.includes('initialStudySets'), 'Static study-set fallback must not be presented as live exams');
-  assert(libraryFile.includes('setExams'), 'Published exam response is not rendered');
+  assert(libraryFile.includes('setStudySets'), 'Published study sets response is not rendered');
 });
 
 // 2. Exam Session Lifecycle & Review Mode

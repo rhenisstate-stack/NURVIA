@@ -440,3 +440,111 @@ export interface ReviewLectureRequest {
   decision: 'Approved' | 'Rejected';
   comments: string;
 }
+
+export interface StudySetCardDto {
+  id: string;
+  code: string;
+  title: string;
+  description: string;
+  pathway: NursingPathway;
+  category: ExamCategory;
+  modeAllowed: ExamDeliveryMode;
+  timeLimitMinutes: number;
+  passingScorePercentage: number;
+  totalQuestions: number;
+  school?: string | null;
+  academicYear?: number | null;
+  season?: string | null;
+  subject?: string | null;
+  topic?: string | null;
+  difficulty?: DifficultyLevel | null;
+  allowedLayouts: ExamLayoutPolicy;
+  defaultLayout: ExamLayout;
+  averageRating?: number | null;
+  reviewCount: number;
+  featuredTestimonial?: string | null;
+  isSaved: boolean;
+}
+
+export interface ExamReviewDto {
+  id: string;
+  examId: string;
+  learnerName: string;
+  rating: number;
+  comment?: string | null;
+  createdAtUtc: string;
+}
+
+export interface StudySetDetailDto extends StudySetCardDto {
+  instructions: string;
+  learningObjectives: string[];
+  subjectsCovered: string[];
+  topicsCovered: string[];
+  questionTypesIncluded: QuestionType[];
+  reviews: ExamReviewDto[];
+  canReview: boolean;
+  learnerReview?: ExamReviewDto | null;
+}
+
+export interface StudyLibraryExamOptionDto {
+  id: string;
+  code: string;
+  title: string;
+}
+
+export interface StudyLibraryFiltersDto {
+  pathways: NursingPathway[];
+  categories: ExamCategory[];
+  schools: string[];
+  academicYears: number[];
+  seasons: string[];
+  subjects: string[];
+  topics: string[];
+  difficulties: DifficultyLevel[];
+  questionTypes: QuestionType[];
+  exams: StudyLibraryExamOptionDto[];
+}
+
+export interface StudyLibrarySummaryDto {
+  totalPublishedStudySets: number;
+  totalAvailableQuestions: number;
+  totalCategories: number;
+  totalPathways: number;
+}
+
+export interface SubmitExamReviewRequest {
+  rating: number;
+  comment?: string | null;
+}
+
+export type TutorStage = 'FirstHint' | 'GuidedReasoning' | 'ExplainConcept';
+
+export interface TutorHintResponseDto {
+  questionId: string;
+  stage: TutorStage;
+  title: string;
+  content: string;
+  eliminatedOptionIds: string[];
+  isAiGenerated: boolean;
+}
+
+export interface TutorOptionExplanationDto {
+  optionId: string;
+  optionIndex: string;
+  optionText: string;
+  isCorrect: boolean;
+  specificRationale?: string | null;
+}
+
+export interface TutorEvaluateResponseDto {
+  questionId: string;
+  isCorrect: boolean;
+  pointsAwarded: number;
+  maxPoints: number;
+  generalRationale: string;
+  optionRationales: TutorOptionExplanationDto[];
+  clinicalConcept: string;
+  nursingPrinciple: string;
+  takeaway: string;
+  isAiGenerated: boolean;
+}
