@@ -123,4 +123,13 @@ test('5. MultipleImageSelection emits the canonical multi-selection payload', ()
   assert(mis.includes('aria-pressed'), 'Selection buttons must expose toggle state to assistive technology');
 });
 
+test('6. ShortAnswer emits a payload the grader consumes', () => {
+  const shortAnswer = fs.readFileSync(path.join(renderersDir, 'ShortAnswerRenderer.tsx'), 'utf8');
+  // Canonical contract consumed by QuestionResponseGrader (Cloze/ShortAnswer case)
+  assert(shortAnswer.includes('{ TextResponse: val }'), 'Renderer must emit the canonical TextResponse payload');
+  assert(shortAnswer.includes('parsed.TextResponse'), 'Renderer must restore saved TextResponse values');
+  assert(shortAnswer.includes('parsed.ShortAnswer'), 'Renderer must restore legacy ShortAnswer payloads for in-flight attempts');
+  assert(!/JSON\.stringify\(\{ ShortAnswer: val \}\)/.test(shortAnswer), 'Renderer must no longer emit the unconsumed ShortAnswer payload');
+});
+
 console.log(`\nAll ${totalTests} question renderer test suites PASSED successfully (${passedTests}/${totalTests})!`);

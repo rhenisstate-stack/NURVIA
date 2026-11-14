@@ -102,9 +102,14 @@ public static class QuestionResponseGrader
                     if (trimmedText.StartsWith("{"))
                     {
                         // Parse before lowercasing: TryGetProperty is case-sensitive.
+                        // "ShortAnswer"/"shortAnswer" are legacy payloads persisted by
+                        // earlier renderer versions and remain gradable for in-flight
+                        // attempts; new submissions use the canonical "TextResponse".
                         using var txtDoc = JsonDocument.Parse(trimmedText);
                         if (txtDoc.RootElement.TryGetProperty("TextResponse", out var tprop) ||
                             txtDoc.RootElement.TryGetProperty("textResponse", out tprop) ||
+                            txtDoc.RootElement.TryGetProperty("ShortAnswer", out tprop) ||
+                            txtDoc.RootElement.TryGetProperty("shortAnswer", out tprop) ||
                             txtDoc.RootElement.TryGetProperty("value", out tprop))
                         {
                             textResponse = tprop.GetString()?.Trim().ToLowerInvariant() ?? "";

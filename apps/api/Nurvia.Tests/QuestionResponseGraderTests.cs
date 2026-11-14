@@ -332,6 +332,62 @@ public class QuestionResponseGraderTests
         Assert.Equal(0m, result.Fraction);
     }
 
+    [Fact]
+    public void Evaluate_ShortAnswer_LegacyPayload_IsStillGradable()
+    {
+        // {"ShortAnswer":"..."} was persisted by earlier renderer versions; the
+        // grader must keep extracting the text instead of falling back to
+        // comparing the raw JSON string against the answer key.
+        var qv = NewVersion(QuestionType.ShortAnswer);
+        qv.Options.Add(Opt(1, "naloxone", true));
+
+        var legacy = QuestionResponseGrader.Evaluate(qv, "{\"ShortAnswer\":\"Naloxone\"}");
+        var canonical = QuestionResponseGrader.Evaluate(qv, "{\"TextResponse\":\"  NALOXONE  \"}");
+
+        Assert.True(legacy.IsCorrect);
+        Assert.Equal(1m, legacy.Fraction);
+        Assert.True(canonical.IsCorrect, "Whitespace must be normalized before comparison");
+    }
+
+    [Fact]
+    public void Evaluate_ShortAnswer_EmptyResponse_IsNotCorrect()
+    {
+        var qv = NewVersion(QuestionType.ShortAnswer);
+        qv.Options.Add(Opt(1, "naloxone", true));
+
+        var empty = QuestionResponseGrader.Evaluate(qv, "{\"TextResponse\":\"\"}");
+        var whitespace = QuestionResponseGrader.Evaluate(qv, "{\"TextResponse\":\"   \"}");
+
+        Assert.False(empty.IsCorrect);
+        Assert.False(whitespace.IsCorrect);
+    }
+
+    [Fact]
+    public void Evaluate_ShortAnswer_MalformedPayload_IsNotCorrect()
+    {
+        var qv = NewVersion(QuestionType.ShortAnswer);
+        qv.Options.Add(Opt(1, "naloxone", true));
+
+        var malformed = QuestionResponseGrader.Evaluate(qv, "{not valid json");
+        var unknownShape = QuestionResponseGrader.Evaluate(qv, "{\"unrelatedField\":\"naloxone\"}");
+
+        Assert.False(malformed.IsCorrect);
+        Assert.False(unknownShape.IsCorrect);
+    }
+
+    [Fact]
+    public void Evaluate_ShortAnswer_MissingExpectedAnswer_IsNotCorrect()
+    {
+        // A question version without any IsCorrect option has no grading key.
+        var qv = NewVersion(QuestionType.ShortAnswer);
+        qv.Options.Add(Opt(1, "naloxone", false));
+
+        var result = QuestionResponseGrader.Evaluate(qv, "{\"TextResponse\":\"naloxone\"}");
+
+        Assert.False(result.IsCorrect);
+        Assert.Equal(0m, result.Fraction);
+    }
+
     // ---------------------------------------------------------------
     // 6. OrderedResponse: DisplayOrder sequence is the key
     // ---------------------------------------------------------------

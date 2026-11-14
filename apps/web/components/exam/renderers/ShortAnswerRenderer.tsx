@@ -13,23 +13,27 @@ export function ShortAnswerRenderer({
   disabled = false,
   isReview = false,
 }: QuestionRendererProps) {
+  // Canonical response contract: {"TextResponse": "<text>"} — consumed verbatim by
+  // QuestionResponseGrader. Legacy {"ShortAnswer": "<text>"} payloads persisted by
+  // earlier renderer versions are restored for in-flight attempts.
   const currentText = React.useMemo(() => {
     if (!value) return "";
     try {
       if (value.startsWith("{")) {
         const parsed = JSON.parse(value);
-        return parsed.ShortAnswer || parsed.shortAnswer || parsed.value || "";
+        return parsed.TextResponse || parsed.textResponse || parsed.value
+          ?? parsed.ShortAnswer ?? parsed.shortAnswer ?? "";
       }
       return value.replace(/^"(.*)"$/, "$1");
     } catch {
-      return value;
+      return "";
     }
   }, [value]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (disabled) return;
     const val = e.target.value;
-    onChange?.(JSON.stringify({ ShortAnswer: val }));
+    onChange?.(JSON.stringify({ TextResponse: val }));
   };
 
   const correctOption = question.options.find((o) => o.isCorrect);
