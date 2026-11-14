@@ -53,8 +53,12 @@ export default function AttemptHistoryPage() {
                   : a.status === "InProgress"
                   ? "In Progress"
                   : "Pending",
-              mode: a.status === "Completed" ? "Official Exam" : "Active Attempt",
-              duration: a.submittedAtUtc ? `${a.totalQuestions} Questions` : "In Progress",
+              // Backend attempt statuses are InProgress / Submitted / Graded / Expired.
+              // Any non-InProgress attempt has ended and is reviewable.
+              mode: a.status === "InProgress" ? "Active Attempt" : "Official Exam",
+              duration: a.status === "InProgress"
+                ? "In Progress"
+                : a.submittedAtUtc ? `${a.totalQuestions} Questions` : "Ended",
               status: a.status,
               passed: a.passed,
             };
@@ -129,7 +133,7 @@ export default function AttemptHistoryPage() {
                       </td>
                       <td className="p-4 text-foreground-muted">{a.duration}</td>
                       <td className="p-4 text-right">
-                        {a.status === "Completed" ? (
+                        {a.status !== "InProgress" ? (
                           <Link href={`/exam-session?attemptId=${a.id}&mode=Review`}>
                             <Button
                               variant="ghost"

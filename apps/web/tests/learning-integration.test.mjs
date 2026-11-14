@@ -53,6 +53,11 @@ test('3. Learner History page queries getAttemptHistory and links to review/resu
   assert(historyFile.includes('mode=Exam'), 'Exam mode URL query missing');
   assert(historyFile.includes('scorePercentage'), 'Score percentage rendering missing');
   assert(historyFile.includes('submittedAtUtc'), 'Submission timestamp handling missing');
+  // Backend attempt statuses are InProgress / Submitted / Graded / Expired.
+  // The page must not gate review actions on a status value the backend never sends.
+  assert(!historyFile.includes('"Completed"'), 'Attempt history must not match the non-existent backend status "Completed"');
+  assert(historyFile.includes('a.status === "InProgress"'), 'Active-attempt detection must use the persisted InProgress status');
+  assert(historyFile.includes('a.status !== "InProgress"'), 'Review eligibility must use the persisted non-InProgress statuses');
 });
 
 // 4. Custom Practice Engine Configuration
