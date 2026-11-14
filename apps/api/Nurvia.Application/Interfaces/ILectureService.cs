@@ -8,6 +8,10 @@ public interface ILectureService
     Task<IReadOnlyList<LectureCatalogueItemDto>> GetPublishedCatalogueAsync(
         CancellationToken ct = default);
 
+    Task<IReadOnlyList<LectureCatalogueItemDto>> GetPublishedCatalogueAsync(
+        CurrentUser? user,
+        CancellationToken ct = default);
+
     Task<LectureContentDto?> GetPublishedBySlugAsync(
         string slug,
         CurrentUser user,

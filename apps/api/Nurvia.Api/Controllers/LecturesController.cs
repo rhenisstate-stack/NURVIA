@@ -27,7 +27,8 @@ public class LecturesController : ControllerBase
     public async Task<ActionResult<ApiResponse<IReadOnlyList<LectureCatalogueItemDto>>>> GetCatalogue(
         CancellationToken ct)
     {
-        var result = await _lectureService.GetPublishedCatalogueAsync(ct);
+        var user = HttpContext.GetCurrentUser();
+        var result = await _lectureService.GetPublishedCatalogueAsync(user, ct);
 
         return Ok(ApiResponse<IReadOnlyList<LectureCatalogueItemDto>>.Ok(
             result,

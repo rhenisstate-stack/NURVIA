@@ -19,16 +19,25 @@ public class LectureService : ILectureService
         _audit = audit;
     }
 
+    public Task<IReadOnlyList<LectureCatalogueItemDto>> GetPublishedCatalogueAsync(
+        CancellationToken ct = default)
+        => GetPublishedCatalogueAsync(null, ct);
+
     public async Task<IReadOnlyList<LectureCatalogueItemDto>> GetPublishedCatalogueAsync(
+        CurrentUser? user,
         CancellationToken ct = default)
     {
+        var canReadProtected = CanReadProtectedLectures(user);
+
         var lectures = await _context.Lectures
             .AsNoTracking()
             .Where(l => l.Status == ContentStatus.Published)
             .OrderBy(l => l.Number)
             .ToListAsync(ct);
 
-        return lectures.Select(MapToCatalogueDto).ToList();
+        return lectures
+            .Select(l => MapToCatalogueDto(l, canReadProtected))
+            .ToList();
     }
 
     public async Task<LectureContentDto?> GetPublishedBySlugAsync(
@@ -51,19 +60,11 @@ public class LectureService : ILectureService
         if (lecture == null)
             return null;
 
-        if (lecture.AccessLevel == LectureAccessLevel.AuthenticatedLearner)
+        if (lecture.AccessLevel == LectureAccessLevel.AuthenticatedLearner &&
+            !CanReadProtectedLectures(user))
         {
-            var canRead = user.HasRole(
-                "Learner",
-                "Author",
-                "Reviewer",
-                "Publisher",
-                "Administrator",
-                "Superadmin");
-
-            if (!canRead)
-                throw new UnauthorizedAccessException(
-                    "Authentication and learner access are required to read this lecture.");
+            throw new UnauthorizedAccessException(
+                "Authentication and learner access are required to read this lecture.");
         }
 
         return MapToContentDto(lecture);
@@ -321,8 +322,21 @@ public class LectureService : ILectureService
                 $"Lecture slug '{slug}' is already in use.");
     }
 
-    private static LectureCatalogueItemDto MapToCatalogueDto(Lecture lecture)
+    private static bool CanReadProtectedLectures(CurrentUser? user)
     {
+        return user != null && user.HasRole(
+            "Learner",
+            "Author",
+            "Reviewer",
+            "Publisher",
+            "Administrator",
+            "Superadmin");
+    }
+
+    private static LectureCatalogueItemDto MapToCatalogueDto(Lecture lecture, bool canReadProtected)
+    {
+        var includeConcepts = lecture.AccessLevel == LectureAccessLevel.Public || canReadProtected;
+
         return new LectureCatalogueItemDto
         {
             Id = lecture.Id,
@@ -331,7 +345,9 @@ public class LectureService : ILectureService
             Title = lecture.Title,
             Category = lecture.Category,
             Summary = lecture.Summary,
-            HighYieldConcepts = lecture.HighYieldConcepts.ToList(),
+            HighYieldConcepts = includeConcepts
+                ? lecture.HighYieldConcepts.ToList()
+                : new List<string>(),
             AccessLevel = lecture.AccessLevel
         };
     }
