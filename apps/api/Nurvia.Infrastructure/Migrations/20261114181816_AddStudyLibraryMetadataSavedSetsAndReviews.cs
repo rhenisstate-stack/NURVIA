@@ -29,7 +29,8 @@ namespace Nurvia.Infrastructure.Migrations
                 name: "LearningObjectives",
                 table: "Exams",
                 type: "text[]",
-                nullable: false);
+                nullable: false,
+                defaultValueSql: "'{}'::text[]");
 
             migrationBuilder.AddColumn<string>(
                 name: "School",

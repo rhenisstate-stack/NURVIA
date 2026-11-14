@@ -67,6 +67,7 @@ public class ExamConfiguration : IEntityTypeConfiguration<Exam>
 
         builder.Property(e => e.LearningObjectives)
             .HasColumnType("text[]")
+            .HasDefaultValueSql("'{}'::text[]")
             .IsRequired();
 
         builder.HasIndex(e => new { e.Status, e.Pathway, e.Category });
