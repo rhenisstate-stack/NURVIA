@@ -23,6 +23,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { nurviaApi } from "@/lib/api-client";
+import { QuestionRendererRegistry, RendererQuestion } from "@/components/exam/renderers";
 import {
   QuestionDto,
   QuestionType,
@@ -59,6 +60,9 @@ export default function EditQuestionPage() {
   const [options, setOptions] = React.useState<QuestionOptionDto[]>([]);
   const [exhibits, setExhibits] = React.useState<QuestionExhibitDto[]>([]);
   const [contentJsonData, setContentJsonData] = React.useState("");
+  const [previewMode, setPreviewMode] = React.useState(false);
+  const [previewResponse, setPreviewResponse] = React.useState<string | null>(null);
+  const [showPreviewRationale, setShowPreviewRationale] = React.useState(false);
 
   React.useEffect(() => {
     async function load() {
@@ -200,6 +204,14 @@ export default function EditQuestionPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPreviewMode((prev) => !prev)}
+              className="gap-1.5 text-xs"
+            >
+              <Eye className="w-4 h-4" /> {previewMode ? "Authoring Mode" : "Learner Preview"}
+            </Button>
             {isPublished ? (
               <Button
                 variant="outline"
@@ -258,7 +270,84 @@ export default function EditQuestionPage() {
           </div>
         )}
 
-        {/* Edit Form */}
+        {previewMode ? (
+          <div className="space-y-6">
+            <div className="p-3 bg-brand-teal/10 border border-brand-teal/30 rounded-xl text-xs text-brand-teal flex items-center justify-between">
+              <span className="font-semibold flex items-center gap-2">
+                <Eye className="w-4 h-4" /> Simulating Student Exam Experience (Read-Only Preview)
+              </span>
+              <span className="text-foreground-muted">
+                {questionType} • {difficulty}
+              </span>
+            </div>
+
+            <Card className="p-6 space-y-6 border-2 border-brand-navy/20 dark:border-border">
+              {(() => {
+                const previewQuestion: RendererQuestion = {
+                  id: id || "preview-edit",
+                  orderIndex: 1,
+                  stem: stem || "Question stem preview will appear here...",
+                  questionType,
+                  cognitiveSkill,
+                  clientNeedCategory: clientNeed,
+                  generalRationale: generalRationale || undefined,
+                  contentJsonData: contentJsonData.trim() || undefined,
+                  options: options.map((opt) => ({
+                    id: opt.id || `preview-opt-${opt.optionIndex}`,
+                    optionIndex: opt.optionIndex,
+                    optionText: opt.optionText || `Option choice ${opt.optionIndex}`,
+                    displayOrder: opt.displayOrder ?? opt.optionIndex,
+                    isCorrect: showPreviewRationale ? opt.isCorrect : undefined,
+                    specificRationale: showPreviewRationale ? opt.specificRationale : undefined,
+                  })),
+                  exhibits: exhibits.map((exh, idx) => ({
+                    id: exh.id || `preview-exh-${idx}`,
+                    type: exh.type,
+                    title: exh.title,
+                    content: exh.content,
+                    displayOrder: exh.displayOrder ?? idx + 1,
+                  })),
+                };
+
+                return (
+                  <QuestionRendererRegistry
+                    question={previewQuestion}
+                    value={previewResponse}
+                    onChange={setPreviewResponse}
+                    isReview={showPreviewRationale}
+                  />
+                );
+              })()}
+
+              <div className="flex items-center justify-between pt-4 border-t border-border">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowPreviewRationale((prev) => !prev)}
+                  className="text-xs text-brand-teal border-brand-teal/30"
+                >
+                  {showPreviewRationale ? "Hide Rationale" : "Check Answer & Rationale"}
+                </Button>
+                <div className="text-xs text-foreground-muted font-medium">
+                  {cognitiveSkill} • {clientNeed}
+                </div>
+              </div>
+
+              {showPreviewRationale && (
+                <div className="p-5 rounded-xl bg-surface-muted border border-brand-teal/30 space-y-3">
+                  <div className="text-sm font-bold text-foreground flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                    Clinical Rationale
+                  </div>
+                  <div className="text-xs leading-relaxed text-foreground-secondary whitespace-pre-wrap">
+                    {generalRationale || "No general rationale provided yet."}
+                  </div>
+                </div>
+              )}
+            </Card>
+          </div>
+        ) : (
+        /* Edit Form */
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             <Card className="p-5 space-y-4">
@@ -402,6 +491,7 @@ export default function EditQuestionPage() {
             </Card>
           </div>
         </div>
+        )}
       </div>
     </AdminShell>
   );

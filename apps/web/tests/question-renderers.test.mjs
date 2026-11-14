@@ -132,10 +132,13 @@ test('6. ShortAnswer emits a payload the grader consumes', () => {
   assert(!/JSON\.stringify\(\{ ShortAnswer: val \}\)/.test(shortAnswer), 'Renderer must no longer emit the unconsumed ShortAnswer payload');
 });
 
-test('7. Admin question authoring preview reuses QuestionRendererRegistry', () => {
+test('7. Admin question authoring and edit previews reuse QuestionRendererRegistry', () => {
   const newQuestionPage = fs.readFileSync(path.join(webRoot, 'app', 'admin', 'questions', 'new', 'page.tsx'), 'utf8');
+  const editQuestionPage = fs.readFileSync(path.join(webRoot, 'app', 'admin', 'questions', '[id]', 'edit', 'page.tsx'), 'utf8');
   assert(newQuestionPage.includes('QuestionRendererRegistry'), 'Authoring preview must reuse QuestionRendererRegistry');
   assert(newQuestionPage.includes('isReview={showPreviewRationale}'), 'Authoring preview must pass isReview to the canonical renderer');
+  assert(editQuestionPage.includes('QuestionRendererRegistry'), 'Edit preview must reuse QuestionRendererRegistry');
+  assert(editQuestionPage.includes('isReview={showPreviewRationale}'), 'Edit preview must pass isReview to the canonical renderer');
 });
 
 console.log(`\nAll ${totalTests} question renderer test suites PASSED successfully (${passedTests}/${totalTests})!`);
