@@ -109,4 +109,13 @@ test('7. Admin lecture management page wires Author -> Reviewer -> Publisher wor
   assert(!adminLectures.includes('window.confirm'), 'Admin lectures must not use native window.confirm');
 });
 
+test('8. Tutor evaluation avoids double-JSON-serialization and ExamShell guards zero-question progress', () => {
+  const session = fs.readFileSync(path.join(webRoot, 'app', 'exam-session', 'page.tsx'), 'utf8');
+  assert(session.includes('serializedAnswer={answers[q.id] ?? null}'), 'TutorModePanel must pass raw JSON string answers[q.id]');
+  assert(!session.includes('serializedAnswer={answers[q.id] ? JSON.stringify(answers[q.id])'), 'TutorModePanel must not double-stringify answers[q.id]');
+
+  const shell = fs.readFileSync(path.join(webRoot, 'components', 'layout', 'exam-shell.tsx'), 'utf8');
+  assert(shell.includes('totalQuestions > 0'), 'ExamShell must guard progressPct against totalQuestions === 0');
+});
+
 console.log(`\nAll ${totalTests} Stage 7 test suites PASSED successfully (${passedTests}/${totalTests})!`);

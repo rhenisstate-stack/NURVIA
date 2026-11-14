@@ -562,7 +562,7 @@ function ExamSessionContent() {
             attemptId={attemptId}
             questionId={q.id}
             hasSelectedAnswer={Boolean(answers[q.id])}
-            serializedAnswer={answers[q.id] ? JSON.stringify(answers[q.id]) : null}
+            serializedAnswer={answers[q.id] ?? null}
             evaluation={tutorEvaluations[q.id] ?? null}
             onEvaluated={(result) =>
               setTutorEvaluations((prev) => ({ ...prev, [q.id]: result }))

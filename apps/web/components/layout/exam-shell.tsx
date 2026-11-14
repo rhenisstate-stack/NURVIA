@@ -105,7 +105,9 @@ export function ExamShell({
       .padStart(2, "0")}:${remainingSecs.toString().padStart(2, "0")}`;
   };
 
-  const progressPct = (currentQuestion / totalQuestions) * 100;
+  const progressPct = totalQuestions > 0
+    ? Math.min(100, Math.max(0, (currentQuestion / totalQuestions) * 100))
+    : 0;
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
