@@ -34,6 +34,34 @@ import { useAuth } from "@/components/auth/auth-provider";
 
 type DeliveryMode = "Review" | "Exam" | "Tutor";type LayoutPolicy = "AllInOneOnly" | "SequentialOnly" | "Both" | null;
 
+function formatUtcTimestamp(iso?: string | null): string {
+  if (!iso) return "—";
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return "—";
+  return parsed.toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+function formatAllocatedMinutes(minutes?: number | null): string {
+  if (typeof minutes !== "number" || !Number.isFinite(minutes) || minutes <= 0) {
+    return "Untimed";
+  }
+  return `${Math.round(minutes)} min`;
+}
+
+function formatElapsedDuration(seconds?: number | null): string {
+  if (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds < 0) {
+    return "—";
+  }
+  const total = Math.floor(seconds);
+  const mins = Math.floor(total / 60);
+  const secs = total % 60;
+  if (mins === 0) return `${secs}s`;
+  return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+}
+
 function ExamSessionContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -599,11 +627,16 @@ function ExamSessionContent() {
                   {submittedResult.passed ? <Trophy className="w-6 h-6" /> : <AlertTriangle className="w-6 h-6" />}
                 </div>
                 <div>
+                  <p className="text-[11px] font-medium text-foreground-muted">
+                    {submittedResult.examTitle || examTitle}
+                  </p>
                   <h3 className="font-brand font-bold text-lg text-foreground">
                     {submittedResult.passed ? "Examination Passed!" : "Remediation Recommended"}
                   </h3>
                   <p className="text-xs text-foreground-secondary">
-                    Your attempt has been scored deterministically. Review clinical rationales below.
+                    {submittedResult.reviewReleased
+                      ? "Your attempt has been scored deterministically. Review clinical rationales below."
+                      : "Your attempt has been scored deterministically. Detailed rationales are currently withheld."}
                   </p>
                 </div>
               </div>
@@ -623,7 +656,7 @@ function ExamSessionContent() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-foreground-secondary">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 text-xs text-foreground-secondary">
               <div className="p-3 rounded-xl bg-surface-muted border border-border/50">
                 <span className="block text-[11px] text-foreground-muted">Total Questions</span>
                 <span className="font-bold text-sm text-foreground">{submittedResult.totalQuestions}</span>
@@ -633,15 +666,29 @@ function ExamSessionContent() {
                 <span className="font-bold text-sm text-emerald-600">{submittedResult.correctQuestions}</span>
               </div>
               <div className="p-3 rounded-xl bg-surface-muted border border-border/50">
-                <span className="block text-[11px] text-foreground-muted">Time Spent</span>
+                <span className="block text-[11px] text-foreground-muted">Time Allocated</span>
                 <span className="font-bold text-sm text-foreground">
-                  {Math.round(submittedResult.timeSpentSeconds / 60)} minutes
+                  {formatAllocatedMinutes(submittedResult.timeLimitMinutes)}
                 </span>
               </div>
               <div className="p-3 rounded-xl bg-surface-muted border border-border/50">
-                <span className="block text-[11px] text-foreground-muted">Review Mode</span>
-                <span className="font-bold text-sm text-brand-teal">Active</span>
+                <span className="block text-[11px] text-foreground-muted">Time Used</span>
+                <span className="font-bold text-sm text-foreground">
+                  {formatElapsedDuration(submittedResult.timeSpentSeconds)}
+                </span>
               </div>
+              <div className="p-3 rounded-xl bg-surface-muted border border-border/50">
+                <span className="block text-[11px] text-foreground-muted">Review Status</span>
+                <span className="font-bold text-sm text-brand-teal">
+                  {submittedResult.reviewReleased ? "Released" : "Withheld"}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/60 text-[11px] text-foreground-muted">
+              <span>Started: <strong className="text-foreground-secondary">{formatUtcTimestamp(submittedResult.startedAtUtc)}</strong></span>
+              <span>Submitted: <strong className="text-foreground-secondary">{formatUtcTimestamp(submittedResult.submittedAtUtc)}</strong></span>
+              <span>Status: <strong className="text-foreground-secondary">{submittedResult.status}</strong></span>
             </div>
           </div>
         )}

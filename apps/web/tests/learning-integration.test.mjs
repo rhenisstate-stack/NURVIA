@@ -43,6 +43,10 @@ test('2. Exam session hydrates active attempts, completed reviews, and performs 
   assert(sessionFile.includes('nurviaApi.submitAttempt'), 'submitAttempt integration missing');
   assert(sessionFile.includes('hydrateFromReview'), 'hydrateFromReview handler missing');
   assert(sessionFile.includes('hydrateFromAttempt'), 'hydrateFromAttempt handler missing');
+  assert(sessionFile.includes('submittedResult.timeLimitMinutes'), 'Allocated timeLimitMinutes display missing');
+  assert(sessionFile.includes('submittedResult.startedAtUtc'), 'Attempt startedAtUtc display missing');
+  assert(sessionFile.includes('submittedResult.submittedAtUtc'), 'Attempt submittedAtUtc display missing');
+  assert(sessionFile.includes('submittedResult.timeSpentSeconds'), 'Elapsed timeSpentSeconds display missing');
 });
 
 // 3. Learner Attempt History Wiring
