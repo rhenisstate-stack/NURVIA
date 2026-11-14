@@ -41,3 +41,5 @@ Thumbs.db
 #pg-data
 pg-data/
 .pgdata/
+
+.tsbuildinfo
