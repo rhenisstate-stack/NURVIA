@@ -119,9 +119,42 @@ public class QuestionVersion : Entity, IAuditableEntity
                 break;
 
             case QuestionType.Matching:
-                if (Options.Count < 2 && string.IsNullOrWhiteSpace(ContentJsonData))
-                    errors.Add("Matching questions require at least 2 premise-response matching pairs.");
+            {
+                // Matching data represents pairs as alternating option entries: a premise
+                // at an even position followed directly by its correct response at the
+                // next odd position. QuestionResponseGrader derives the authoritative
+                // answer key from this convention, so options (not ContentJsonData) are
+                // always required and the pairing must be structurally complete.
+                if (Options.Count < 2)
+                {
+                    errors.Add("Matching questions require at least 2 premise-response matching pair entries.");
+                }
+                else
+                {
+                    if (Options.Count % 2 != 0)
+                    {
+                        errors.Add("Matching questions require an even number of options — each premise followed directly by its correct response.");
+                    }
+
+                    var ordered = Options.OrderBy(o => o.DisplayOrder).ToList();
+                    for (var i = 0; i < ordered.Count - 1; i += 2)
+                    {
+                        if (string.IsNullOrWhiteSpace(ordered[i].OptionText) ||
+                            string.IsNullOrWhiteSpace(ordered[i + 1].OptionText))
+                        {
+                            errors.Add("Every matching pair must include both a complete premise and a complete response.");
+                            break;
+                        }
+                    }
+                }
+
+                if (Options.Select(o => o.OptionIndex).Distinct().Count() != Options.Count)
+                {
+                    errors.Add("Matching options must use distinct option identifiers so learner responses map to the correct pair.");
+                }
+
                 break;
+            }
 
             case QuestionType.FillInTheBlank: // Also Cloze
                 var hasBlankInStem = Stem.Contains("____") || Stem.Contains("[blank]") || Stem.Contains("{blank}") || Stem.Contains("{1}");

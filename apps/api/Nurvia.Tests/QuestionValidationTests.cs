@@ -1,3 +1,4 @@
+using Nurvia.Application.Questions;
 using Nurvia.Domain.Enums;
 using Nurvia.Domain.Questions;
 using Xunit;
@@ -149,15 +150,111 @@ public class QuestionValidationTests
     }
 
     [Fact]
-    public void Type11_Matching_Passes_With_Options_Or_JsonData()
+    public void Type11_Matching_Passes_With_Complete_Alternating_Pairs()
     {
         var qv = CreateBaseVersion(QuestionType.Matching);
-        qv.ContentJsonData = "{\"pairs\": [{\"premise\": \"Furosemide\", \"match\": \"Loop Diuretic\"}, {\"premise\": \"Lisinopril\", \"match\": \"ACE Inhibitor\"}]}";
+        qv.Options.Add(new QuestionOption(0, "Furosemide", true));
+        qv.Options.Add(new QuestionOption(1, "Loop Diuretic", true));
+        qv.Options.Add(new QuestionOption(2, "Lisinopril", true));
+        qv.Options.Add(new QuestionOption(3, "ACE Inhibitor", true));
 
         var isValid = qv.Validate(out var errors);
 
         Assert.True(isValid);
         Assert.Empty(errors);
+    }
+
+    [Fact]
+    public void Type11_Matching_OddOptionCount_IsRejected()
+    {
+        var qv = CreateBaseVersion(QuestionType.Matching);
+        qv.Options.Add(new QuestionOption(0, "Furosemide", true));
+        qv.Options.Add(new QuestionOption(1, "Loop Diuretic", true));
+        qv.Options.Add(new QuestionOption(2, "Lisinopril", true));
+
+        var isValid = qv.Validate(out var errors);
+
+        Assert.False(isValid);
+        Assert.Contains(errors, e => e.Contains("even number of options"));
+    }
+
+    [Fact]
+    public void Type11_Matching_IncompletePair_IsRejected()
+    {
+        var qv = CreateBaseVersion(QuestionType.Matching);
+        qv.Options.Add(new QuestionOption(0, "Furosemide", true));
+        qv.Options.Add(new QuestionOption(1, "", true));
+
+        var isValid = qv.Validate(out var errors);
+
+        Assert.False(isValid);
+        Assert.Contains(errors, e => e.Contains("complete premise and a complete response"));
+    }
+
+    [Fact]
+    public void Type11_Matching_DuplicateOptionIdentifiers_AreRejected()
+    {
+        var qv = CreateBaseVersion(QuestionType.Matching);
+        qv.Options.Add(new QuestionOption(0, "Furosemide", true));
+        qv.Options.Add(new QuestionOption(0, "Loop Diuretic", true));
+
+        var isValid = qv.Validate(out var errors);
+
+        Assert.False(isValid);
+        Assert.Contains(errors, e => e.Contains("distinct option identifiers"));
+    }
+
+    [Fact]
+    public void Type11_Matching_ContentJsonDataAlone_CannotSubstituteForPairs()
+    {
+        // QuestionResponseGrader derives the matching key exclusively from the
+        // alternating option entries, so a ContentJsonData-only configuration is
+        // ungradeable and must not pass validation.
+        var qv = CreateBaseVersion(QuestionType.Matching);
+        qv.ContentJsonData = "{\"pairs\": [{\"premise\": \"Furosemide\", \"match\": \"Loop Diuretic\"}]}";
+
+        var isValid = qv.Validate(out var errors);
+
+        Assert.False(isValid);
+        Assert.Contains(errors, e => e.Contains("at least 2 premise-response matching pair entries"));
+    }
+
+    [Fact]
+    public void Type11_Matching_LearnerResponseMapping_MatchesGraderCanonicalKey()
+    {
+        // The renderer partitions the DisplayOrder-ordered option list; the grader
+        // orders by OptionIndex. When both orderings agree, a correct learner match
+        // must grade as correct end to end.
+        var qv = CreateBaseVersion(QuestionType.Matching);
+        var options = new[]
+        {
+            new QuestionOption(1, "Furosemide", true, displayOrder: 1),
+            new QuestionOption(2, "Loop Diuretic", true, displayOrder: 2),
+            new QuestionOption(3, "Lisinopril", true, displayOrder: 3),
+            new QuestionOption(4, "ACE Inhibitor", true, displayOrder: 4),
+        };
+        foreach (var opt in options) qv.Options.Add(opt);
+
+        var isValid = qv.Validate(out var errors);
+        Assert.True(isValid);
+
+        var premise = qv.Options.OrderBy(o => o.OptionIndex).ToList()[0];
+        var correctResponse = qv.Options.OrderBy(o => o.OptionIndex).ToList()[1];
+        var premise2 = qv.Options.OrderBy(o => o.OptionIndex).ToList()[2];
+        var correctResponse2 = qv.Options.OrderBy(o => o.OptionIndex).ToList()[3];
+
+        // Single correct pair of two -> partial credit only.
+        var partial = QuestionResponseGrader.Evaluate(
+            qv, $"{{\"Pairs\":{{\"{premise.Id}\":\"{correctResponse.Id}\"}}}}");
+        Assert.False(partial.IsCorrect);
+        Assert.Equal(0.5m, partial.Fraction);
+
+        // Both pairs matched correctly -> full credit.
+        var payload = $"{{\"Pairs\":{{\"{premise.Id}\":\"{correctResponse.Id}\",\"{premise2.Id}\":\"{correctResponse2.Id}\"}}}}";
+        var graded = QuestionResponseGrader.Evaluate(qv, payload);
+
+        Assert.True(graded.IsCorrect, $"diagnostic fraction={graded.Fraction}");
+        Assert.Equal(1m, graded.Fraction);
     }
 
     [Fact]
