@@ -29,8 +29,10 @@ public static class HttpContextExtensions
         var email = context.User.FindFirstValue(ClaimTypes.Email)
                     ?? string.Empty;
 
-        var role = context.User.FindFirstValue(ClaimTypes.Role)
-                   ?? "Learner";
+        var roleClaim = context.User.FindFirstValue(ClaimTypes.Role);
+        var role = string.IsNullOrWhiteSpace(roleClaim)
+            ? string.Empty
+            : roleClaim;
 
         return new CurrentUser
         {
