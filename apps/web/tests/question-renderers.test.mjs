@@ -110,4 +110,17 @@ test('4. Question renderers support isReview prop and rationale feedback display
   assert(bowTie.includes('isReview'), 'BowTieRenderer missing isReview prop handling');
 });
 
+// 5. Renderer/grader response contract alignment for multi-select and text types
+test('5. MultipleImageSelection emits the canonical multi-selection payload', () => {
+  const mis = fs.readFileSync(path.join(renderersDir, 'MultipleImageSelectionRenderer.tsx'), 'utf8');
+  // Canonical contract consumed by QuestionResponseGrader.FindSelectedOptions
+  assert(mis.includes('{ SelectedOptionIds: next }'), 'Renderer must emit the canonical SelectedOptionIds array payload');
+  assert(mis.includes('SelectedOptionIds ?? parsed.selectedOptionIds'), 'Renderer must restore saved canonical selections');
+  assert(mis.includes('parsed.SelectedOptionId'), 'Renderer must restore legacy scalar payloads for in-flight attempts');
+  assert(mis.includes('selectedIds.includes(id)'), 'Renderer must support toggling multiple selections on');
+  assert(mis.includes('selectedIds.filter'), 'Renderer must support toggling selections off');
+  assert(!/onChange\?\.\(JSON\.stringify\(\{ SelectedOptionId: id \}\)\)/.test(mis), 'Renderer must no longer emit the single-selection payload');
+  assert(mis.includes('aria-pressed'), 'Selection buttons must expose toggle state to assistive technology');
+});
+
 console.log(`\nAll ${totalTests} question renderer test suites PASSED successfully (${passedTests}/${totalTests})!`);

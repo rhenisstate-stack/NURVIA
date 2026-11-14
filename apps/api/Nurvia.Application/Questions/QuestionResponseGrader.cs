@@ -517,6 +517,34 @@ public static class QuestionResponseGrader
                     }
                 }
             }
+
+            return result;
+        }
+
+        // Backward compatibility: payloads persisted by the earlier single-selection
+        // renderer carry one scalar identifier ({"SelectedOptionId":"<id>"}). They are
+        // treated as a one-element selection. Any other object shape (including the
+        // canonical property holding a non-array value) yields no selections and is
+        // graded incorrect rather than being silently credited.
+        foreach (var propName in new[] { "SelectedOptionId", "selectedOptionId" })
+        {
+            if (doc.RootElement.TryGetProperty(propName, out var scalar) &&
+                scalar.ValueKind == JsonValueKind.String)
+            {
+                var str = scalar.GetString()?.Trim();
+                if (Guid.TryParse(str, out var legacyGuid))
+                {
+                    var opt = options.FirstOrDefault(o => o.Id == legacyGuid);
+                    if (opt != null) result.Add(opt);
+                }
+                else if (int.TryParse(str, out var legacyIdx))
+                {
+                    var opt = options.FirstOrDefault(o => o.OptionIndex == legacyIdx);
+                    if (opt != null) result.Add(opt);
+                }
+
+                break;
+            }
         }
 
         return result;

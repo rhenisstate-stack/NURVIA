@@ -784,6 +784,32 @@ public class ExamAttemptService : IExamAttemptService
                     }
                 }
             }
+
+            return result;
+        }
+
+        // Backward compatibility with the earlier single-selection renderer payload:
+        // a scalar identifier is treated as a one-element selection (see
+        // QuestionResponseGrader.FindSelectedOptions for the grading-side contract).
+        foreach (var propName in new[] { "SelectedOptionId", "selectedOptionId" })
+        {
+            if (doc.RootElement.TryGetProperty(propName, out var scalar) &&
+                scalar.ValueKind == JsonValueKind.String)
+            {
+                var str = scalar.GetString()?.Trim();
+                if (Guid.TryParse(str, out var legacyGuid))
+                {
+                    var opt = options.FirstOrDefault(o => o.Id == legacyGuid);
+                    if (opt != null) result.Add(opt);
+                }
+                else if (int.TryParse(str, out var legacyIdx))
+                {
+                    var opt = options.FirstOrDefault(o => o.OptionIndex == legacyIdx);
+                    if (opt != null) result.Add(opt);
+                }
+
+                break;
+            }
         }
 
         return result;
@@ -796,7 +822,10 @@ public class ExamAttemptService : IExamAttemptService
 
         try
         {
-            if (type == QuestionType.MultipleResponse)
+            // MultipleResponse (SATA) and MultipleImageSelection are both
+            // multi-select question types: review must reflect every selected
+            // option, matching the grading contract in QuestionResponseGrader.
+            if (type == QuestionType.MultipleResponse || type == QuestionType.MultipleImageSelection)
             {
                 var chosen = FindSelectedOptions(new[] { option }, responseJson);
                 return chosen.Any(o => o.Id == option.Id);

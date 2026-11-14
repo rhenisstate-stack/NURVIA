@@ -13,39 +13,54 @@ export function MultipleImageSelectionRenderer({
   disabled = false,
   isReview = false,
 }: QuestionRendererProps) {
-  const selectedOptionId = React.useMemo(() => {
-    if (!value) return null;
+  // Canonical response contract: {"SelectedOptionIds": ["<id>", ...]} — an array of
+  // selected option identifiers, consumed verbatim by QuestionResponseGrader.
+  // Legacy scalar payloads ({"SelectedOptionId": "<id>"}) persisted by earlier
+  // renderer versions are restored as a one-element selection for in-flight attempts.
+  const selectedIds = React.useMemo<string[]>(() => {
+    if (!value) return [];
     try {
       if (value.startsWith("{")) {
         const parsed = JSON.parse(value);
-        return parsed.SelectedOptionId || parsed.value || null;
+        const list = parsed.SelectedOptionIds ?? parsed.selectedOptionIds;
+        if (Array.isArray(list)) {
+          return list.filter((v: unknown): v is string => typeof v === "string");
+        }
+        if (typeof parsed.SelectedOptionId === "string") return [parsed.SelectedOptionId];
+        if (typeof parsed.selectedOptionId === "string") return [parsed.selectedOptionId];
+        return [];
       }
-      return value.replace(/^"(.*)"$/, "$1");
+      const bare = value.replace(/^"(.*)"$/, "$1");
+      return bare ? [bare] : [];
     } catch {
-      return value;
+      return [];
     }
   }, [value]);
 
-  const handleSelect = (id: string) => {
+  const handleToggle = (id: string) => {
     if (disabled) return;
-    onChange?.(JSON.stringify({ SelectedOptionId: id }));
+    const next = selectedIds.includes(id)
+      ? selectedIds.filter((selected) => selected !== id)
+      : [...selectedIds, id];
+    onChange?.(JSON.stringify({ SelectedOptionIds: next }));
   };
 
   return (
     <div className="space-y-4">
       <div className="text-xs text-foreground-secondary">
-        Examine each visual tracing or clinical strip below and select the target panel:
+        Examine each visual tracing or clinical strip below and select all panels that apply:
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {question.options.map((opt, idx) => {
-          const isSelected = selectedOptionId === opt.id || opt.wasSelected === true;
+          const isSelected = selectedIds.includes(opt.id) || opt.wasSelected === true;
           return (
             <button
               key={opt.id}
               type="button"
               disabled={disabled}
-              onClick={() => handleSelect(opt.id)}
+              aria-pressed={isSelected}
+              onClick={() => handleToggle(opt.id)}
               className={cn(
                 "p-4 rounded-xl border text-left transition-all space-y-3 flex flex-col justify-between",
                 isSelected

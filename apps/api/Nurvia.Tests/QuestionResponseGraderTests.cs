@@ -162,6 +162,94 @@ public class QuestionResponseGraderTests
     }
 
     // ---------------------------------------------------------------
+    // 2b. MultipleImageSelection contract hardening: legacy payloads,
+    //     duplicates, unknown identifiers, malformed shapes
+    // ---------------------------------------------------------------
+
+    [Fact]
+    public void Evaluate_MultipleImageSelection_LegacyScalarPayload_IsGradedAsOneSelection()
+    {
+        // Payloads persisted by the earlier single-selection renderer carry a
+        // scalar "SelectedOptionId". They must be treated as a one-element
+        // selection, never silently converted into a full correct answer.
+        var qv = NewVersion(QuestionType.MultipleImageSelection);
+        qv.Options.Add(Opt(1, "Panel A", false));
+        qv.Options.Add(Opt(2, "Panel B", true));
+        var correctId = qv.Options.Single(o => o.IsCorrect).Id;
+        var wrongId = qv.Options.Single(o => !o.IsCorrect).Id;
+
+        var legacyCorrect = QuestionResponseGrader.Evaluate(qv, $"{{\"SelectedOptionId\":\"{correctId}\"}}");
+        var legacyWrong = QuestionResponseGrader.Evaluate(qv, $"{{\"SelectedOptionId\":\"{wrongId}\"}}");
+
+        Assert.True(legacyCorrect.IsCorrect);
+        Assert.Equal(1m, legacyCorrect.Fraction);
+        Assert.False(legacyWrong.IsCorrect);
+        Assert.Equal(0m, legacyWrong.Fraction);
+    }
+
+    [Fact]
+    public void Evaluate_MultipleImageSelection_DuplicateSelections_AreDeduplicated()
+    {
+        var qv = NewVersion(QuestionType.MultipleImageSelection);
+        qv.Options.Add(Opt(1, "Panel A", true));
+        qv.Options.Add(Opt(2, "Panel B", false));
+        var correctId = qv.Options.Single(o => o.IsCorrect).Id;
+
+        var response = $"{{\"SelectedOptionIds\":[\"{correctId}\",\"{correctId}\"]}}";
+        var result = QuestionResponseGrader.Evaluate(qv, response);
+
+        Assert.True(result.IsCorrect);
+        Assert.Equal(1m, result.Fraction);
+    }
+
+    [Fact]
+    public void Evaluate_MultipleImageSelection_UnknownIdentifiers_DoNotEarnCredit()
+    {
+        var qv = NewVersion(QuestionType.MultipleImageSelection);
+        qv.Options.Add(Opt(1, "Panel A", true));
+        qv.Options.Add(Opt(2, "Panel B", false));
+
+        var unknownOnly = QuestionResponseGrader.Evaluate(qv, $"{{\"SelectedOptionIds\":[\"{Guid.NewGuid()}\"]}}");
+        var unknownAndWrong = QuestionResponseGrader.Evaluate(
+            qv,
+            $"{{\"SelectedOptionIds\":[\"{Guid.NewGuid()}\",\"{qv.Options.Single(o => !o.IsCorrect).Id}\"]}}");
+
+        Assert.False(unknownOnly.IsCorrect);
+        Assert.Equal(0m, unknownOnly.Fraction);
+        Assert.False(unknownAndWrong.IsCorrect);
+        Assert.Equal(0m, unknownAndWrong.Fraction);
+    }
+
+    [Fact]
+    public void Evaluate_MultipleImageSelection_ExtraIncorrectSelection_IsNotFullyCorrect()
+    {
+        var qv = NewVersion(QuestionType.MultipleImageSelection);
+        qv.Options.Add(Opt(1, "Panel A", true));
+        qv.Options.Add(Opt(2, "Panel B", false));
+        var correctId = qv.Options.Single(o => o.IsCorrect).Id;
+        var wrongId = qv.Options.Single(o => !o.IsCorrect).Id;
+
+        var result = QuestionResponseGrader.Evaluate(qv, $"{{\"SelectedOptionIds\":[\"{correctId}\",\"{wrongId}\"]}}");
+
+        Assert.False(result.IsCorrect);
+    }
+
+    [Theory]
+    [InlineData("{\"SelectedOptionIds\":[]}")]
+    [InlineData("{\"SelectedOptionIds\":\"not-an-array\"}")]
+    [InlineData("{not valid json")]
+    public void Evaluate_MultipleImageSelection_EmptyOrMalformedPayload_IsNotCorrect(string response)
+    {
+        var qv = NewVersion(QuestionType.MultipleImageSelection);
+        qv.Options.Add(Opt(1, "Panel A", true));
+
+        var result = QuestionResponseGrader.Evaluate(qv, response);
+
+        Assert.False(result.IsCorrect);
+        Assert.Equal(0m, result.Fraction);
+    }
+
+    // ---------------------------------------------------------------
     // 5. NumericCalculation: decimal comparison with tolerance
     // ---------------------------------------------------------------
 
