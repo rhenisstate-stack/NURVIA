@@ -1,4 +1,4 @@
-﻿# NURVIA Master Examination Audit — FINAL RELEASE READINESS VERIFICATION
+# NURVIA Master Examination Audit — FINAL RELEASE READINESS VERIFICATION
 
 **Date:** 2026-11-13 · **Branch:** `master` · **HEAD:** `c767d30` · **Baseline HEAD:** `842d198` · **Working tree:** clean
 
