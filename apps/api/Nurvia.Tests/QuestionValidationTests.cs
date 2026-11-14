@@ -359,6 +359,33 @@ public class QuestionValidationTests
     }
 
     [Fact]
+    public void Type17_ShortAnswer_ContentJsonDataAlone_CannotSubstituteForAnswerKey()
+    {
+        // The grader compares TextResponse against options flagged IsCorrect;
+        // ContentJsonData is not consulted, so a key-less configuration is
+        // ungradeable and must not pass validation.
+        var qv = CreateBaseVersion(QuestionType.ShortAnswer, "Identify the emergency medication of choice for anaphylactic shock.");
+        qv.ContentJsonData = "{\"acceptedAnswers\": [\"Epinephrine\"]}";
+
+        var isValid = qv.Validate(out var errors);
+
+        Assert.False(isValid);
+        Assert.Contains(errors, e => e.Contains("at least one accepted clinical term"));
+    }
+
+    [Fact]
+    public void Type17_ShortAnswer_EmptyAnswerText_IsRejected()
+    {
+        var qv = CreateBaseVersion(QuestionType.ShortAnswer, "Identify the emergency medication of choice for anaphylactic shock.");
+        qv.Options.Add(new QuestionOption(0, "   ", true));
+
+        var isValid = qv.Validate(out var errors);
+
+        Assert.False(isValid);
+        Assert.Contains(errors, e => e.Contains("at least one accepted clinical term"));
+    }
+
+    [Fact]
     public void Type18_DynamicLab_BowTie_Passes_With_BowTie_Structure()
     {
         var qv = CreateBaseVersion(QuestionType.DynamicLabBowTie);

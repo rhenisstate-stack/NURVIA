@@ -187,9 +187,16 @@ public class QuestionVersion : Entity, IAuditableEntity
                 break;
 
             case QuestionType.ShortAnswer:
-                if (Options.Count(o => o.IsCorrect) < 1 && string.IsNullOrWhiteSpace(ContentJsonData))
-                    errors.Add("Short answer questions must provide at least one accepted clinical term, keyword, or synonym.");
+            {
+                // Grading compares the learner's TextResponse against options flagged
+                // IsCorrect (case-insensitive, whitespace-normalized). ContentJsonData
+                // is not consulted by the grader, so at least one non-empty accepted-
+                // answer option is always required for the question to be gradeable
+                // and to prevent empty responses from matching a blank key.
+                if (!Options.Any(o => o.IsCorrect && !string.IsNullOrWhiteSpace(o.OptionText)))
+                    errors.Add("Short answer questions must provide at least one accepted clinical term, keyword, or synonym as a correct answer choice.");
                 break;
+            }
 
             case QuestionType.BowTie: // Also DynamicLabBowTie
                 if (string.IsNullOrWhiteSpace(ContentJsonData) && Options.Count < 5)
