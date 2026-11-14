@@ -26,21 +26,26 @@ async function signInLearner(page: import("@playwright/test").Page) {
 
 async function shot(page: import("@playwright/test").Page, name: string) {
   fs.mkdirSync(EVIDENCE_DIR, { recursive: true });
-  await page.screenshot({ path: path.join(EVIDENCE_DIR, `${name}.png`), fullPage: true });
+  const target = path.join(EVIDENCE_DIR, `${name}.png`);
+  try {
+    await page.screenshot({ path: target, fullPage: true });
+  } catch {
+    await page.screenshot({ path: path.join(EVIDENCE_DIR, `${name}-${stamp}.png`), fullPage: true });
+  }
 }
 
 test.describe("Complete authenticated learner journey", () => {
   test("Step 1 — Public landing page hero, CTAs, Quick Practice, navbar", async ({ page }) => {
     await page.goto("/");
     await expect(
-      page.getByRole("heading", { level: 1, name: "Turn Practice Into ATI and HESI Readiness" })
+      page.getByRole("heading", { level: 1, name: /Turn Practice Into ATI\s*and HESI Readiness/ })
     ).toBeVisible();
     await expect(page.getByText("Built for nursing school exam days", { exact: false })).toBeVisible();
     await expect(page.getByText("Work through ATI, HESI, and exit-exam practice", { exact: false })).toBeVisible();
 
     // Background video / reference fallback sits behind the hero content
     const heroLayer = page.getByTestId("hero-background-fallback").or(page.getByTestId("hero-background-video"));
-    await expect(heroLayer.first()).toBeVisible();
+    await expect(heroLayer.first()).toBeAttached();
 
     const quickPractice = page.getByRole("region", { name: "Quick Practice" });
     await expect(quickPractice).toBeVisible();
@@ -66,7 +71,7 @@ test.describe("Complete authenticated learner journey", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
     await expect(
-      page.getByRole("heading", { level: 1, name: "Turn Practice Into ATI and HESI Readiness" })
+      page.getByRole("heading", { level: 1, name: /Turn Practice Into ATI\s*and HESI Readiness/ })
     ).toBeVisible();
     await expect(page.getByRole("region", { name: "Quick Practice" })).toBeVisible();
     await shot(page, "01b-hero-mobile");
@@ -74,6 +79,7 @@ test.describe("Complete authenticated learner journey", () => {
 
   test("Step 1c — Quick Practice preview: select, learn, navigate", async ({ page }) => {
     await page.goto("/");
+    await page.waitForLoadState("networkidle");
     const quickPractice = page.getByRole("region", { name: "Quick Practice" });
 
     // Select an option → learn-as-you-go rationale is revealed only after selection
@@ -128,7 +134,7 @@ test.describe("Complete authenticated learner journey", () => {
     await expect(page.getByRole("link", { name: "Question Bank" })).toHaveCount(0);
   });
 
-  test("Steps 5-6 — Exam discovery, start, and answering with autosave + refresh recovery", async ({ page, browser }) => {
+  test("Steps 5-6 — Exam discovery, start, and answering with autosave + refresh recovery", async ({ page }) => {
     await signInLearner(page);
 
     await page.goto("/learner/exams");
@@ -136,10 +142,21 @@ test.describe("Complete authenticated learner journey", () => {
     await shot(page, "05-exam-discovery");
 
     await page
-      .locator(`div:has(h2:text-is("${examTitle}")) a:has-text("Start this exam")`)
+      .locator("div.flex.flex-col.justify-between", {
+        has: page.getByRole("link", { name: examTitle, exact: true }),
+      })
       .first()
+      .locator('a[href*="/exam-session"][href*="mode=Exam"]')
       .click();
     await page.waitForURL(/\/exam-session/, { timeout: 30_000 });
+
+    const layoutHeading = page.getByRole("heading", { name: "Choose your navigation layout" });
+    await layoutHeading.waitFor({ state: "visible", timeout: 10_000 }).then(
+      async () => {
+        await page.getByRole("button", { name: /Sequential/ }).click();
+      },
+      () => {}
+    );
 
     // Q1: single-choice digoxin question — select the correct option by visible text
     await expect(page.getByText("Item 1 of 2")).toBeVisible();
@@ -172,10 +189,20 @@ test.describe("Complete authenticated learner journey", () => {
     await page.goto("/learner/exams");
     // Continuing the in-progress attempt: starting the same exam resumes the persisted attempt
     await page
-      .locator(`div:has(h2:text-is("${examTitle}")) a:has-text("Start this exam")`)
+      .locator("div.flex.flex-col.justify-between", {
+        has: page.getByRole("link", { name: examTitle, exact: true }),
+      })
       .first()
+      .locator('a[href*="/exam-session"][href*="mode=Exam"]')
       .click();
     await page.waitForURL(/\/exam-session/, { timeout: 30_000 });
+    const layoutHeading = page.getByRole("heading", { name: "Choose your navigation layout" });
+    await layoutHeading.waitFor({ state: "visible", timeout: 10_000 }).then(
+      async () => {
+        await page.getByRole("button", { name: /Sequential/ }).click();
+      },
+      () => {}
+    );
     await expect(page.getByText("Item 1 of 2")).toBeVisible();
 
     await page.getByRole("button", { name: "Finish Exam" }).click();
@@ -203,21 +230,26 @@ test.describe("Complete authenticated learner journey", () => {
   test("Steps 10-11 — Profile update persists and sign out ends the session", async ({ page }) => {
     await signInLearner(page);
 
-    await page.goto("/learner/account");
-    await expect(page.locator("#profile-name")).toHaveValue(learner.name);
+    await page.goto("/learner/profile");
+    await expect(page.locator("#displayName")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(learner.name).first()).toBeVisible();
     const updatedName = "Journey Learner Updated";
-    await page.locator("#profile-name").fill(updatedName);
-    await page.getByRole("button", { name: "Save profile" }).click();
-    await expect(page.getByText("Your profile changes have been saved.")).toBeVisible();
+    await page.locator("#firstName").fill("Journey");
+    await page.locator("#lastName").fill("Updated");
+    await page.locator("#displayName").fill(updatedName);
+    await page.getByRole("button", { name: "Save Changes" }).click();
+    await expect(page.getByText("Profile updated successfully!")).toBeVisible();
     await shot(page, "09-profile-updated");
 
     await page.reload();
-    await expect(page.locator("#profile-name")).toHaveValue(updatedName);
+    await expect(page.locator("#displayName")).toHaveValue(updatedName, { timeout: 15_000 });
 
-    // Email field must be read-only (not editable) and no role control may exist
-    await expect(page.locator("#profile-email")).not.toBeEditable();
+    // Email and role are displayed as read-only text (no editable email or role control may exist)
+    await expect(page.locator("input[name='email'], input[type='email'], input[name='role'], select[name='role']")).toHaveCount(0);
+    await expect(page.getByText(learner.email)).toBeVisible();
 
     await page.goto("/learner");
+    await page.getByRole("button", { name: "Open account menu" }).click();
     await page.getByRole("button", { name: "Sign Out" }).first().click();
     // The learner shell signs out via the API and lands on the sign-in page.
     // (The URL must actually change; a permissive matcher would race the

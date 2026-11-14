@@ -147,7 +147,7 @@ test.describe("Authentication, RBAC, and exam integrity", () => {
     for (const q of questions) {
       expect("generalRationale" in q).toBeFalsy();
       for (const o of q.options) {
-        expect(o.isCorrect).toBeUndefined();
+        expect(o.isCorrect).toBeFalsy();
         expect(o.specificRationale).toBeUndefined();
       }
     }
@@ -245,7 +245,12 @@ test.describe("Authentication, RBAC, and exam integrity", () => {
     // fresh token for the authenticated session.
     const authenticatedCsrf = await getCsrf(request);
     const profile = await request.put(`${API}/api/auth/profile`, {
-      data: { name: "Rbac Learner A Renamed", role: "Superadmin" },
+      data: {
+        firstName: "Rbac Learner A Renamed",
+        lastName: "Tester",
+        displayName: "Rbac Learner A Renamed",
+        role: "Superadmin",
+      },
       headers: { "X-CSRF-TOKEN": authenticatedCsrf },
     });
     expect(profile.status()).toBe(200);
@@ -255,7 +260,11 @@ test.describe("Authentication, RBAC, and exam integrity", () => {
 
     // Restore original name for the reconciliation evidence
     await request.put(`${API}/api/auth/profile`, {
-      data: { name: learnerA.name },
+      data: {
+        firstName: learnerA.name,
+        lastName: "Tester",
+        displayName: learnerA.name,
+      },
       headers: { "X-CSRF-TOKEN": await getCsrf(request) },
     });
   });

@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/auth-provider";
 
@@ -13,14 +12,17 @@ export function SuperadminSwitcher() {
   if (status !== "authenticated" || !user || user.role !== "Superadmin") {
     return null;
   }
-  
+
+  const linkClass =
+    "inline-flex items-center justify-center rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal";
+
   return (
-    <div className="flex items-center gap-2 mt-4">
-      <Link href="/admin" prefetch={false}>
-        <Button variant="outline" size="sm">Admin Dashboard</Button>
+    <div className="flex items-center gap-2">
+      <Link href="/admin" prefetch={false} className={linkClass}>
+        Admin Dashboard
       </Link>
-      <Link href="/learner" prefetch={false}>
-        <Button variant="outline" size="sm">Learner Dashboard</Button>
+      <Link href="/learner" prefetch={false} className={linkClass}>
+        Learner Dashboard
       </Link>
     </div>
   );

@@ -43,6 +43,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth/auth-provider";
 import { UserAccountMenu } from "@/components/layout/user-account-menu";
+import { SuperadminSwitcher } from "@/components/layout/superadmin-switcher";
 import { nurviaApi } from "@/lib/api-client";
 interface NavSubItem {
   name: string;
@@ -448,6 +449,7 @@ React.useEffect(() => {
           </div>
 
           <div className="flex items-center gap-3">
+  <SuperadminSwitcher />
   <ThemeToggle />
   <UserAccountMenu avatarUrl={avatarUrl} />
 </div>
