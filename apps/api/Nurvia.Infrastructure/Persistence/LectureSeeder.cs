@@ -20,12 +20,23 @@ public static class LectureSeeder
 {
     private const string SeedAuthor = "NURVIA Nurse Educator, MSN, RN";
 
-    public static async Task SeedAsync(NurviaDbContext context)
+    public static async Task SeedAsync(
+        NurviaDbContext context,
+        bool publishPreApprovedCatalogue = false,
+        CancellationToken ct = default)
     {
-        if (await context.Lectures.AnyAsync())
-        {
-            return; // Lecture catalogue already seeded
-        }
+        var existingNumbers = await context.Lectures
+            .AsNoTracking()
+            .Select(l => l.Number)
+            .ToListAsync(ct);
+
+        var existingSlugs = await context.Lectures
+            .AsNoTracking()
+            .Select(l => l.Slug.ToLower())
+            .ToListAsync(ct);
+
+        var numberSet = existingNumbers.ToHashSet();
+        var slugSet = existingSlugs.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var now = DateTime.UtcNow;
 
@@ -683,18 +694,31 @@ public static class LectureSeeder
             lecture7, lecture8, lecture9, lecture10, lecture11, lecture12
         };
 
-        foreach (var lecture in lectures)
+        var missingLectures = lectures
+            .Where(l => !numberSet.Contains(l.Number) && !slugSet.Contains(l.Slug))
+            .ToList();
+
+        if (missingLectures.Count == 0)
         {
-            // Seed records are published catalogue content: advance through the domain lifecycle.
-            lecture.SubmitForReview(SeedAuthor);
-            lecture.Approve("seed-reviewer", "NURVIA Clinical Reviewer", "Initial catalogue seed");
-            lecture.Publish(SeedAuthor);
+            return;
+        }
+
+        foreach (var lecture in missingLectures)
+        {
+            if (publishPreApprovedCatalogue)
+            {
+                // Explicit opt-in only: never simulate review on default startup.
+                lecture.SubmitForReview(SeedAuthor);
+                lecture.Approve("seed-reviewer", "NURVIA Clinical Reviewer", "Explicitly opted-in seed catalogue");
+                lecture.Publish(SeedAuthor);
+            }
+
             lecture.CreatedAtUtc = now;
             lecture.UpdatedAtUtc = now;
             lecture.UpdatedBy = SeedAuthor;
         }
 
-        context.Lectures.AddRange(lectures);
-        await context.SaveChangesAsync();
+        context.Lectures.AddRange(missingLectures);
+        await context.SaveChangesAsync(ct);
     }
 }

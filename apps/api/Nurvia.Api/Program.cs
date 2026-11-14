@@ -187,7 +187,8 @@ try
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<NurviaDbContext>();
     await DatabaseSeeder.SeedAsync(dbContext);
-    await LectureSeeder.SeedAsync(dbContext);
+    var publishSeededLectures = builder.Configuration.GetValue<bool>("Lectures:PublishSeededCatalogue");
+    await LectureSeeder.SeedAsync(dbContext, publishSeededLectures);
 }
 catch (Exception ex)
 {
