@@ -243,6 +243,15 @@ public class ExamAttemptService : IExamAttemptService
                 .ThenInclude(r => r.Question)
                     .ThenInclude(q => q!.CurrentVersion)
                         .ThenInclude(qv => qv!.Exhibits)
+            .Include(a => a.Responses)
+                // The version snapshotted when the attempt started is authoritative
+                // for grading; a question revised mid-attempt must not change the
+                // delivered content or its answer key.
+                .ThenInclude(r => r.QuestionVersion)
+                    .ThenInclude(qv => qv!.Options)
+            .Include(a => a.Responses)
+                .ThenInclude(r => r.QuestionVersion)
+                    .ThenInclude(qv => qv!.Exhibits)
             .FirstOrDefaultAsync(a => a.Id == attemptId, ct);
 
         if (attempt == null)
@@ -265,7 +274,7 @@ public class ExamAttemptService : IExamAttemptService
 
         foreach (var response in attempt.Responses)
         {
-            var qv = response.Question?.CurrentVersion;
+            var qv = response.QuestionVersion ?? response.Question?.CurrentVersion;
             if (qv == null)
                 continue;
 
@@ -303,6 +312,14 @@ public class ExamAttemptService : IExamAttemptService
                 .ThenInclude(r => r.Question)
                     .ThenInclude(q => q!.CurrentVersion)
                         .ThenInclude(qv => qv!.Exhibits)
+            .Include(a => a.Responses)
+                // Review must render the question version the learner actually saw,
+                // not whatever revision is current at review time.
+                .ThenInclude(r => r.QuestionVersion)
+                    .ThenInclude(qv => qv!.Options)
+            .Include(a => a.Responses)
+                .ThenInclude(r => r.QuestionVersion)
+                    .ThenInclude(qv => qv!.Exhibits)
             .FirstOrDefaultAsync(a => a.Id == attemptId, ct);
 
         if (attempt == null)
@@ -608,7 +625,10 @@ public class ExamAttemptService : IExamAttemptService
         foreach (var resp in attempt.Responses.OrderBy(r => r.OrderIndex))
         {
             var q = resp.Question;
-            var qv = q?.CurrentVersion;
+            // Render the snapshotted question version the learner actually saw;
+            // fall back to the current version only for legacy rows without a
+            // persisted version reference.
+            var qv = resp.QuestionVersion ?? q?.CurrentVersion;
             if (q == null || qv == null)
                 continue;
 
