@@ -109,6 +109,16 @@ export default function NewQuestionAuthoringPage() {
       if (options.length < 2 || options.length % 2 !== 0) {
         errors.push("Matching requires an even number of options — each premise followed directly by its correct response.");
       }
+    } else if (questionType === "MultipleImageSelection") {
+      if (options.length < 2) {
+        errors.push("Multiple-Image Selection requires at least 2 selectable image choices.");
+      } else if (options.filter((o) => o.isCorrect).length < 1) {
+        errors.push("Multiple-Image Selection must designate at least one correct image choice.");
+      }
+    } else if (questionType === "ShortAnswer") {
+      if (!options.some((o) => o.isCorrect && o.optionText && o.optionText.trim().length > 0)) {
+        errors.push("Short answer must provide at least one accepted term as a correct answer choice.");
+      }
     } else if (questionType === "MultipleTrueFalse" || questionType === "MatrixGrid" || questionType === "DragAndDrop" || questionType === "BowTie") {
       if (!contentJsonData.trim()) {
         errors.push(`${questionType} requires an approved answer key in the structured JSON field.`);
@@ -635,8 +645,12 @@ export default function NewQuestionAuthoringPage() {
                 />
               </Card>
 
-              {/* Structured answer-key payload for complex question types */}
-              {(questionType === "MultipleTrueFalse" || questionType === "MatrixGrid" || questionType === "DragAndDrop" || questionType === "BowTie" || questionType === "ClinicalCaseStudy" || questionType === "TabularResponse" || questionType === "ImageBased" || questionType === "Matching" || questionType === "ShortAnswer" || questionType === "MultipleImageSelection" || contentJsonData.trim() !== "") && (
+              {/* Structured answer-key payload for question types whose grading
+                  consumes ContentJsonData (see QuestionResponseGrader). Matching,
+                  ShortAnswer, and MultipleImageSelection configure their answer
+                  keys through the option list above (alternating premise/response
+                  pairs, accepted terms, and correct-panel flags respectively). */}
+              {(questionType === "MultipleTrueFalse" || questionType === "MatrixGrid" || questionType === "DragAndDrop" || questionType === "BowTie" || questionType === "ClinicalCaseStudy" || questionType === "TabularResponse" || questionType === "ImageBased" || contentJsonData.trim() !== "") && (
                 <Card className="p-5 space-y-3">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold uppercase tracking-wider text-foreground-muted">
