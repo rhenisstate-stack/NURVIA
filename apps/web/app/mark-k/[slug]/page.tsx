@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/auth/auth-provider";
 import { nurviaApi } from "@/lib/api-client";
-import { LectureContentDto } from "@/lib/api-types";
+import { LectureCatalogueItemDto, LectureContentDto } from "@/lib/api-types";
 import {
   ArrowLeft,
+  ArrowRight,
   CheckCircle2,
   Lock,
   ShieldCheck,
@@ -188,6 +189,7 @@ export default function MarkKLectureReaderPage() {
   const { status } = useAuth();
 
   const [lecture, setLecture] = React.useState<LectureContentDto | null>(null);
+  const [catalogue, setCatalogue] = React.useState<LectureCatalogueItemDto[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [errorKind, setErrorKind] = React.useState<"none" | "unauthenticated" | "forbidden" | "not_found" | "error">("none");
   const [errorMessage, setErrorMessage] = React.useState<string>("");
@@ -202,8 +204,15 @@ export default function MarkKLectureReaderPage() {
       setErrorMessage("");
 
       try {
-        const response = await nurviaApi.getLectureBySlug(slug);
+        const [response, catalogueRes] = await Promise.all([
+          nurviaApi.getLectureBySlug(slug),
+          nurviaApi.getLectureCatalogue(),
+        ]);
         if (cancelled) return;
+
+        if (catalogueRes.success && catalogueRes.data) {
+          setCatalogue(catalogueRes.data);
+        }
 
         if (response.success && response.data) {
           setLecture(response.data);
@@ -338,6 +347,38 @@ export default function MarkKLectureReaderPage() {
                 NURVIA is independent and is not affiliated with, endorsed by, or officially connected to Mark Klimek or Klimek Reviews. All notes above are original NURVIA educational materials.
               </p>
             </footer>
+
+            {(() => {
+              const currentIdx = catalogue.findIndex((item) => item.slug === lecture.slug);
+              const prevLecture = currentIdx > 0 ? catalogue[currentIdx - 1] : null;
+              const nextLecture = currentIdx >= 0 && currentIdx < catalogue.length - 1 ? catalogue[currentIdx + 1] : null;
+              if (!prevLecture && !nextLecture) return null;
+
+              return (
+                <nav aria-label="Lecture navigation" className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
+                  {prevLecture ? (
+                    <Link href={`/mark-k/${prevLecture.slug}`} className="flex-1">
+                      <Button variant="outline" size="sm" className="w-full justify-start text-xs h-10">
+                        <ArrowLeft className="w-3.5 h-3.5 mr-2 shrink-0" />
+                        <span className="truncate">Lecture {prevLecture.number}: {prevLecture.title}</span>
+                      </Button>
+                    </Link>
+                  ) : (
+                    <div className="flex-1" />
+                  )}
+                  {nextLecture ? (
+                    <Link href={`/mark-k/${nextLecture.slug}`} className="flex-1">
+                      <Button variant="outline" size="sm" className="w-full justify-end text-xs h-10">
+                        <span className="truncate">Lecture {nextLecture.number}: {nextLecture.title}</span>
+                        <ArrowRight className="w-3.5 h-3.5 ml-2 shrink-0" />
+                      </Button>
+                    </Link>
+                  ) : (
+                    <div className="flex-1" />
+                  )}
+                </nav>
+              );
+            })()}
           </article>
         )}
       </div>

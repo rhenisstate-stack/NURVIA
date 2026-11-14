@@ -91,7 +91,19 @@ test('6. Mark K. catalogue and reader use persisted API without unsafe HTML', ()
   assert(!indexFile.includes('const markKLectures'), 'Hardcoded markKLectures array must be removed');
   assert(indexFile.includes('/mark-k/${lec.slug}'), 'Catalogue CTA must route to /mark-k/{slug}');
   assert(readerFile.includes('nurviaApi.getLectureBySlug'), 'Reader must load lecture from nurviaApi.getLectureBySlug');
+  assert(readerFile.includes('Lecture navigation'), 'Reader must provide previous/next catalogue navigation');
   assert(!readerFile.includes('dangerouslySetInnerHTML'), 'Lecture reader must not use unsafe dangerouslySetInnerHTML');
+});
+
+test('7. Admin lecture management page wires Author -> Reviewer -> Publisher workflow', () => {
+  const adminLectures = fs.readFileSync(path.join(webRoot, 'app', 'admin', 'lectures', 'page.tsx'), 'utf8');
+  assert(adminLectures.includes('nurviaApi.getManagementLectures'), 'Admin lectures must load from getManagementLectures');
+  assert(adminLectures.includes('nurviaApi.createLectureDraft'), 'Admin lectures must support draft creation');
+  assert(adminLectures.includes('nurviaApi.submitLectureForReview'), 'Admin lectures must support submit-for-review');
+  assert(adminLectures.includes('nurviaApi.reviewLecture'), 'Admin lectures must support review approve/reject');
+  assert(adminLectures.includes('nurviaApi.publishLecture'), 'Admin lectures must support publish');
+  assert(adminLectures.includes('nurviaApi.archiveLecture'), 'Admin lectures must support archive');
+  assert(!adminLectures.includes('window.confirm'), 'Admin lectures must not use native window.confirm');
 });
 
 console.log(`\nAll ${totalTests} Stage 7 test suites PASSED successfully (${passedTests}/${totalTests})!`);
