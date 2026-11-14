@@ -201,6 +201,13 @@ public class LectureService : ILectureService
 
         var lecture = await FindLectureAsync(id, ct);
 
+        if (request.Decision == ReviewDecision.Approved &&
+            string.Equals(lecture.CreatedBy, reviewerName, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new DomainException(
+                "Authors cannot approve their own lecture submissions.");
+        }
+
         if (request.Decision == ReviewDecision.Approved)
         {
             lecture.Approve(
@@ -324,13 +331,9 @@ public class LectureService : ILectureService
 
     private static bool CanReadProtectedLectures(CurrentUser? user)
     {
-        return user != null && user.HasRole(
-            "Learner",
-            "Author",
-            "Reviewer",
-            "Publisher",
-            "Administrator",
-            "Superadmin");
+        // Staff preview is served through /api/lectures/management/{id};
+        // public/learner endpoints require Learner entitlement (or Admin/Superadmin via HasRole).
+        return user != null && user.HasRole("Learner");
     }
 
     private static LectureCatalogueItemDto MapToCatalogueDto(Lecture lecture, bool canReadProtected)
