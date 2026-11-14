@@ -261,4 +261,77 @@ public class StudyLibraryAndTutorTests
         await Assert.ThrowsAsync<DomainException>(() =>
             attemptService.GetExamReviewContentAsync(pubExam.Id, "learner-1"));
     }
+
+    [Fact]
+    public void SanitizeContentJsonForExamMode_HandlesNestedMapsCasingBucketsAndMalformedJson()
+    {
+        // UI Buckets array should be preserved; object Buckets map should be stripped.
+        var uiBucketsJson = """{"Buckets":["Priority","Non-Priority"],"TrueFalseMap":{"s1":"True"},"MatrixSelections":{"r1":"c2"},"nested":[{"answer":"A","hint":"Check labs"}]}""";
+        var sanitizedUi = ExamAttemptService.SanitizeContentJsonForExamMode(uiBucketsJson);
+        Assert.NotNull(sanitizedUi);
+        Assert.Contains("Priority", sanitizedUi);
+        Assert.DoesNotContain("TrueFalseMap", sanitizedUi);
+        Assert.DoesNotContain("MatrixSelections", sanitizedUi);
+        Assert.DoesNotContain("answer", sanitizedUi);
+        Assert.DoesNotContain("hint", sanitizedUi);
+
+        var keyBucketsJson = """{"Buckets":{"item1":"Priority"},"solution":"B"}""";
+        var sanitizedKey = ExamAttemptService.SanitizeContentJsonForExamMode(keyBucketsJson);
+        Assert.NotNull(sanitizedKey);
+        Assert.DoesNotContain("Buckets", sanitizedKey);
+        Assert.DoesNotContain("solution", sanitizedKey);
+
+        Assert.Null(ExamAttemptService.SanitizeContentJsonForExamMode("{invalid-json"));
+        Assert.Null(ExamAttemptService.SanitizeContentJsonForExamMode(null));
+    }
+
+    [Fact]
+    public async Task TutorService_FallsBackGracefullyWhenAiProviderThrows()
+    {
+        await using var context = CreateInMemoryContext();
+        var (pubExam, _, q) = await SeedSampleCatalogAsync(context);
+        var correctOption = q.CurrentVersion!.Options.First(o => o.IsCorrect);
+
+        var tutorAttempt = new ExamAttempt(pubExam.Id, pubExam.CurrentVersionId!.Value, "learner-1", "Learner One", 90, 75, 1, ExamDeliveryMode.Tutor);
+        tutorAttempt.Responses.Add(new AttemptResponse(tutorAttempt.Id, q.Id, q.CurrentVersionId!.Value, 1));
+        context.ExamAttempts.Add(tutorAttempt);
+        await context.SaveChangesAsync();
+
+        var tutorService = new TutorService(context, new ThrowingAiTutorProvider());
+        var hint = await tutorService.GetHintAsync(tutorAttempt.Id, "learner-1", new TutorHintRequest { QuestionId = q.Id, Stage = TutorStage.FirstHint });
+        Assert.False(hint.IsAiGenerated);
+        Assert.Contains("Pharmacology", hint.Content);
+
+        var eval = await tutorService.EvaluateAnswerAsync(tutorAttempt.Id, "learner-1", new TutorEvaluateRequest
+        {
+            QuestionId = q.Id,
+            ResponseJson = $$"""{"SelectedOptionId":"{{correctOption.Id}}"}"""
+        });
+        Assert.False(eval.IsAiGenerated);
+        Assert.True(eval.IsCorrect);
+    }
+
+    [Fact]
+    public async Task StudyLibrary_UnapprovedReviewsDoNotInflatePublicRatings()
+    {
+        await using var context = CreateInMemoryContext();
+        var (pubExam, _, _) = await SeedSampleCatalogAsync(context);
+        context.ExamReviews.Add(new ExamReview(pubExam.Id, "learner-x", "Learner X", 5, "Unapproved comment") { IsApproved = false });
+        await context.SaveChangesAsync();
+
+        var service = new StudyLibraryService(context);
+        var catalog = await service.GetCatalogAsync(new StudyLibraryFilterRequest(), "learner-1");
+        Assert.Null(catalog.Items[0].AverageRating);
+        Assert.Equal(0, catalog.Items[0].ReviewCount);
+        Assert.Null(catalog.Items[0].FeaturedTestimonial);
+    }
+
+    private sealed class ThrowingAiTutorProvider : Nurvia.Application.Interfaces.IAiTutorProvider
+    {
+        public bool IsAvailable => true;
+        public Task<string?> TryGenerateGroundedHintAsync(Question question, QuestionVersion version, TutorStage stage, CancellationToken ct = default)
+            => throw new InvalidOperationException("Simulated AI outage");
+        public Task<string?> TryGenerateGroundedTakeawayAsync(Question question, QuestionVersion version, bool learnerWasCorrect, CancellationToken ct = default)
+            => throw new InvalidOperationException("Simulated AI outage");
+    }
 }
