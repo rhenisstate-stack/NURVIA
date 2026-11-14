@@ -49,6 +49,32 @@ public class ExamConfiguration : IEntityTypeConfiguration<Exam>
         builder.Property(e => e.PassingScorePercentage)
             .HasPrecision(5, 2);
 
+        builder.Property(e => e.School)
+            .HasMaxLength(150);
+
+        builder.Property(e => e.Season)
+            .HasMaxLength(50);
+
+        builder.Property(e => e.Subject)
+            .HasMaxLength(150);
+
+        builder.Property(e => e.Topic)
+            .HasMaxLength(150);
+
+        builder.Property(e => e.Difficulty)
+            .HasConversion<string>()
+            .HasMaxLength(30);
+
+        builder.Property(e => e.LearningObjectives)
+            .HasColumnType("text[]")
+            .IsRequired();
+
+        builder.HasIndex(e => new { e.Status, e.Pathway, e.Category });
+        builder.HasIndex(e => e.School);
+        builder.HasIndex(e => e.AcademicYear);
+        builder.HasIndex(e => e.Season);
+        builder.HasIndex(e => e.Subject);
+
         builder.Property(e => e.ConcurrencyToken)
             .IsConcurrencyToken();
 
@@ -163,5 +189,58 @@ public class ExamQuestionConfiguration : IEntityTypeConfiguration<ExamQuestion>
             .WithMany()
             .HasForeignKey(eq => eq.QuestionVersionId)
             .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public class SavedStudySetConfiguration : IEntityTypeConfiguration<SavedStudySet>
+{
+    public void Configure(EntityTypeBuilder<SavedStudySet> builder)
+    {
+        builder.ToTable("SavedStudySets");
+
+        builder.HasKey(s => s.Id);
+
+        builder.Property(s => s.UserId)
+            .IsRequired()
+            .HasMaxLength(100);
+
+        builder.HasIndex(s => new { s.UserId, s.ExamId })
+            .IsUnique();
+
+        builder.HasOne(s => s.Exam)
+            .WithMany()
+            .HasForeignKey(s => s.ExamId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public class ExamReviewConfiguration : IEntityTypeConfiguration<ExamReview>
+{
+    public void Configure(EntityTypeBuilder<ExamReview> builder)
+    {
+        builder.ToTable("ExamReviews");
+
+        builder.HasKey(r => r.Id);
+
+        builder.Property(r => r.LearnerId)
+            .IsRequired()
+            .HasMaxLength(100);
+
+        builder.Property(r => r.LearnerName)
+            .IsRequired()
+            .HasMaxLength(150);
+
+        builder.Property(r => r.Comment)
+            .HasMaxLength(1000);
+
+        builder.HasIndex(r => new { r.ExamId, r.LearnerId })
+            .IsUnique();
+
+        builder.HasIndex(r => new { r.ExamId, r.IsApproved });
+
+        builder.HasOne(r => r.Exam)
+            .WithMany()
+            .HasForeignKey(r => r.ExamId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

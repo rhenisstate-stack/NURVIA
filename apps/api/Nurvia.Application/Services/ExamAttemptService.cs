@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.EntityFrameworkCore;
 using Nurvia.Application.Exams;
 using Nurvia.Application.Interfaces;
@@ -411,6 +412,9 @@ public class ExamAttemptService : IExamAttemptService
         if (exam.Status != ExamStatus.Published || version == null)
             throw new DomainException("Review content is only available for published examinations.");
 
+        if (exam.ModeAllowed != ExamDeliveryMode.All && exam.ModeAllowed != ExamDeliveryMode.Review)
+            throw new DomainException($"Review mode is not enabled for examination '{exam.Title}'.");
+
         var reviewReleased = version.ReviewReleasePolicy == ReviewReleasePolicy.Immediate || version.ReviewReleasedAtUtc != null;
         if (!reviewReleased)
             throw new ReviewNotReleasedException();
@@ -553,7 +557,7 @@ public class ExamAttemptService : IExamAttemptService
                 QuestionType = qv.QuestionType,
                 CognitiveSkill = qv.CognitiveSkill,
                 ClientNeedCategory = qv.ClientNeedCategory,
-                ContentJsonData = qv.ContentJsonData,
+                ContentJsonData = revealAnswers ? qv.ContentJsonData : SanitizeContentJsonForExamMode(qv.ContentJsonData),
                 GeneralRationale = revealAnswers ? qv.GeneralRationale : null,
                 Options = qv.Options.OrderBy(o => o.DisplayOrder).Select(o => new ActiveExamOptionDto
                 {
@@ -869,5 +873,65 @@ public class ExamAttemptService : IExamAttemptService
         {
             throw new UnauthorizedAccessException("Access denied: You do not own this examination attempt.");
         }
+    }
+
+    public static string? SanitizeContentJsonForExamMode(string? contentJsonData)
+    {
+        if (string.IsNullOrWhiteSpace(contentJsonData))
+            return contentJsonData;
+
+        try
+        {
+            var node = JsonNode.Parse(contentJsonData);
+            if (node == null)
+                return contentJsonData;
+
+            StripAnswerKeysFromNode(node);
+            return node.ToJsonString();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static void StripAnswerKeysFromNode(JsonNode node)
+    {
+        if (node is JsonObject obj)
+        {
+            var keysToRemove = obj
+                .Select(kvp => kvp.Key)
+                .Where(IsSensitiveAnswerKeyProperty)
+                .ToList();
+
+            foreach (var key in keysToRemove)
+            {
+                obj.Remove(key);
+            }
+
+            foreach (var kvp in obj)
+            {
+                if (kvp.Value != null)
+                    StripAnswerKeysFromNode(kvp.Value);
+            }
+        }
+        else if (node is JsonArray arr)
+        {
+            foreach (var item in arr)
+            {
+                if (item != null)
+                    StripAnswerKeysFromNode(item);
+            }
+        }
+    }
+
+    private static bool IsSensitiveAnswerKeyProperty(string propertyName)
+    {
+        return propertyName.StartsWith("correct", StringComparison.OrdinalIgnoreCase)
+            || propertyName.Equals("isCorrect", StringComparison.OrdinalIgnoreCase)
+            || propertyName.Equals("answerKey", StringComparison.OrdinalIgnoreCase)
+            || propertyName.Equals("rationale", StringComparison.OrdinalIgnoreCase)
+            || propertyName.Equals("specificRationale", StringComparison.OrdinalIgnoreCase)
+            || propertyName.Equals("generalRationale", StringComparison.OrdinalIgnoreCase);
     }
 }

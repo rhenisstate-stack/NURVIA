@@ -46,6 +46,7 @@ builder.Services.AddAntiforgery(options =>
 });
 
 // Add API Controllers with string enum serializer
+builder.Services.AddMemoryCache();
 builder.Services.AddControllersWithViews(options =>
     options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()))
     .AddJsonOptions(options =>

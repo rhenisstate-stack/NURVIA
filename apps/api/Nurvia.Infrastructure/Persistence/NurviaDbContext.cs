@@ -30,6 +30,8 @@ public class NurviaDbContext : DbContext, INurviaDbContext
     public DbSet<ExamVersion> ExamVersions => Set<ExamVersion>();
     public DbSet<ExamQuestion> ExamQuestions => Set<ExamQuestion>();
     public DbSet<ExamBlueprint> ExamBlueprints => Set<ExamBlueprint>();
+    public DbSet<SavedStudySet> SavedStudySets => Set<SavedStudySet>();
+    public DbSet<ExamReview> ExamReviews => Set<ExamReview>();
 
     public DbSet<ExamAttempt> ExamAttempts => Set<ExamAttempt>();
     public DbSet<AttemptResponse> AttemptResponses => Set<AttemptResponse>();

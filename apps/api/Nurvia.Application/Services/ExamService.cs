@@ -87,6 +87,13 @@ public class ExamService : IExamService
             ModeAllowed = request.ModeAllowed,
             TimeLimitMinutes = request.TimeLimitMinutes,
             PassingScorePercentage = request.PassingScorePercentage,
+            School = string.IsNullOrWhiteSpace(request.School) ? null : request.School.Trim(),
+            AcademicYear = request.AcademicYear,
+            Season = string.IsNullOrWhiteSpace(request.Season) ? null : request.Season.Trim(),
+            Subject = string.IsNullOrWhiteSpace(request.Subject) ? null : request.Subject.Trim(),
+            Topic = string.IsNullOrWhiteSpace(request.Topic) ? null : request.Topic.Trim(),
+            Difficulty = request.Difficulty,
+            LearningObjectives = request.LearningObjectives ?? new List<string>(),
             Status = ExamStatus.Draft
         };
 
@@ -157,6 +164,14 @@ public class ExamService : IExamService
         exam.ModeAllowed = request.ModeAllowed;
         exam.TimeLimitMinutes = request.TimeLimitMinutes;
         exam.PassingScorePercentage = request.PassingScorePercentage;
+        exam.School = string.IsNullOrWhiteSpace(request.School) ? null : request.School.Trim();
+        exam.AcademicYear = request.AcademicYear;
+        exam.Season = string.IsNullOrWhiteSpace(request.Season) ? null : request.Season.Trim();
+        exam.Subject = string.IsNullOrWhiteSpace(request.Subject) ? null : request.Subject.Trim();
+        exam.Topic = string.IsNullOrWhiteSpace(request.Topic) ? null : request.Topic.Trim();
+        exam.Difficulty = request.Difficulty;
+        if (request.LearningObjectives != null)
+            exam.LearningObjectives = request.LearningObjectives;
         exam.UpdatedAtUtc = DateTime.UtcNow;
         exam.UpdatedBy = author;
         exam.ConcurrencyToken = Guid.NewGuid();
@@ -368,6 +383,13 @@ public class ExamService : IExamService
             Status = e.Status,
             CurrentVersionId = e.CurrentVersionId,
             TotalQuestions = e.TotalQuestions,
+            School = e.School,
+            AcademicYear = e.AcademicYear,
+            Season = e.Season,
+            Subject = e.Subject,
+            Topic = e.Topic,
+            Difficulty = e.Difficulty,
+            LearningObjectives = e.LearningObjectives ?? new List<string>(),
             ConcurrencyToken = e.ConcurrencyToken,
             CreatedAtUtc = e.CreatedAtUtc,
             CreatedBy = e.CreatedBy,

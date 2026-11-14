@@ -60,6 +60,13 @@ public class ExamDto
     public ExamStatus Status { get; set; }
     public Guid? CurrentVersionId { get; set; }
     public int TotalQuestions { get; set; }
+    public string? School { get; set; }
+    public int? AcademicYear { get; set; }
+    public string? Season { get; set; }
+    public string? Subject { get; set; }
+    public string? Topic { get; set; }
+    public DifficultyLevel? Difficulty { get; set; }
+    public List<string> LearningObjectives { get; set; } = new();
     public Guid ConcurrencyToken { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public string CreatedBy { get; set; } = string.Empty;
@@ -84,6 +91,13 @@ public class CreateExamRequest
     public ExamLayoutPolicy AllowedLayouts { get; set; } = ExamLayoutPolicy.Both;
     public ExamLayout DefaultLayout { get; set; } = ExamLayout.Sequential;
     public int TargetQuestionCount { get; set; } = 50;
+    public string? School { get; set; }
+    public int? AcademicYear { get; set; }
+    public string? Season { get; set; }
+    public string? Subject { get; set; }
+    public string? Topic { get; set; }
+    public DifficultyLevel? Difficulty { get; set; }
+    public List<string>? LearningObjectives { get; set; }
     public List<Guid>? InitialQuestionIds { get; set; }
 }
 
@@ -102,6 +116,13 @@ public class ConfigureExamRequest
     public ExamLayoutPolicy AllowedLayouts { get; set; } = ExamLayoutPolicy.Both;
     public ExamLayout DefaultLayout { get; set; } = ExamLayout.Sequential;
     public int TargetQuestionCount { get; set; }
+    public string? School { get; set; }
+    public int? AcademicYear { get; set; }
+    public string? Season { get; set; }
+    public string? Subject { get; set; }
+    public string? Topic { get; set; }
+    public DifficultyLevel? Difficulty { get; set; }
+    public List<string>? LearningObjectives { get; set; }
     public List<Guid> AssignedQuestionIds { get; set; } = new();
 }
 

@@ -17,6 +17,13 @@ public class Exam : Entity, IAuditableEntity
     public ExamStatus Status { get; set; } = ExamStatus.Draft;
     public Guid? CurrentVersionId { get; set; }
     public int TotalQuestions { get; set; } = 0;
+    public string? School { get; set; }
+    public int? AcademicYear { get; set; }
+    public string? Season { get; set; }
+    public string? Subject { get; set; }
+    public string? Topic { get; set; }
+    public DifficultyLevel? Difficulty { get; set; }
+    public List<string> LearningObjectives { get; set; } = new();
     public Guid ConcurrencyToken { get; set; } = Guid.NewGuid();
 
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;

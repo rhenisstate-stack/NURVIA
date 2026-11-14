@@ -3,6 +3,7 @@ using Nurvia.Api.Common;
 using Nurvia.Application.Common;
 using Nurvia.Application.Exams;
 using Nurvia.Application.Interfaces;
+using Nurvia.Application.Tutor;
 using Nurvia.Domain.Enums;
 using Nurvia.Domain.Exceptions;
 
@@ -13,11 +14,16 @@ namespace Nurvia.Api.Controllers;
 public class ExamAttemptsController : ControllerBase
 {
     private readonly IExamAttemptService _attemptService;
+    private readonly ITutorService _tutorService;
     private readonly ILogger<ExamAttemptsController> _logger;
 
-    public ExamAttemptsController(IExamAttemptService attemptService, ILogger<ExamAttemptsController> logger)
+    public ExamAttemptsController(
+        IExamAttemptService attemptService,
+        ITutorService tutorService,
+        ILogger<ExamAttemptsController> logger)
     {
         _attemptService = attemptService;
+        _tutorService = tutorService;
         _logger = logger;
     }
 
@@ -166,5 +172,55 @@ public class ExamAttemptsController : ControllerBase
 
         var result = await _attemptService.GetLearnerHistoryAsync(user.Id, ct);
         return Ok(ApiResponse<List<ExamAttemptSummaryDto>>.Ok(result));
+    }
+
+    [HttpPost("{id:guid}/tutor/hint")]
+    public async Task<ActionResult<ApiResponse<TutorHintResponseDto>>> RequestTutorHint(
+        Guid id,
+        [FromBody] TutorHintRequest request,
+        CancellationToken ct)
+    {
+        var user = HttpContext.GetCurrentUser();
+        if (!user.IsAuthenticated)
+            return Unauthorized(ApiResponse<TutorHintResponseDto>.Error("Authentication is required."));
+
+        try
+        {
+            var result = await _tutorService.GetHintAsync(id, user.Id, request, ct);
+            return Ok(ApiResponse<TutorHintResponseDto>.Ok(result));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, ApiResponse<TutorHintResponseDto>.Error(ex.Message));
+        }
+        catch (DomainException ex)
+        {
+            return BadRequest(ApiResponse<TutorHintResponseDto>.Error(ex.Message));
+        }
+    }
+
+    [HttpPost("{id:guid}/tutor/evaluate")]
+    public async Task<ActionResult<ApiResponse<TutorEvaluateResponseDto>>> EvaluateTutorAnswer(
+        Guid id,
+        [FromBody] TutorEvaluateRequest request,
+        CancellationToken ct)
+    {
+        var user = HttpContext.GetCurrentUser();
+        if (!user.IsAuthenticated)
+            return Unauthorized(ApiResponse<TutorEvaluateResponseDto>.Error("Authentication is required."));
+
+        try
+        {
+            var result = await _tutorService.EvaluateAnswerAsync(id, user.Id, request, ct);
+            return Ok(ApiResponse<TutorEvaluateResponseDto>.Ok(result));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, ApiResponse<TutorEvaluateResponseDto>.Error(ex.Message));
+        }
+        catch (DomainException ex)
+        {
+            return BadRequest(ApiResponse<TutorEvaluateResponseDto>.Error(ex.Message));
+        }
     }
 }

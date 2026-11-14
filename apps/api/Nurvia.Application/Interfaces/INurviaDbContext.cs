@@ -22,6 +22,8 @@ public interface INurviaDbContext
     DbSet<ExamVersion> ExamVersions { get; }
     DbSet<ExamQuestion> ExamQuestions { get; }
     DbSet<ExamBlueprint> ExamBlueprints { get; }
+    DbSet<SavedStudySet> SavedStudySets { get; }
+    DbSet<ExamReview> ExamReviews { get; }
 
     DbSet<Nurvia.Domain.Attempts.ExamAttempt> ExamAttempts { get; }
     DbSet<Nurvia.Domain.Attempts.AttemptResponse> AttemptResponses { get; }

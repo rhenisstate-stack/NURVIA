@@ -38,6 +38,9 @@ public static class DependencyInjection
         services.AddScoped<ILectureService, LectureService>();
         services.AddScoped<IExamService, ExamService>();
         services.AddScoped<IExamAttemptService, ExamAttemptService>();
+        services.AddScoped<IStudyLibraryService, StudyLibraryService>();
+        services.AddSingleton<IAiTutorProvider, GroundedFallbackAiTutorProvider>();
+        services.AddScoped<ITutorService, TutorService>();
 
         // Register file storage service
         services.Configure<FileStorageOptions>(options =>

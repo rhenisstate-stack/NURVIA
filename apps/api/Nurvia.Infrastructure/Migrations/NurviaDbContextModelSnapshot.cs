@@ -367,6 +367,9 @@ namespace Nurvia.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int?>("AcademicYear")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Category")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -396,6 +399,14 @@ namespace Nurvia.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("Difficulty")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<List<string>>("LearningObjectives")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
                     b.Property<string>("ModeAllowed")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -410,10 +421,22 @@ namespace Nurvia.Infrastructure.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)");
 
+                    b.Property<string>("School")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("Season")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)");
+
+                    b.Property<string>("Subject")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
 
                     b.Property<int>("TimeLimitMinutes")
                         .HasColumnType("integer");
@@ -422,6 +445,10 @@ namespace Nurvia.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(250)
                         .HasColumnType("character varying(250)");
+
+                    b.Property<string>("Topic")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
 
                     b.Property<int>("TotalQuestions")
                         .HasColumnType("integer");
@@ -435,10 +462,20 @@ namespace Nurvia.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AcademicYear");
+
                     b.HasIndex("Code")
                         .IsUnique();
 
                     b.HasIndex("CurrentVersionId");
+
+                    b.HasIndex("School");
+
+                    b.HasIndex("Season");
+
+                    b.HasIndex("Subject");
+
+                    b.HasIndex("Status", "Pathway", "Category");
 
                     b.ToTable("Exams", (string)null);
                 });
@@ -502,6 +539,51 @@ namespace Nurvia.Infrastructure.Migrations
                     b.HasIndex("QuestionVersionId");
 
                     b.ToTable("ExamQuestions", (string)null);
+                });
+
+            modelBuilder.Entity("Nurvia.Domain.Exams.ExamReview", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ExamId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsApproved")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("LearnerId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("LearnerName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<int>("Rating")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExamId", "IsApproved");
+
+                    b.HasIndex("ExamId", "LearnerId")
+                        .IsUnique();
+
+                    b.ToTable("ExamReviews", (string)null);
                 });
 
             modelBuilder.Entity("Nurvia.Domain.Exams.ExamVersion", b =>
@@ -583,6 +665,33 @@ namespace Nurvia.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("ExamVersions", (string)null);
+                });
+
+            modelBuilder.Entity("Nurvia.Domain.Exams.SavedStudySet", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ExamId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("SavedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExamId");
+
+                    b.HasIndex("UserId", "ExamId")
+                        .IsUnique();
+
+                    b.ToTable("SavedStudySets", (string)null);
                 });
 
             modelBuilder.Entity("Nurvia.Domain.Lectures.Lecture", b =>
@@ -1028,10 +1137,32 @@ namespace Nurvia.Infrastructure.Migrations
                     b.Navigation("QuestionVersion");
                 });
 
+            modelBuilder.Entity("Nurvia.Domain.Exams.ExamReview", b =>
+                {
+                    b.HasOne("Nurvia.Domain.Exams.Exam", "Exam")
+                        .WithMany()
+                        .HasForeignKey("ExamId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Exam");
+                });
+
             modelBuilder.Entity("Nurvia.Domain.Exams.ExamVersion", b =>
                 {
                     b.HasOne("Nurvia.Domain.Exams.Exam", "Exam")
                         .WithMany("Versions")
+                        .HasForeignKey("ExamId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Exam");
+                });
+
+            modelBuilder.Entity("Nurvia.Domain.Exams.SavedStudySet", b =>
+                {
+                    b.HasOne("Nurvia.Domain.Exams.Exam", "Exam")
+                        .WithMany()
                         .HasForeignKey("ExamId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
