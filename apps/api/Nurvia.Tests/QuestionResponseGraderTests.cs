@@ -103,6 +103,39 @@ public class QuestionResponseGraderTests
         Assert.Equal(0m, result.Fraction);
     }
 
+    [Fact]
+    public void Evaluate_TrueFalse_ObjectPayloadWithOptionId_IsCorrect()
+    {
+        // The True/False renderer submits {"value":"<optionId>"}; the grader must
+        // resolve the persisted identifier rather than returning no selection.
+        var qv = NewVersion(QuestionType.TrueFalse);
+        var wrong = Opt(1, "True", false);
+        var right = Opt(2, "False", true);
+        qv.Options.Add(wrong);
+        qv.Options.Add(right);
+
+        var correct = QuestionResponseGrader.Evaluate(qv, $"{{\"value\":\"{right.Id}\"}}");
+        var incorrect = QuestionResponseGrader.Evaluate(qv, $"{{\"value\":\"{wrong.Id}\"}}");
+
+        Assert.True(correct.IsCorrect);
+        Assert.Equal(1m, correct.Fraction);
+        Assert.False(incorrect.IsCorrect);
+        Assert.Equal(0m, incorrect.Fraction);
+    }
+
+    [Fact]
+    public void Evaluate_SingleAnswerType_ObjectPayloadWithIntegerStringValue_IsCorrect()
+    {
+        var qv = NewVersion(QuestionType.SingleChoice);
+        qv.Options.Add(Opt(1, "Wrong answer", false));
+        qv.Options.Add(Opt(2, "Right answer", true));
+
+        var result = QuestionResponseGrader.Evaluate(qv, "{\"value\":\"2\"}");
+
+        Assert.True(result.IsCorrect);
+        Assert.Equal(1m, result.Fraction);
+    }
+
     // ---------------------------------------------------------------
     // 2. MultipleResponse (SATA) / MultipleImageSelection: exact set equality
     // ---------------------------------------------------------------

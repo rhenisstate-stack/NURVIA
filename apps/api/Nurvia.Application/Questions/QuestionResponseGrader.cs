@@ -464,8 +464,16 @@ public static class QuestionResponseGrader
                         var idx = p.GetInt32();
                         return options.FirstOrDefault(o => o.OptionIndex == idx);
                     }
-                    if (p.ValueKind == JsonValueKind.String && int.TryParse(p.GetString(), out var parsedIdx))
-                        return options.FirstOrDefault(o => o.OptionIndex == parsedIdx);
+                    if (p.ValueKind == JsonValueKind.String)
+                    {
+                        var str = p.GetString()?.Trim();
+                        // Renderers such as True/False submit the persisted option
+                        // identifier inside "value"; it must resolve by option Id.
+                        if (Guid.TryParse(str, out var g))
+                            return options.FirstOrDefault(o => o.Id == g);
+                        if (int.TryParse(str, out var parsedIdx))
+                            return options.FirstOrDefault(o => o.OptionIndex == parsedIdx);
+                    }
                 }
             }
         }
