@@ -100,6 +100,34 @@ public class QuestionValidationTests
     }
 
     [Fact]
+    public void Type06_MultipleImageSelection_ExhibitsOnlyConfiguration_IsRejected()
+    {
+        // Exhibits cannot substitute for gradable choices: the grader derives the
+        // key from option IsCorrect flags only.
+        var qv = CreateBaseVersion(QuestionType.MultipleImageSelection);
+        qv.Exhibits.Add(new QuestionExhibit(ExhibitType.Image, "ECG Strip 1", "https://cdn.nurvia.example/ecg-1.png", 1));
+        qv.Exhibits.Add(new QuestionExhibit(ExhibitType.Image, "ECG Strip 2", "https://cdn.nurvia.example/ecg-2.png", 2));
+
+        var isValid = qv.Validate(out var errors);
+
+        Assert.False(isValid);
+        Assert.Contains(errors, e => e.Contains("at least 2 selectable image choices"));
+    }
+
+    [Fact]
+    public void Type06_MultipleImageSelection_NoCorrectChoice_IsRejected()
+    {
+        var qv = CreateBaseVersion(QuestionType.MultipleImageSelection);
+        qv.Options.Add(new QuestionOption(0, "ECG Strip 1: Normal Sinus Rhythm", false));
+        qv.Options.Add(new QuestionOption(1, "ECG Strip 2: Ventricular Fibrillation", false));
+
+        var isValid = qv.Validate(out var errors);
+
+        Assert.False(isValid);
+        Assert.Contains(errors, e => e.Contains("at least one correct image choice"));
+    }
+
+    [Fact]
     public void Type07_DragAndDrop_Passes_With_ContentJsonData_Or_Options()
     {
         var qv = CreateBaseVersion(QuestionType.DragAndDrop);

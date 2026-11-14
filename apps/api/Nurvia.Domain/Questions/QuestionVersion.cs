@@ -92,11 +92,18 @@ public class QuestionVersion : Entity, IAuditableEntity
                 break;
 
             case QuestionType.MultipleImageSelection:
-                if (Options.Count < 2 && Exhibits.Count < 2)
-                    errors.Add("Multiple-Image Selection questions require at least 2 image choices to present to the candidate.");
-                if (Options.Count > 0 && Options.Count(o => o.IsCorrect) < 1)
+            {
+                // Grading derives the authoritative key exclusively from option
+                // IsCorrect flags (QuestionResponseGrader treats this type as
+                // set-equality over selected options), so a selectable option set
+                // with at least one correct choice is always required. Exhibits may
+                // supplement the panels but cannot substitute for gradable choices.
+                if (Options.Count < 2)
+                    errors.Add("Multiple-Image Selection questions require at least 2 selectable image choices to present to the candidate.");
+                if (Options.Count >= 2 && Options.Count(o => o.IsCorrect) < 1)
                     errors.Add("Multiple-Image Selection questions must designate at least one correct image choice.");
                 break;
+            }
 
             case QuestionType.DragAndDrop:
                 if (Options.Count < 2 && string.IsNullOrWhiteSpace(ContentJsonData))
