@@ -17,10 +17,7 @@ namespace Nurvia.Tests;
 
 public class AttemptLifecycleTests : IAsyncLifetime
 {
-    // Host is the loopback IP literal, not "localhost": in some local environments
-    // (this workspace included) the test-host assembly mix crashes inside Dns
-    // resolution, and Npgsql skips DNS entirely for IP literals.
-    private const string ConnectionString = "Host=127.0.0.1;Port=5432;Database=nurvia_db;Username=nurvia_user;Password=nurvia_secure_password_dev2026!;Include Error Detail=true";
+    private readonly string _connectionString = DatabaseEnvironmentValidator.ResolveIsolatedTestConnectionString();
     private readonly List<Guid> _createdExamIds = new();
     private readonly List<Guid> _createdQuestionIds = new();
     private readonly List<Guid> _createdAttemptIds = new();
@@ -29,13 +26,17 @@ public class AttemptLifecycleTests : IAsyncLifetime
     private NurviaDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<NurviaDbContext>()
-            .UseNpgsql(ConnectionString)
+            .UseNpgsql(_connectionString)
             .Options;
 
         return new NurviaDbContext(options);
     }
 
-    public Task InitializeAsync() => Task.CompletedTask;
+    public async Task InitializeAsync()
+    {
+        await using var context = CreateDbContext();
+        await context.Database.MigrateAsync();
+    }
 
     public async Task DisposeAsync()
     {

@@ -19,8 +19,7 @@ namespace Nurvia.Tests;
 /// </summary>
 public class ReviewReleasePolicyTests : IAsyncLifetime
 {
-    // Loopback IP literal: see the note in AttemptLifecycleTests.
-    private const string ConnectionString = "Host=127.0.0.1;Port=5432;Database=nurvia_db;Username=nurvia_user;Password=nurvia_secure_password_dev2026!;Include Error Detail=true";
+    private readonly string _connectionString = DatabaseEnvironmentValidator.ResolveIsolatedTestConnectionString();
     private readonly List<Guid> _createdExamIds = new();
     private readonly List<Guid> _createdQuestionIds = new();
     private readonly List<Guid> _createdAttemptIds = new();
@@ -28,13 +27,17 @@ public class ReviewReleasePolicyTests : IAsyncLifetime
     private NurviaDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<NurviaDbContext>()
-            .UseNpgsql(ConnectionString)
+            .UseNpgsql(_connectionString)
             .Options;
 
         return new NurviaDbContext(options);
     }
 
-    public Task InitializeAsync() => Task.CompletedTask;
+    public async Task InitializeAsync()
+    {
+        await using var context = CreateDbContext();
+        await context.Database.MigrateAsync();
+    }
 
     public async Task DisposeAsync()
     {

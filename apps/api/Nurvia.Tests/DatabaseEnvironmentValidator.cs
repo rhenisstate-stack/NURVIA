@@ -81,5 +81,36 @@ namespace Nurvia.Tests
                 
             return connectionString.Contains("Password=", StringComparison.OrdinalIgnoreCase);
         }
+
+        /// <summary>
+        /// Resolves and validates the isolated PostgreSQL test connection string from TEST_CONNECTION_STRING.
+        /// Ensures DOTNET_ENVIRONMENT=Test and Database=nurvia_test (never nurvia_db or production).
+        /// </summary>
+        public static string ResolveIsolatedTestConnectionString()
+        {
+            var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? string.Empty;
+            if (!IsTestEnvironment(environment))
+            {
+                throw new InvalidOperationException("Tests must be run with DOTNET_ENVIRONMENT=Test");
+            }
+
+            var connectionString = Environment.GetEnvironmentVariable("TEST_CONNECTION_STRING") ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                throw new InvalidOperationException("TEST_CONNECTION_STRING environment variable is required for PostgreSQL test execution.");
+            }
+
+            var builder = new NpgsqlConnectionStringBuilder(connectionString);
+            if (!IsTestDatabase(builder.Database ?? string.Empty) ||
+                !IsNotDevelopmentDatabase(builder.Database ?? string.Empty) ||
+                !IsNotProductionDatabase(builder.Database ?? string.Empty) ||
+                !IsNotProductionHost(builder.Host ?? string.Empty) ||
+                string.IsNullOrWhiteSpace(builder.Password))
+            {
+                throw new InvalidOperationException($"TEST_CONNECTION_STRING must target an isolated 'nurvia_test' database with credentials. Current database: '{builder.Database}'.");
+            }
+
+            return connectionString;
+        }
     }
 }
