@@ -48,16 +48,16 @@ public class LectureServiceTests
         Name = "Anonymous"
     };
 
-    private static CurrentUser AuthenticatedUser(string role) => new()
+    private static CurrentUser AuthenticatedUser(string role, string? name = null) => new()
     {
         Id = Guid.NewGuid().ToString(),
-        Name = $"Test {role}",
+        Name = name ?? $"Test {role}",
         Email = $"{role.ToLowerInvariant()}@nurvia.test",
         Role = role,
         IsAuthenticated = true
     };
 
-    private static LecturesController CreateController(ILectureService service, string? role)
+    private static LecturesController CreateController(ILectureService service, string? role, string? name = null)
     {
         var controller = new LecturesController(service);
         var httpContext = new DefaultHttpContext();
@@ -67,7 +67,7 @@ public class LectureServiceTests
             var claims = new List<Claim>
             {
                 new(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()),
-                new(ClaimTypes.Name, $"Test {role}"),
+                new(ClaimTypes.Name, name ?? $"Test {role}"),
                 new(ClaimTypes.Email, $"{role.ToLowerInvariant()}@nurvia.test"),
             };
 
@@ -84,12 +84,28 @@ public class LectureServiceTests
     }
 
     [Fact]
-    public async Task LectureSeeder_SeedsAllTwelvePublishedLecturesIdempotently()
+    public async Task LectureSeeder_DefaultStartup_SeedsTwelveDraftsIdempotentlyAndPreservesExisting()
     {
         await using var context = CreateInMemoryContext();
 
+        // Pre-existing admin-authored lecture 1 that was rejected
+        var existing = new Lecture(
+            1,
+            "acid-base-ventilator-alarms",
+            "Custom Lecture 1",
+            "Critical Care",
+            "Custom summary",
+            "## Custom body",
+            new[] { "Custom concept" },
+            LectureAccessLevel.Public,
+            "Admin Author");
+        existing.SubmitForReview("Admin Author");
+        existing.Reject("rev-1", "Reviewer", "Needs citations");
+        context.Lectures.Add(existing);
+        await context.SaveChangesAsync();
+
         await LectureSeeder.SeedAsync(context);
-        await LectureSeeder.SeedAsync(context); // Must be idempotent
+        await LectureSeeder.SeedAsync(context); // Repeated execution must be idempotent
 
         var lectures = await context.Lectures
             .OrderBy(l => l.Number)
@@ -97,19 +113,33 @@ public class LectureServiceTests
 
         Assert.Equal(12, lectures.Count);
         Assert.Equal(Enumerable.Range(1, 12), lectures.Select(l => l.Number));
-        Assert.All(lectures, l => Assert.Equal(ContentStatus.Published, l.Status));
+        // Existing rejected lecture must not be overwritten or promoted
+        Assert.Equal("Custom Lecture 1", lectures[0].Title);
+        Assert.Equal(ContentStatus.Rejected, lectures[0].Status);
+        // Newly seeded lectures default to Draft (never auto-published on default startup)
+        Assert.All(lectures.Skip(1), l => Assert.Equal(ContentStatus.Draft, l.Status));
         Assert.All(lectures.Where(l => l.Number <= 3), l => Assert.Equal(LectureAccessLevel.Public, l.AccessLevel));
         Assert.All(lectures.Where(l => l.Number >= 4), l => Assert.Equal(LectureAccessLevel.AuthenticatedLearner, l.AccessLevel));
     }
 
-    [Fact]
-    public async Task GetPublishedCatalogue_PublicVisitor_WithholdsProtectedHighYieldConcepts()
+    [Theory]
+    [InlineData(false, "")]
+    [InlineData(true, "")]
+    [InlineData(true, "   ")]
+    [InlineData(true, "InvalidRole")]
+    [InlineData(true, "Author")]
+    [InlineData(true, "Reviewer")]
+    [InlineData(true, "Publisher")]
+    public async Task GetPublishedCatalogue_NonLearnerCallers_WithholdsProtectedHighYieldConcepts(
+        bool isAuthenticated,
+        string role)
     {
         await using var context = CreateInMemoryContext();
-        await LectureSeeder.SeedAsync(context);
+        await LectureSeeder.SeedAsync(context, publishPreApprovedCatalogue: true);
         var service = new LectureService(context, new StubAuditService());
 
-        var catalogue = await service.GetPublishedCatalogueAsync(AnonymousUser());
+        var caller = isAuthenticated ? AuthenticatedUser(role) : AnonymousUser();
+        var catalogue = await service.GetPublishedCatalogueAsync(caller);
 
         Assert.Equal(12, catalogue.Count);
         Assert.All(catalogue.Where(l => l.Number <= 3), item => Assert.NotEmpty(item.HighYieldConcepts));
@@ -120,7 +150,7 @@ public class LectureServiceTests
     public async Task GetPublishedCatalogue_AuthenticatedLearner_ReceivesAllHighYieldConcepts()
     {
         await using var context = CreateInMemoryContext();
-        await LectureSeeder.SeedAsync(context);
+        await LectureSeeder.SeedAsync(context, publishPreApprovedCatalogue: true);
         var service = new LectureService(context, new StubAuditService());
 
         var catalogue = await service.GetPublishedCatalogueAsync(AuthenticatedUser("Learner"));
@@ -133,18 +163,20 @@ public class LectureServiceTests
     public async Task GetPublishedBySlug_EnforcesAccessPolicyForPublicAndProtectedLectures()
     {
         await using var context = CreateInMemoryContext();
-        await LectureSeeder.SeedAsync(context);
+        await LectureSeeder.SeedAsync(context, publishPreApprovedCatalogue: true);
         var service = new LectureService(context, new StubAuditService());
 
         var publicLecture = await service.GetPublishedBySlugAsync("acid-base-ventilator-alarms", AnonymousUser());
         Assert.NotNull(publicLecture);
         Assert.NotEmpty(publicLecture!.BodyMarkdown);
 
+        // Anonymous, role-less, invalid-role, and non-learner staff cannot use learner endpoint for lectures 4-12
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
             service.GetPublishedBySlugAsync("cardiac-telemetry-chest-tubes", AnonymousUser()));
-
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
             service.GetPublishedBySlugAsync("cardiac-telemetry-chest-tubes", AuthenticatedUser("")));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            service.GetPublishedBySlugAsync("cardiac-telemetry-chest-tubes", AuthenticatedUser("Author")));
 
         var learnerLecture = await service.GetPublishedBySlugAsync(
             "cardiac-telemetry-chest-tubes",
@@ -154,7 +186,7 @@ public class LectureServiceTests
     }
 
     [Fact]
-    public async Task LectureLifecycle_TransitionsAndPublishedImmutabilityAreEnforced()
+    public async Task LectureLifecycle_TransitionsRejectionSelfApprovalAndImmutabilityAreEnforced()
     {
         await using var context = CreateInMemoryContext();
         var service = new LectureService(context, new StubAuditService());
@@ -175,9 +207,79 @@ public class LectureServiceTests
 
         Assert.Equal(ContentStatus.Draft, draft.Status);
 
+        // Duplicate number or slug rejected
+        await Assert.ThrowsAsync<DomainException>(() =>
+            service.CreateDraftAsync(
+                new CreateLectureRequest
+                {
+                    Number = 1,
+                    Slug = "other-slug",
+                    Title = "Dup Num",
+                    Category = "Critical Care",
+                    Summary = "Summary",
+                    BodyMarkdown = "## Body",
+                    HighYieldConcepts = new List<string> { "Concept" },
+                    AccessLevel = LectureAccessLevel.Public
+                },
+                "Author One"));
+
+        await Assert.ThrowsAsync<DomainException>(() =>
+            service.CreateDraftAsync(
+                new CreateLectureRequest
+                {
+                    Number = 2,
+                    Slug = "test-lecture",
+                    Title = "Dup Slug",
+                    Category = "Critical Care",
+                    Summary = "Summary",
+                    BodyMarkdown = "## Body",
+                    HighYieldConcepts = new List<string> { "Concept" },
+                    AccessLevel = LectureAccessLevel.Public
+                },
+                "Author One"));
+
+        // Illegal transitions from Draft
+        await Assert.ThrowsAsync<DomainException>(() => service.PublishAsync(draft.Id, "Publisher One"));
+        await Assert.ThrowsAsync<DomainException>(() => service.ArchiveAsync(draft.Id, "Publisher One"));
+
         var pending = await service.SubmitForReviewAsync(draft.Id, "Author One");
         Assert.Equal(ContentStatus.PendingReview, pending.Status);
 
+        // Self-approval blocked
+        await Assert.ThrowsAsync<DomainException>(() =>
+            service.ReviewAsync(
+                draft.Id,
+                new ReviewLectureRequest { Decision = ReviewDecision.Approved, Comments = "Self" },
+                "auth-1",
+                "Author One"));
+
+        // Rejection and re-edit
+        var rejected = await service.ReviewAsync(
+            draft.Id,
+            new ReviewLectureRequest { Decision = ReviewDecision.Rejected, Comments = "Expand ABG table" },
+            "rev-1",
+            "Reviewer One");
+        Assert.Equal(ContentStatus.Rejected, rejected.Status);
+
+        // Cannot publish rejected lecture
+        await Assert.ThrowsAsync<DomainException>(() => service.PublishAsync(draft.Id, "Publisher One"));
+
+        var updated = await service.UpdateDraftAsync(
+            draft.Id,
+            new UpdateLectureRequest
+            {
+                Slug = "test-lecture",
+                Title = "Test Lecture Revised",
+                Category = "Critical Care",
+                Summary = "Summary text",
+                BodyMarkdown = "## Revised Body",
+                HighYieldConcepts = new List<string> { "Concept 1" },
+                AccessLevel = LectureAccessLevel.Public
+            },
+            "Author One");
+        Assert.Equal(ContentStatus.Draft, updated.Status);
+
+        await service.SubmitForReviewAsync(draft.Id, "Author One");
         var approved = await service.ReviewAsync(
             draft.Id,
             new ReviewLectureRequest { Decision = ReviewDecision.Approved, Comments = "Clinically accurate" },
@@ -188,6 +290,7 @@ public class LectureServiceTests
         var published = await service.PublishAsync(draft.Id, "Publisher One");
         Assert.Equal(ContentStatus.Published, published.Status);
 
+        // Published content is immutable
         await Assert.ThrowsAsync<DomainException>(() =>
             service.UpdateDraftAsync(
                 draft.Id,
@@ -211,34 +314,38 @@ public class LectureServiceTests
     public async Task LecturesController_EnforcesRoleBoundariesAcrossManagementEndpoints()
     {
         await using var context = CreateInMemoryContext();
-        await LectureSeeder.SeedAsync(context);
+        await LectureSeeder.SeedAsync(context, publishPreApprovedCatalogue: true);
         var service = new LectureService(context, new StubAuditService());
 
-        // Anonymous cannot access protected lecture or management
+        // Anonymous -> 401
         var anonController = CreateController(service, null);
-        var anonProtected = await anonController.GetPublishedLecture("cardiac-telemetry-chest-tubes", CancellationToken.None);
-        Assert.IsType<UnauthorizedObjectResult>(anonProtected.Result);
+        Assert.IsType<UnauthorizedObjectResult>((await anonController.GetPublishedLecture("cardiac-telemetry-chest-tubes", CancellationToken.None)).Result);
+        Assert.IsType<UnauthorizedObjectResult>((await anonController.GetManagementLectures(CancellationToken.None)).Result);
 
-        var anonMgmt = await anonController.GetManagementLectures(CancellationToken.None);
-        Assert.IsType<UnauthorizedObjectResult>(anonMgmt.Result);
-
-        // Learner cannot access management or create/publish
+        // Learner -> 403 on management
         var learnerController = CreateController(service, "Learner");
-        var learnerMgmt = await learnerController.GetManagementLectures(CancellationToken.None);
-        var learnerMgmtObj = Assert.IsType<ObjectResult>(learnerMgmt.Result);
-        Assert.Equal(StatusCodes.Status403Forbidden, learnerMgmtObj.StatusCode);
+        var learnerMgmt = Assert.IsType<ObjectResult>((await learnerController.GetManagementLectures(CancellationToken.None)).Result);
+        Assert.Equal(StatusCodes.Status403Forbidden, learnerMgmt.StatusCode);
 
-        // Author cannot review or publish
+        // Author -> can access management preview, cannot review/publish/archive
         var authorController = CreateController(service, "Author");
-        var authorReview = await authorController.Review(
+        Assert.IsType<OkObjectResult>((await authorController.GetManagementLectures(CancellationToken.None)).Result);
+
+        var authorReview = Assert.IsType<ObjectResult>((await authorController.Review(
             Guid.NewGuid(),
             new ReviewLectureRequest { Decision = ReviewDecision.Approved },
-            CancellationToken.None);
-        var authorReviewObj = Assert.IsType<ObjectResult>(authorReview.Result);
-        Assert.Equal(StatusCodes.Status403Forbidden, authorReviewObj.StatusCode);
+            CancellationToken.None)).Result);
+        Assert.Equal(StatusCodes.Status403Forbidden, authorReview.StatusCode);
 
-        var authorPublish = await authorController.Publish(Guid.NewGuid(), CancellationToken.None);
-        var authorPublishObj = Assert.IsType<ObjectResult>(authorPublish.Result);
-        Assert.Equal(StatusCodes.Status403Forbidden, authorPublishObj.StatusCode);
+        var authorPublish = Assert.IsType<ObjectResult>((await authorController.Publish(Guid.NewGuid(), CancellationToken.None)).Result);
+        Assert.Equal(StatusCodes.Status403Forbidden, authorPublish.StatusCode);
+
+        var authorArchive = Assert.IsType<ObjectResult>((await authorController.Archive(Guid.NewGuid(), CancellationToken.None)).Result);
+        Assert.Equal(StatusCodes.Status403Forbidden, authorArchive.StatusCode);
+
+        // Reviewer -> cannot publish or archive
+        var reviewerController = CreateController(service, "Reviewer");
+        var reviewerPublish = Assert.IsType<ObjectResult>((await reviewerController.Publish(Guid.NewGuid(), CancellationToken.None)).Result);
+        Assert.Equal(StatusCodes.Status403Forbidden, reviewerPublish.StatusCode);
     }
 }
