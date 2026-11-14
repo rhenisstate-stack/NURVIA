@@ -59,6 +59,7 @@ const adminNavigation: AdminNavGroup[] = [
       { name: "Review Queue", href: "/admin/reviews", icon: BookCheck, badge: "Review" },
       { name: "Question Type Registry", href: "/admin/question-types", icon: Database },
       { name: "Exam Builder & Studio", href: "/admin/exams", icon: BookCheck, badge: "84" },
+      { name: "Mark K. Lectures", href: "/admin/lectures", icon: FileText },
       { name: "Curriculum Taxonomy", href: "/admin/taxonomy", icon: FolderTree },
       { name: "Clinical Case Studies", href: "/admin/cases", icon: Sparkles },
     ],
