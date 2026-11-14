@@ -388,3 +388,55 @@ export interface AvatarDto {
   url: string;
   uploadedAtUtc: string;
 }
+
+export type LectureAccessLevel = 'Public' | 'AuthenticatedLearner';
+
+export interface LectureCatalogueItemDto {
+  id: string;
+  number: number;
+  slug: string;
+  title: string;
+  category: string;
+  summary: string;
+  highYieldConcepts: string[];
+  accessLevel: LectureAccessLevel;
+}
+
+export interface LectureContentDto extends LectureCatalogueItemDto {
+  bodyMarkdown: string;
+}
+
+export interface LectureManagementDto extends LectureContentDto {
+  status: ContentStatus;
+  reviewNotes: string;
+  createdAtUtc: string;
+  createdBy: string;
+  updatedAtUtc?: string;
+  updatedBy?: string;
+}
+
+export interface CreateLectureRequest {
+  number: number;
+  slug: string;
+  title: string;
+  category: string;
+  summary: string;
+  bodyMarkdown: string;
+  highYieldConcepts: string[];
+  accessLevel: LectureAccessLevel;
+}
+
+export interface UpdateLectureRequest {
+  slug: string;
+  title: string;
+  category: string;
+  summary: string;
+  bodyMarkdown: string;
+  highYieldConcepts: string[];
+  accessLevel: LectureAccessLevel;
+}
+
+export interface ReviewLectureRequest {
+  decision: 'Approved' | 'Rejected';
+  comments: string;
+}

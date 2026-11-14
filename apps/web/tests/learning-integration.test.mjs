@@ -83,4 +83,15 @@ test('5. Learner Exams page defines all four canonical nursing tracks', () => {
   assert(examsFile.includes('StudyLibraryView'), 'StudyLibraryView inclusion missing');
 });
 
+// 6. Mark K. Lecture Catalogue & Reader Wiring
+test('6. Mark K. catalogue and reader use persisted API without unsafe HTML', () => {
+  const indexFile = fs.readFileSync(path.join(webRoot, 'app', 'mark-k', 'page.tsx'), 'utf8');
+  const readerFile = fs.readFileSync(path.join(webRoot, 'app', 'mark-k', '[slug]', 'page.tsx'), 'utf8');
+  assert(indexFile.includes('nurviaApi.getLectureCatalogue()'), 'Catalogue must load from nurviaApi.getLectureCatalogue()');
+  assert(!indexFile.includes('const markKLectures'), 'Hardcoded markKLectures array must be removed');
+  assert(indexFile.includes('/mark-k/${lec.slug}'), 'Catalogue CTA must route to /mark-k/{slug}');
+  assert(readerFile.includes('nurviaApi.getLectureBySlug'), 'Reader must load lecture from nurviaApi.getLectureBySlug');
+  assert(!readerFile.includes('dangerouslySetInnerHTML'), 'Lecture reader must not use unsafe dangerouslySetInnerHTML');
+});
+
 console.log(`\nAll ${totalTests} Stage 7 test suites PASSED successfully (${passedTests}/${totalTests})!`);

@@ -13,6 +13,12 @@
   AuthUserDto,
   UserProfileDto,
   ExamLayout,
+  LectureCatalogueItemDto,
+  LectureContentDto,
+  LectureManagementDto,
+  CreateLectureRequest,
+  UpdateLectureRequest,
+  ReviewLectureRequest,
 } from './api-types';
 import { classifyError, ErrorType } from './utils/error-utils';
 
@@ -378,6 +384,62 @@ export const nurviaApi = {
 
   async getAttemptHistory(): Promise<ApiResponse<ExamAttemptSummaryDto[]>> {
     return request<ExamAttemptSummaryDto[]>('/api/attempts/history');
+  },
+
+  // Mark K. Lecture Notes
+  async getLectureCatalogue(): Promise<ApiResponse<LectureCatalogueItemDto[]>> {
+    return request<LectureCatalogueItemDto[]>('/api/lectures');
+  },
+
+  async getLectureBySlug(slug: string): Promise<ApiResponse<LectureContentDto>> {
+    return request<LectureContentDto>(`/api/lectures/${encodeURIComponent(slug)}`);
+  },
+
+  async getManagementLectures(): Promise<ApiResponse<LectureManagementDto[]>> {
+    return request<LectureManagementDto[]>('/api/lectures/management');
+  },
+
+  async getManagementLecture(id: string): Promise<ApiResponse<LectureManagementDto>> {
+    return request<LectureManagementDto>(`/api/lectures/management/${id}`);
+  },
+
+  async createLectureDraft(payload: CreateLectureRequest): Promise<ApiResponse<LectureManagementDto>> {
+    return request<LectureManagementDto>('/api/lectures', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async updateLectureDraft(id: string, payload: UpdateLectureRequest): Promise<ApiResponse<LectureManagementDto>> {
+    return request<LectureManagementDto>(`/api/lectures/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async submitLectureForReview(id: string): Promise<ApiResponse<LectureManagementDto>> {
+    return request<LectureManagementDto>(`/api/lectures/${id}/submit-for-review`, {
+      method: 'POST',
+    });
+  },
+
+  async reviewLecture(id: string, payload: ReviewLectureRequest): Promise<ApiResponse<LectureManagementDto>> {
+    return request<LectureManagementDto>(`/api/lectures/${id}/review`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async publishLecture(id: string): Promise<ApiResponse<LectureManagementDto>> {
+    return request<LectureManagementDto>(`/api/lectures/${id}/publish`, {
+      method: 'POST',
+    });
+  },
+
+  async archiveLecture(id: string): Promise<ApiResponse<LectureManagementDto>> {
+    return request<LectureManagementDto>(`/api/lectures/${id}/archive`, {
+      method: 'POST',
+    });
   },
 };
 

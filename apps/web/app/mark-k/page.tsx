@@ -5,156 +5,71 @@ import Link from "next/link";
 import { PublicShell } from "@/components/layout/public-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/components/auth/auth-provider";
+import { nurviaApi } from "@/lib/api-client";
+import { LectureCatalogueItemDto } from "@/lib/api-types";
 import {
-  BookOpen,
   Search,
   CheckCircle2,
   AlertCircle,
-  Sparkles,
-  ExternalLink,
   ShieldCheck,
   ArrowRight,
   GraduationCap,
-  ListOrdered,
-  FileText,
+  Lock,
+  BookOpen,
+  RefreshCw,
 } from "lucide-react";
 
-interface LectureTopic {
-  number: number;
-  title: string;
-  category: "Prioritization & Triage" | "Electrolytes & Endocrine" | "Med-Surg & Cardiac" | "Maternity & Psych";
-  description: string;
-  highYieldConcepts: string[];
-  nurviaPracticeModule: string;
-  nurviaModuleHref: string;
-}
-
-const markKLectures: LectureTopic[] = [
-  {
-    number: 1,
-    title: "Acid-Base Principles & Ventilator Alarms",
-    category: "Prioritization & Triage",
-    description: "Systematic interpretation of Arterial Blood Gases (ABGs) and clinical troubleshooting for high-pressure vs. low-pressure ventilator alarms.",
-    highYieldConcepts: ["ROME method vs. systematic interpretation", "High-pressure alarms: secretions and kinks", "Low-pressure alarms: disconnections and leaks"],
-    nurviaPracticeModule: "Respiratory Acid-Base Practice Set",
-    nurviaModuleHref: "/learner/library",
-  },
-  {
-    number: 2,
-    title: "Alcohol Withdrawal, Wernicke-Korsakoff & Overdose Triage",
-    category: "Maternity & Psych",
-    description: "Clinical distinctions between alcohol withdrawal syndrome and delirium tremens; triage for acute toxicities and overdoses.",
-    highYieldConcepts: ["Delirium Tremens safety precautions", "Wernicke encephalopathy: Vitamin B1 (Thiamine)", "Upper vs. Downer overdose and withdrawal signs"],
-    nurviaPracticeModule: "Substance Use & Triage Quiz",
-    nurviaModuleHref: "/learner/library",
-  },
-  {
-    number: 3,
-    title: "Thyroid, Adrenal Disorders & Calcium Regulation",
-    category: "Electrolytes & Endocrine",
-    description: "Hyperthyroidism, Graves' disease, thyroid storm, Addison's disease, and Cushing's syndrome diagnostic priorities.",
-    highYieldConcepts: ["Thyroidectomy post-op airway & tetany (calcium gluconate)", "Addisonian crisis: IV steroids & fluid resuscitation", "Cushing's: cortisol excess, hypokalemia, infection risk"],
-    nurviaPracticeModule: "Endocrine & Electrolyte Practice Set",
-    nurviaModuleHref: "/learner/library",
-  },
-  {
-    number: 4,
-    title: "Cardiac Telemetry & Chest Tube Systems",
-    category: "Med-Surg & Cardiac",
-    description: "Lethal and non-lethal arrhythmias, defibrillation vs. cardioversion, and water seal chest tube maintenance.",
-    highYieldConcepts: ["Ventricular fibrillation & asystole protocols", "Atrial fibrillation: rate control & anticoagulation", "Continuous bubbling in water seal chamber indicates leak"],
-    nurviaPracticeModule: "Cardiac Arrhythmias & Telemetry",
-    nurviaModuleHref: "/learner/library",
-  },
-  {
-    number: 5,
-    title: "Congenital Heart Defects & Assistive Mobility",
-    category: "Med-Surg & Cardiac",
-    description: "Cyanotic vs. acyanotic pediatric defects ('TRouBLe' mnemonic) and safe crutch, cane, and walker gait training.",
-    highYieldConcepts: ["Tetralogy of Fallot: PROVe anatomical defects", "Crutch walking: 2-point, 3-point, 4-point gaits", "Stairs: Up with the good, down with the bad"],
-    nurviaPracticeModule: "Pediatric Cardiac & Mobility Set",
-    nurviaModuleHref: "/learner/library",
-  },
-  {
-    number: 6,
-    title: "Psychotropic Medications & Therapeutic Communication",
-    category: "Maternity & Psych",
-    description: "Major psychotropic medication classes (SSRIs, MAOIs, Lithium, Phenothiazines) and therapeutic boundary rules.",
-    highYieldConcepts: ["Lithium therapeutic range (0.6 - 1.2 mEq/L) & toxicity", "MAOIs: tyramine-restricted diet to prevent hypertensive crisis", "Serotonin syndrome: hyperreflexia, tremors, agitation"],
-    nurviaPracticeModule: "Psychiatric Nursing & Psychopharm",
-    nurviaModuleHref: "/learner/library",
-  },
-  {
-    number: 7,
-    title: "Diabetes Mellitus, Diabetes Insipidus & SIADH",
-    category: "Electrolytes & Endocrine",
-    description: "Pathophysiology of insulin administration, hypoglycemia protocols, DKA, and hyperosmolar hyperglycemic state (HHS).",
-    highYieldConcepts: ["Insulin on-peak safety windows: Regular vs. NPH vs. Glargine", "DKA vs. HHS: fluid resuscitation priority", "SIADH: water intoxication, hyponatremia, fluid restriction"],
-    nurviaPracticeModule: "Endocrine & Diabetes Mastery Set",
-    nurviaModuleHref: "/learner/library",
-  },
-  {
-    number: 8,
-    title: "Serum Electrolytes & Critical Lab Values",
-    category: "Electrolytes & Endocrine",
-    description: "Potassium, sodium, calcium, and magnesium clinical manifestations; priority interventions for life-threatening lab values.",
-    highYieldConcepts: ["Hyperkalemia: Tall tented T waves & calcium gluconate", "Hyponatremia: Seizure precautions", "Calcium vs. Potassium manifestation rules"],
-    nurviaPracticeModule: "Lab Values & Safety Alerts Set",
-    nurviaModuleHref: "/learner/library",
-  },
-  {
-    number: 9,
-    title: "Labor, Delivery & Obstetric Emergencies",
-    category: "Maternity & Psych",
-    description: "Four stages of labor, active phase dilation, and management of umbilical cord prolapse, shoulder dystocia, and uterine rupture.",
-    highYieldConcepts: ["Prolapsed cord: knee-chest or Trendelenburg position", "Active labor dilation (4 to 7 cm)", "Uterine hyperstimulation from oxytocin: stop the infusion"],
-    nurviaPracticeModule: "Maternal-Newborn Critical Scenarios",
-    nurviaModuleHref: "/learner/library",
-  },
-  {
-    number: 10,
-    title: "Fetal Heart Rate Monitoring & VEAL CHOP",
-    category: "Maternity & Psych",
-    description: "Systematic analysis of fetal monitoring strips: variable, early, late decelerations, and nursing actions.",
-    highYieldConcepts: ["VEAL CHOP mnemonic for strip deceleration etiology", "Late decelerations: maternal left lateral, O2, IV bolus", "Early decelerations: head compression (benign)"],
-    nurviaPracticeModule: "Fetal Heart Rate Strip Interpretation",
-    nurviaModuleHref: "/learner/library",
-  },
-  {
-    number: 11,
-    title: "Maternity Staging & Core Pharmacology Rules",
-    category: "Maternity & Psych",
-    description: "Postpartum fundal assessment, neonatal APGAR scoring, tocolytic medications, and systemic antibiotic toxicities.",
-    highYieldConcepts: ["APGAR score timing: 1 and 5 minutes", "Aminoglycosides: ototoxicity & nephrotoxicity monitoring", "Tocolytics: Terbutaline (tachycardia) and Nifedipine"],
-    nurviaPracticeModule: "Pharmacology & Maternal Assessment",
-    nurviaModuleHref: "/learner/library",
-  },
-  {
-    number: 12,
-    title: "Prioritization & Delegation: The Master Framework",
-    category: "Prioritization & Triage",
-    description: "The gold standard NCLEX prioritization algorithm: acute vs. chronic, fresh post-op vs. medical, unstable vs. stable, RN vs. LPN vs. UAP delegation.",
-    highYieldConcepts: ["Acute beat chronic; fresh post-op (<12h) beat medical", "Unstable vs. stable distinguishing clinical indicators", "Delegation rules: do not delegate assessment, teaching, or evaluation"],
-    nurviaPracticeModule: "Master Prioritization & Delegation Simulator",
-    nurviaModuleHref: "/learner/library",
-  },
-];
-
-export default function MarkKReviewPage() {
+export default function MarkKIndexPage() {
+  const { status } = useAuth();
+  const [lectures, setLectures] = React.useState<LectureCatalogueItemDto[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState("");
   const [selectedCategory, setSelectedCategory] = React.useState<string>("All");
 
-  const categories = ["All", "Prioritization & Triage", "Electrolytes & Endocrine", "Med-Surg & Cardiac", "Maternity & Psych"];
+  const loadCatalogue = React.useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const response = await nurviaApi.getLectureCatalogue();
+      if (response.success && response.data) {
+        setLectures(response.data);
+      } else {
+        setLoadError(response.message || "Unable to load the lecture catalogue.");
+      }
+    } catch {
+      setLoadError("Unable to reach the lecture service. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
-  const filteredLectures = markKLectures.filter((lec) => {
-    const matchesSearch =
-      search.trim() === "" ||
-      lec.title.toLowerCase().includes(search.toLowerCase()) ||
-      lec.description.toLowerCase().includes(search.toLowerCase()) ||
-      lec.highYieldConcepts.some((c) => c.toLowerCase().includes(search.toLowerCase()));
-    const matchesCat = selectedCategory === "All" || lec.category === selectedCategory;
-    return matchesSearch && matchesCat;
-  });
+  React.useEffect(() => {
+    if (status === "loading") return;
+    void loadCatalogue();
+  }, [status, loadCatalogue]);
+
+  const categories = React.useMemo(() => {
+    const distinct = Array.from(new Set(lectures.map((l) => l.category).filter(Boolean)));
+    return ["All", ...distinct];
+  }, [lectures]);
+
+  const filteredLectures = React.useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return lectures.filter((lec) => {
+      const matchesSearch =
+        query === "" ||
+        lec.title.toLowerCase().includes(query) ||
+        lec.summary.toLowerCase().includes(query) ||
+        lec.category.toLowerCase().includes(query) ||
+        lec.highYieldConcepts.some((c) => c.toLowerCase().includes(query));
+      const matchesCat = selectedCategory === "All" || lec.category === selectedCategory;
+      return matchesSearch && matchesCat;
+    });
+  }, [lectures, search, selectedCategory]);
+
+  const isAuthenticated = status === "authenticated";
 
   return (
     <PublicShell>
@@ -167,19 +82,19 @@ export default function MarkKReviewPage() {
               <span>NCLEX High-Yield Framework</span>
             </div>
             <h1 className="font-brand text-4xl sm:text-5xl font-extrabold tracking-tight text-foreground max-w-3xl mx-auto leading-tight">
-              Mark Klimek NCLEX Review Index
+              Mark K. NCLEX Lecture Notes Index
             </h1>
             <p className="text-foreground-secondary text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
-              Explore an organized syllabus of the 12 classic review topics—reinforced with NURVIA’s original interactive practice questions and clinical rationales.
+              Explore the 12 core clinical review lectures—with free public access to Lectures 1–3 and full 12-lecture access for signed-in NURVIA learners.
             </p>
 
-            {/* Fair Use / Educational Disclaimer Alert */}
+            {/* Independence & Educational Disclaimer */}
             <div className="max-w-3xl mx-auto p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200 text-xs text-left flex items-start gap-3">
               <ShieldCheck className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
               <div className="space-y-1">
-                <span className="font-bold block">Educational Reference & Copyright Notice</span>
+                <span className="font-bold block">Educational Reference &amp; Independence Notice</span>
                 <p className="text-amber-800 dark:text-amber-300">
-                  NURVIA is an independent educational platform and is not affiliated with or endorsed by Mark Klimek or Klimek Reviews. The lectures below represent topic outlines and curricula commonly studied for NCLEX preparation. All practice questions and clinical rationales provided in NURVIA are original educational materials developed by NURVIA.
+                  NURVIA is independent and is not affiliated with, endorsed by, or officially connected to Mark Klimek or Klimek Reviews. All lecture notes, clinical summaries, practice questions, and rationales provided in NURVIA are original educational materials developed by NURVIA.
                 </p>
               </div>
             </div>
@@ -190,9 +105,10 @@ export default function MarkKReviewPage() {
                 <Search className="w-4 h-4 text-foreground-muted absolute left-3.5 top-3" />
                 <input
                   type="search"
+                  aria-label="Search lecture topics"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search topics (e.g. Prioritization, Acid-Base, Lithium)..."
+                  placeholder="Search topics (e.g. Ventilator, Lithium, VEAL CHOP)..."
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-surface text-sm placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-brand-teal"
                 />
               </div>
@@ -221,67 +137,131 @@ export default function MarkKReviewPage() {
               ))}
             </div>
 
-            {/* Lecture Cards List */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredLectures.map((lec) => (
-                <div
-                  key={lec.number}
-                  className="rounded-2xl border border-border bg-surface p-6 flex flex-col justify-between space-y-4 hover:border-brand-teal/50 hover:shadow-md transition-all group"
-                >
-                  <div className="space-y-3.5">
-                    <div className="flex items-center justify-between">
-                      <span className="font-brand font-bold text-xs px-2.5 py-1 rounded-md bg-brand-teal/10 text-brand-teal">
-                        Lecture {lec.number}
-                      </span>
-                      <Badge variant="outline">{lec.category}</Badge>
-                    </div>
-
-                    <h3 className="font-brand text-lg font-bold text-foreground leading-snug group-hover:text-brand-teal transition-colors">
-                      {lec.title}
-                    </h3>
-
-                    <p className="text-xs text-foreground-secondary leading-relaxed">
-                      {lec.description}
-                    </p>
-
-                    <div className="space-y-1.5 pt-1">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-foreground-muted block">
-                        High-Yield Takeaways:
-                      </span>
-                      <ul className="space-y-1 text-xs text-foreground-secondary">
-                        {lec.highYieldConcepts.map((c, i) => (
-                          <li key={i} className="flex items-start gap-1.5">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-                            <span>{c}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+            {/* Loading / Error / Lecture Cards */}
+            {isLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="rounded-2xl border border-border bg-surface p-6 space-y-4">
+                    <div className="h-5 w-24 rounded bg-surface-muted animate-pulse" />
+                    <div className="h-6 w-3/4 rounded bg-surface-muted animate-pulse" />
+                    <div className="h-16 w-full rounded bg-surface-muted animate-pulse" />
+                    <div className="h-9 w-full rounded bg-surface-muted animate-pulse" />
                   </div>
-
-                  <div className="pt-3 border-t border-border space-y-2">
-                    <Link href={lec.nurviaModuleHref} className="block w-full">
-                      <Button
-                        size="sm"
-                        className="w-full text-xs font-semibold h-9 justify-between bg-brand-navy text-white hover:bg-brand-navyDeep dark:bg-brand-teal"
-                      >
-                        <span>Practice {lec.nurviaPracticeModule}</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {filteredLectures.length === 0 && (
-              <div className="text-center py-12 space-y-3 bg-surface rounded-2xl border border-border">
-                <AlertCircle className="w-8 h-8 text-foreground-muted mx-auto" />
-                <p className="text-sm font-semibold text-foreground">No lectures matching your query</p>
-                <p className="text-xs text-foreground-secondary">
-                  Try searching for terms like &quot;Ventilators&quot;, &quot;Lithium&quot;, or &quot;Prioritization&quot;.
-                </p>
+                ))}
               </div>
+            ) : loadError ? (
+              <div className="text-center py-12 space-y-3 bg-surface rounded-2xl border border-border px-4">
+                <AlertCircle className="w-8 h-8 text-rose-500 mx-auto" />
+                <p className="text-sm font-semibold text-foreground">{loadError}</p>
+                <Button variant="outline" size="sm" onClick={() => void loadCatalogue()} className="text-xs">
+                  <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                  Retry
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredLectures.map((lec) => {
+                    const isPublic = lec.accessLevel === "Public";
+                    const isLockedForVisitor = !isPublic && !isAuthenticated;
+                    const readerHref = `/mark-k/${lec.slug}`;
+                    const ctaHref = isLockedForVisitor
+                      ? `/sign-in?returnTo=${encodeURIComponent(readerHref)}`
+                      : readerHref;
+
+                    return (
+                      <div
+                        key={lec.id}
+                        className="rounded-2xl border border-border bg-surface p-6 flex flex-col justify-between space-y-4 hover:border-brand-teal/50 hover:shadow-md transition-all group"
+                      >
+                        <div className="space-y-3.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-brand font-bold text-xs px-2.5 py-1 rounded-md bg-brand-teal/10 text-brand-teal">
+                              Lecture {lec.number}
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                              {isPublic ? (
+                                <Badge variant="teal" className="text-[10px]">Free Preview</Badge>
+                              ) : isLockedForVisitor ? (
+                                <Badge variant="outline" className="text-[10px] gap-1 text-amber-600 border-amber-500/40">
+                                  <Lock className="w-3 h-3" />
+                                  Learner Access
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-[10px]">Unlocked</Badge>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <span className="text-[11px] font-medium text-foreground-muted">{lec.category}</span>
+                            <h3 className="font-brand text-lg font-bold text-foreground leading-snug group-hover:text-brand-teal transition-colors">
+                              {lec.title}
+                            </h3>
+                          </div>
+
+                          <p className="text-xs text-foreground-secondary leading-relaxed">
+                            {lec.summary}
+                          </p>
+
+                          {lec.highYieldConcepts.length > 0 ? (
+                            <div className="space-y-1.5 pt-1">
+                              <span className="text-[11px] font-bold uppercase tracking-wider text-foreground-muted block">
+                                High-Yield Takeaways:
+                              </span>
+                              <ul className="space-y-1 text-xs text-foreground-secondary">
+                                {lec.highYieldConcepts.slice(0, 3).map((c, i) => (
+                                  <li key={i} className="flex items-start gap-1.5">
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                                    <span>{c}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          ) : isLockedForVisitor ? (
+                            <div className="p-3 rounded-xl bg-surface-muted/70 border border-border/70 text-[11px] text-foreground-muted flex items-center gap-2">
+                              <Lock className="w-3.5 h-3.5 shrink-0 text-amber-600" />
+                              <span>Sign in with a NURVIA learner account to unlock full notes and high-yield takeaways.</span>
+                            </div>
+                          ) : null}
+                        </div>
+
+                        <div className="pt-3 border-t border-border">
+                          <Link href={ctaHref} className="block w-full">
+                            <Button
+                              size="sm"
+                              variant={isLockedForVisitor ? "outline" : "primary"}
+                              className={
+                                isLockedForVisitor
+                                  ? "w-full text-xs font-semibold h-9 justify-between"
+                                  : "w-full text-xs font-semibold h-9 justify-between bg-brand-navy text-white hover:bg-brand-navyDeep dark:bg-brand-teal"
+                              }
+                            >
+                              <span className="flex items-center gap-1.5">
+                                {isLockedForVisitor ? <Lock className="w-3.5 h-3.5" /> : <BookOpen className="w-3.5 h-3.5" />}
+                                {isLockedForVisitor ? "Sign In to Read Notes" : "Read Full Lecture Notes"}
+                              </span>
+                              <ArrowRight className="w-3.5 h-3.5" />
+                            </Button>
+                          </Link>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {filteredLectures.length === 0 && (
+                  <div className="text-center py-12 space-y-3 bg-surface rounded-2xl border border-border">
+                    <AlertCircle className="w-8 h-8 text-foreground-muted mx-auto" />
+                    <p className="text-sm font-semibold text-foreground">
+                      {lectures.length === 0 ? "No published lectures available yet" : "No lectures matching your query"}
+                    </p>
+                    <p className="text-xs text-foreground-secondary">
+                      Try searching for terms like &quot;Ventilator&quot;, &quot;Lithium&quot;, or &quot;VEAL CHOP&quot;.
+                    </p>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </section>
@@ -290,15 +270,15 @@ export default function MarkKReviewPage() {
         <section className="border-t border-border bg-surface/50 py-16 text-center">
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 space-y-6">
             <h2 className="font-brand text-3xl font-bold text-foreground">
-              Master the Priority Patient Decision Algorithm
+              Put Clinical Lecture Rules Into Practice
             </h2>
             <p className="text-sm text-foreground-secondary max-w-2xl mx-auto leading-relaxed">
-              Prioritization questions comprise up to 20% of your NCLEX examination. Put the Mark Klimek triage rules into practice with NURVIA’s adaptive case studies.
+              Reinforce your lecture review with NURVIA’s original NCLEX practice examinations and clinical rationales.
             </p>
             <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
-              <Link href="/learner/library">
+              <Link href="/learner/exams">
                 <Button size="lg" className="h-11 px-6 text-xs font-semibold bg-brand-navy text-white hover:bg-brand-navyDeep dark:bg-brand-teal">
-                  Open Prioritization Question Bank
+                  Explore Practice Examinations
                   <ArrowRight className="w-4 h-4 ml-1.5" />
                 </Button>
               </Link>
