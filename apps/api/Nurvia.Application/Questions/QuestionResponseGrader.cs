@@ -282,11 +282,55 @@ public static class QuestionResponseGrader
 
     public readonly record struct QuestionResponseGradingResult(bool IsCorrect, decimal Fraction);
 
-    /// <summary>Legacy scoring policy: any substantive non-empty response earns full credit.</summary>
+    /// <summary>
+    /// Legacy scoring policy: only valid JSON containing at least one substantive non-empty
+    /// value earns full credit. Malformed JSON, null, whitespace, and empty arrays/objects
+    /// (including nested empty structures) never earn credit.
+    /// </summary>
     private static QuestionResponseGradingResult LegacyCredit(string? responseJson)
     {
-        var full = !string.IsNullOrWhiteSpace(responseJson) && responseJson != "[]" && responseJson != "{}";
-        return new QuestionResponseGradingResult(full, full ? 1m : 0m);
+        if (string.IsNullOrWhiteSpace(responseJson))
+            return new QuestionResponseGradingResult(false, 0m);
+
+        try
+        {
+            using var doc = JsonDocument.Parse(responseJson);
+            var hasSubstantiveValue = ContainsSubstantiveValue(doc.RootElement);
+            return new QuestionResponseGradingResult(hasSubstantiveValue, hasSubstantiveValue ? 1m : 0m);
+        }
+        catch (JsonException)
+        {
+            return new QuestionResponseGradingResult(false, 0m);
+        }
+    }
+
+    private static bool ContainsSubstantiveValue(JsonElement element)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.String:
+                return !string.IsNullOrWhiteSpace(element.GetString());
+            case JsonValueKind.Number:
+            case JsonValueKind.True:
+            case JsonValueKind.False:
+                return true;
+            case JsonValueKind.Array:
+                foreach (var item in element.EnumerateArray())
+                {
+                    if (ContainsSubstantiveValue(item))
+                        return true;
+                }
+                return false;
+            case JsonValueKind.Object:
+                foreach (var prop in element.EnumerateObject())
+                {
+                    if (ContainsSubstantiveValue(prop.Value))
+                        return true;
+                }
+                return false;
+            default:
+                return false;
+        }
     }
 
     /// <summary>Reads a string-to-string key map from the approved ContentJsonData; null when no key was authored.</summary>

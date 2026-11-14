@@ -348,4 +348,78 @@ public class LectureServiceTests
         var reviewerPublish = Assert.IsType<ObjectResult>((await reviewerController.Publish(Guid.NewGuid(), CancellationToken.None)).Result);
         Assert.Equal(StatusCodes.Status403Forbidden, reviewerPublish.StatusCode);
     }
+
+    [Fact]
+    public async Task LectureSeeder_PreservesPublishedArchivedAndEditedRecords_AndRepairsPartialSeedWithoutDuplicates()
+    {
+        await using var context = CreateInMemoryContext();
+
+        // Pre-existing published lecture with custom edits on #2
+        var published = new Lecture(
+            2,
+            "endocrine-diabetes-thyroid-adrenal",
+            "Edited Endocrine Title",
+            "Endocrinology",
+            "Edited summary",
+            "## Edited body",
+            new[] { "Edited concept" },
+            LectureAccessLevel.Public,
+            "Author A");
+        published.SubmitForReview("Author A");
+        published.Approve("rev-1", "Reviewer", "Approved");
+        published.Publish("Publisher");
+
+        // Pre-existing archived lecture with custom slug collision on #3
+        var archived = new Lecture(
+            3,
+            "cardiac-drugs-electrolytes",
+            "Archived Cardiac Title",
+            "Cardiology",
+            "Archived summary",
+            "## Archived body",
+            new[] { "Archived concept" },
+            LectureAccessLevel.Public,
+            "Author B");
+        archived.SubmitForReview("Author B");
+        archived.Approve("rev-1", "Reviewer", "Approved");
+        archived.Publish("Publisher");
+        archived.Archive("Publisher");
+
+        // Pre-existing draft on #12 with matching slug from #4 to verify slug + number deduplication
+        var slugCollision = new Lecture(
+            12,
+            "cardiac-telemetry-chest-tubes",
+            "Custom Slug Collision",
+            "Cardiology",
+            "Custom summary",
+            "## Custom body",
+            new[] { "Custom concept" },
+            LectureAccessLevel.AuthenticatedLearner,
+            "Author C");
+
+        context.Lectures.AddRange(published, archived, slugCollision);
+        await context.SaveChangesAsync();
+
+        await LectureSeeder.SeedAsync(context, publishPreApprovedCatalogue: true);
+        await LectureSeeder.SeedAsync(context, publishPreApprovedCatalogue: true);
+
+        var lectures = await context.Lectures.OrderBy(l => l.Number).ToListAsync();
+
+        // #4 is skipped due to slug collision with #12, #12 is skipped due to number collision -> 11 total
+        Assert.Equal(11, lectures.Count);
+        Assert.Equal(lectures.Count, lectures.Select(l => l.Number).Distinct().Count());
+        Assert.Equal(lectures.Count, lectures.Select(l => l.Slug.ToLowerInvariant()).Distinct().Count());
+
+        var reloadedPublished = lectures.Single(l => l.Number == 2);
+        Assert.Equal(ContentStatus.Published, reloadedPublished.Status);
+        Assert.Equal("Edited Endocrine Title", reloadedPublished.Title);
+        Assert.Equal("## Edited body", reloadedPublished.BodyMarkdown);
+
+        var reloadedArchived = lectures.Single(l => l.Number == 3);
+        Assert.Equal(ContentStatus.Archived, reloadedArchived.Status);
+        Assert.Equal("Archived Cardiac Title", reloadedArchived.Title);
+
+        var reloadedCollision = lectures.Single(l => l.Number == 12);
+        Assert.Equal(ContentStatus.Draft, reloadedCollision.Status);
+    }
 }

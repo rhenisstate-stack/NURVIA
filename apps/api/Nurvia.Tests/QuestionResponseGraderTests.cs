@@ -760,4 +760,40 @@ public class QuestionResponseGraderTests
             Assert.Equal(0m, result.Fraction);
         }
     }
+
+    [Theory]
+    [InlineData(QuestionType.MatrixGrid)]
+    [InlineData(QuestionType.BowTie)]
+    [InlineData(QuestionType.MultipleTrueFalse)]
+    [InlineData(QuestionType.DragAndDrop)]
+    [InlineData(QuestionType.ClinicalCaseStudy)]
+    [InlineData(QuestionType.ExtendedResponse)]
+    public void Evaluate_LegacyCredit_RejectsMalformedAndNestedEmptyPayloads(QuestionType type)
+    {
+        var qv = NewVersion(type);
+
+        var invalidOrEmptyPayloads = new[]
+        {
+            null,
+            "",
+            "   ",
+            "null",
+            "\"\"",
+            "\"   \"",
+            "  {}  ",
+            "  [ ]  ",
+            "{not valid json",
+            "[1, 2",
+            "{\"text\":\"   \"}",
+            "{\"Selections\":{}}",
+            "[null, \"   \", {}, []]"
+        };
+
+        foreach (var payload in invalidOrEmptyPayloads)
+        {
+            var result = QuestionResponseGrader.Evaluate(qv, payload);
+            Assert.False(result.IsCorrect);
+            Assert.Equal(0m, result.Fraction);
+        }
+    }
 }
