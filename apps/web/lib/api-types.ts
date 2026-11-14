@@ -310,7 +310,8 @@ export interface ReviewQuestionDto {
   questionType: QuestionType;
   cognitiveSkill: CognitiveSkill;
   clientNeedCategory: ClientNeedCategory;
-  generalRationale: string;
+  /** Null when the exam's review-release policy withholds rationales. */
+  generalRationale?: string;
   learnerResponse?: string;
   isCorrect: boolean;
   pointsAwarded: number;
