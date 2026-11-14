@@ -900,8 +900,8 @@ public class ExamAttemptService : IExamAttemptService
         if (node is JsonObject obj)
         {
             var keysToRemove = obj
+                .Where(kvp => IsSensitiveAnswerKeyProperty(kvp.Key, kvp.Value))
                 .Select(kvp => kvp.Key)
-                .Where(IsSensitiveAnswerKeyProperty)
                 .ToList();
 
             foreach (var key in keysToRemove)
@@ -925,13 +925,31 @@ public class ExamAttemptService : IExamAttemptService
         }
     }
 
-    private static bool IsSensitiveAnswerKeyProperty(string propertyName)
+    private static bool IsSensitiveAnswerKeyProperty(string propertyName, JsonNode? value)
     {
+        if (propertyName.Equals("buckets", StringComparison.OrdinalIgnoreCase))
+        {
+            // UI bucket definitions are arrays; answer-key mappings are objects.
+            return value is JsonObject;
+        }
+
         return propertyName.StartsWith("correct", StringComparison.OrdinalIgnoreCase)
             || propertyName.Equals("isCorrect", StringComparison.OrdinalIgnoreCase)
             || propertyName.Equals("answerKey", StringComparison.OrdinalIgnoreCase)
+            || propertyName.Equals("answer", StringComparison.OrdinalIgnoreCase)
+            || propertyName.Equals("answers", StringComparison.OrdinalIgnoreCase)
+            || propertyName.Equals("expectedAnswer", StringComparison.OrdinalIgnoreCase)
+            || propertyName.Equals("expectedAnswers", StringComparison.OrdinalIgnoreCase)
+            || propertyName.Equals("solution", StringComparison.OrdinalIgnoreCase)
+            || propertyName.Equals("solutions", StringComparison.OrdinalIgnoreCase)
             || propertyName.Equals("rationale", StringComparison.OrdinalIgnoreCase)
             || propertyName.Equals("specificRationale", StringComparison.OrdinalIgnoreCase)
-            || propertyName.Equals("generalRationale", StringComparison.OrdinalIgnoreCase);
+            || propertyName.Equals("generalRationale", StringComparison.OrdinalIgnoreCase)
+            || propertyName.Equals("explanation", StringComparison.OrdinalIgnoreCase)
+            || propertyName.Equals("explanations", StringComparison.OrdinalIgnoreCase)
+            || propertyName.Equals("hint", StringComparison.OrdinalIgnoreCase)
+            || propertyName.Equals("hints", StringComparison.OrdinalIgnoreCase)
+            || propertyName.Equals("trueFalseMap", StringComparison.OrdinalIgnoreCase)
+            || propertyName.Equals("matrixSelections", StringComparison.OrdinalIgnoreCase);
     }
 }

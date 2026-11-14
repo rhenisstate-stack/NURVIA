@@ -43,9 +43,18 @@ public class TutorService : ITutorService
     {
         var (attempt, question, version) = await LoadTutorQuestionAsync(attemptId, learnerId, request.QuestionId, ct);
 
-        string? aiHint = _aiProvider.IsAvailable
-            ? await _aiProvider.TryGenerateGroundedHintAsync(question, version, request.Stage, ct)
-            : null;
+        string? aiHint = null;
+        if (_aiProvider.IsAvailable)
+        {
+            try
+            {
+                aiHint = await _aiProvider.TryGenerateGroundedHintAsync(question, version, request.Stage, ct);
+            }
+            catch
+            {
+                aiHint = null;
+            }
+        }
 
         if (!string.IsNullOrWhiteSpace(aiHint))
         {
@@ -100,9 +109,18 @@ public class TutorService : ITutorService
             await _context.SaveChangesAsync(ct);
         }
 
-        string? aiTakeaway = _aiProvider.IsAvailable
-            ? await _aiProvider.TryGenerateGroundedTakeawayAsync(question, version, isCorrect, ct)
-            : null;
+        string? aiTakeaway = null;
+        if (_aiProvider.IsAvailable)
+        {
+            try
+            {
+                aiTakeaway = await _aiProvider.TryGenerateGroundedTakeawayAsync(question, version, isCorrect, ct);
+            }
+            catch
+            {
+                aiTakeaway = null;
+            }
+        }
 
         var clinicalConcept = $"{question.Subject} — {question.Topic} ({FormatEnumName(version.ClientNeedCategory.ToString())})";
         var nursingPrinciple = $"NCJMM Cognitive Skill: {FormatEnumName(version.CognitiveSkill.ToString())}.";

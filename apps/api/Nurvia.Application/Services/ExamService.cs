@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Nurvia.Application.Common;
 using Nurvia.Application.Exams;
 using Nurvia.Application.Interfaces;
@@ -13,11 +14,13 @@ public class ExamService : IExamService
 {
     private readonly INurviaDbContext _context;
     private readonly IAuditService _audit;
+    private readonly IMemoryCache? _cache;
 
-    public ExamService(INurviaDbContext context, IAuditService audit)
+    public ExamService(INurviaDbContext context, IAuditService audit, IMemoryCache? cache = null)
     {
         _context = context;
         _audit = audit;
+        _cache = cache;
     }
 
     public async Task<PagedResult<ExamDto>> GetExamsAsync(ExamFilterRequest filter, CancellationToken ct = default)
@@ -296,6 +299,9 @@ public class ExamService : IExamService
         exam.Publish(publisher);
         await _context.SaveChangesAsync(ct);
 
+        _cache?.Remove("study_library:filters");
+        _cache?.Remove("study_library:summary");
+
         await _audit.LogAsync("Exam", exam.Id.ToString(), "Publish", publisher, publisher, "Superadmin", $"Published exam '{exam.Title}' to live student catalog", ct);
 
         return MapToDto(exam, true);
@@ -312,6 +318,9 @@ public class ExamService : IExamService
 
         exam.Archive(actor);
         await _context.SaveChangesAsync(ct);
+
+        _cache?.Remove("study_library:filters");
+        _cache?.Remove("study_library:summary");
 
         await _audit.LogAsync("Exam", exam.Id.ToString(), "Archive", actor, actor, "Admin", $"Archived exam '{exam.Title}'", ct);
 
