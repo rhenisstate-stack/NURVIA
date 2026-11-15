@@ -1,7 +1,13 @@
-﻿/** @type {import('next').NextConfig} */
-const apiBase = (
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5055'
-).replace(/\/+$/, '');
+﻿import { resolveBackendBaseUrl, isHttpsBackendUrl } from './lib/api-config.mjs';
+
+/** @type {import('next').NextConfig} */
+const apiBase = resolveBackendBaseUrl(process.env);
+
+if (process.env.NODE_ENV === 'production' && !isHttpsBackendUrl(apiBase)) {
+  console.warn(
+    '[NURVIA Security Warning] Configured backend URL uses HTTP. Production deployments must place the remote .NET backend behind an HTTPS reverse proxy for secure authentication cookies.'
+  );
+}
 
 const nextConfig = {
   reactStrictMode: true,
