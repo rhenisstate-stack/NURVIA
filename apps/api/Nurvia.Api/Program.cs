@@ -234,6 +234,7 @@ try
     await DatabaseSeeder.SeedAsync(dbContext);
     var publishSeededLectures = builder.Configuration.GetValue<bool>("Lectures:PublishSeededCatalogue");
     await LectureSeeder.SeedAsync(dbContext, publishSeededLectures);
+    await ProductModulesSeeder.SeedAsync(dbContext);
 }
 catch (Exception ex)
 {
