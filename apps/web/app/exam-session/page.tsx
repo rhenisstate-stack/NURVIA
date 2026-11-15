@@ -320,6 +320,28 @@ function ExamSessionContent() {
       setAnswers(initialAnswers);
       setFlags(initialFlags);
     }
+
+    // Tutor session recovery: restore server-authoritative stage progression.
+    // The backend only returns evaluation content for questions whose own answer
+    // was already evaluated (stage >= 4) — no premature answer disclosure.
+    if (data.deliveryMode === "Tutor") {
+      void (async () => {
+        try {
+          const res = await nurviaApi.getTutorSessionState(data.attemptId);
+          if (res.success && res.data) {
+            const recovered: Record<string, TutorEvaluateResponseDto> = {};
+            res.data.questions.forEach((q) => {
+              if (q.evaluation) recovered[q.questionId] = q.evaluation;
+            });
+            if (Object.keys(recovered).length > 0) {
+              setTutorEvaluations((prev) => ({ ...recovered, ...prev }));
+            }
+          }
+        } catch {
+          // Recovery is best-effort; the learner can re-evaluate if unavailable.
+        }
+      })();
+    }
   };
 
   // 2. Debounced Autosave Handler

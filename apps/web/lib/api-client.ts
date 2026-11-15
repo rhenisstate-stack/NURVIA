@@ -503,5 +503,15 @@ export const nurviaApi = {
       body: JSON.stringify(payload),
     });
   },
+
+  // Tutor session recovery: server-authoritative stage progression with
+  // already-authorized evaluation content (never answer-bearing for stages 1-3).
+  async getTutorSessionState(
+    attemptId: string
+  ): Promise<ApiResponse<import('./api-types').TutorSessionStateDto>> {
+    return request(`/api/attempts/${attemptId}/tutor/session`, {
+      method: 'GET',
+    });
+  },
 };
 

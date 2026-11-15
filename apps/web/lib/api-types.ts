@@ -257,6 +257,8 @@ export interface LearnerAnswerStateDto {
   isAnswered: boolean;
   isFlagged: boolean;
   savedAtUtc: string;
+  /** Server-authoritative Tutor progression (0 for non-Tutor attempts). */
+  tutorStageReached: number;
 }
 
 export interface StartAttemptRequestDto {
@@ -547,4 +549,18 @@ export interface TutorEvaluateResponseDto {
   nursingPrinciple: string;
   takeaway: string;
   isAiGenerated: boolean;
+}
+
+/** Server-authoritative Tutor progression state for one question. Stage numbering follows the six-stage learner experience (1 Independent Thinking … 6 Knowledge Reinforcement). Evaluation content appears only after server-side evaluation (stage >= 4). */
+export interface TutorQuestionStateDto {
+  questionId: string;
+  stageReached: number;
+  evaluation?: TutorEvaluateResponseDto | null;
+}
+
+/** Full Tutor session recovery payload with per-question stage state and already-authorized evaluation content. */
+export interface TutorSessionStateDto {
+  attemptId: string;
+  deliveryMode: 'Exam' | 'Tutor';
+  questions: TutorQuestionStateDto[];
 }
