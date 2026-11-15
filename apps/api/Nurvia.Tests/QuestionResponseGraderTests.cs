@@ -572,16 +572,16 @@ public class QuestionResponseGraderTests
     }
 
     [Fact]
-    public void Evaluate_MultipleTrueFalse_WithoutKey_LegacyCreditApplies()
+    public void Evaluate_MultipleTrueFalse_WithoutKey_FailsClosed()
     {
         var qv = NewVersion(QuestionType.MultipleTrueFalse);
         qv.Options.Add(Opt(1, "Statement one", false));
 
         var result = QuestionResponseGrader.Evaluate(qv, "{\"TrueFalseMap\":{\"anything\":\"True\"}}");
 
-        // Legacy policy: a substantive non-empty response earns credit.
-        Assert.True(result.IsCorrect);
-        Assert.Equal(1m, result.Fraction);
+        Assert.False(result.IsCorrect);
+        Assert.Equal(0m, result.Fraction);
+        Assert.Equal(QuestionResponseGrader.GradingOutcome.InvalidConfiguration, result.Outcome);
     }
 
     // ---------------------------------------------------------------
@@ -623,15 +623,16 @@ public class QuestionResponseGraderTests
     }
 
     [Fact]
-    public void Evaluate_MatrixGrid_WithoutKey_LegacyCreditApplies()
+    public void Evaluate_MatrixGrid_WithoutKey_FailsClosed()
     {
         var qv = NewVersion(QuestionType.MatrixGrid);
         qv.Options.Add(Opt(1, "Row one", false));
 
         var result = QuestionResponseGrader.Evaluate(qv, "{\"MatrixSelections\":{\"x\":\"col-a\"}}");
 
-        Assert.True(result.IsCorrect);
-        Assert.Equal(1m, result.Fraction);
+        Assert.False(result.IsCorrect);
+        Assert.Equal(0m, result.Fraction);
+        Assert.Equal(QuestionResponseGrader.GradingOutcome.InvalidConfiguration, result.Outcome);
     }
 
     // ---------------------------------------------------------------
@@ -673,15 +674,16 @@ public class QuestionResponseGraderTests
     }
 
     [Fact]
-    public void Evaluate_DragAndDrop_WithoutKey_LegacyCreditApplies()
+    public void Evaluate_DragAndDrop_WithoutKey_FailsClosed()
     {
         var qv = NewVersion(QuestionType.DragAndDrop);
         qv.Options.Add(Opt(1, "Item one", false));
 
         var result = QuestionResponseGrader.Evaluate(qv, "{\"Buckets\":{\"x\":\"bucket-a\"}}");
 
-        Assert.True(result.IsCorrect);
-        Assert.Equal(1m, result.Fraction);
+        Assert.False(result.IsCorrect);
+        Assert.Equal(0m, result.Fraction);
+        Assert.Equal(QuestionResponseGrader.GradingOutcome.InvalidConfiguration, result.Outcome);
     }
 
     // ---------------------------------------------------------------
@@ -718,32 +720,34 @@ public class QuestionResponseGraderTests
     }
 
     [Fact]
-    public void Evaluate_BowTie_WithoutKey_LegacyCreditApplies()
+    public void Evaluate_BowTie_WithoutKey_FailsClosed()
     {
         var qv = NewVersion(QuestionType.BowTie);
         qv.Options.Add(Opt(1, "Action token", false));
 
         var result = QuestionResponseGrader.Evaluate(qv, "{\"Actions\":[\"a\"],\"Condition\":\"c\",\"Parameters\":[\"p\"]}");
 
-        Assert.True(result.IsCorrect);
-        Assert.Equal(1m, result.Fraction);
+        Assert.False(result.IsCorrect);
+        Assert.Equal(0m, result.Fraction);
+        Assert.Equal(QuestionResponseGrader.GradingOutcome.InvalidConfiguration, result.Outcome);
     }
 
     // ---------------------------------------------------------------
-    // 9 / 15. ClinicalCaseStudy / ExtendedResponse: legacy policy retained
+    // 9 / 15. ClinicalCaseStudy / ExtendedResponse: pending manual review
     // ---------------------------------------------------------------
 
     [Theory]
     [InlineData(QuestionType.ClinicalCaseStudy)]
     [InlineData(QuestionType.ExtendedResponse)]
-    public void Evaluate_FreeFormTypes_NonEmptyResponse_LegacyCredit(QuestionType type)
+    public void Evaluate_FreeFormTypes_NonEmptyResponse_IsPendingManualReview(QuestionType type)
     {
         var qv = NewVersion(type);
 
         var result = QuestionResponseGrader.Evaluate(qv, "\"This is my clinical rationale response.\"");
 
-        Assert.True(result.IsCorrect);
-        Assert.Equal(1m, result.Fraction);
+        Assert.False(result.IsCorrect);
+        Assert.Equal(0m, result.Fraction);
+        Assert.Equal(QuestionResponseGrader.GradingOutcome.PendingManualReview, result.Outcome);
     }
 
     [Theory]
@@ -758,6 +762,7 @@ public class QuestionResponseGraderTests
             var result = QuestionResponseGrader.Evaluate(qv, response);
             Assert.False(result.IsCorrect);
             Assert.Equal(0m, result.Fraction);
+            Assert.Equal(QuestionResponseGrader.GradingOutcome.AutoGraded, result.Outcome);
         }
     }
 
@@ -768,7 +773,7 @@ public class QuestionResponseGraderTests
     [InlineData(QuestionType.DragAndDrop)]
     [InlineData(QuestionType.ClinicalCaseStudy)]
     [InlineData(QuestionType.ExtendedResponse)]
-    public void Evaluate_LegacyCredit_RejectsMalformedAndNestedEmptyPayloads(QuestionType type)
+    public void Evaluate_FailClosed_RejectsMalformedAndNestedEmptyPayloads(QuestionType type)
     {
         var qv = NewVersion(type);
 
@@ -795,5 +800,17 @@ public class QuestionResponseGraderTests
             Assert.False(result.IsCorrect);
             Assert.Equal(0m, result.Fraction);
         }
+    }
+
+    [Fact]
+    public void Evaluate_UnknownQuestionType_FailsClosedWithInvalidConfiguration()
+    {
+        var qv = NewVersion((QuestionType)9999);
+
+        var result = QuestionResponseGrader.Evaluate(qv, "{\"Answer\":\"anything\"}");
+
+        Assert.False(result.IsCorrect);
+        Assert.Equal(0m, result.Fraction);
+        Assert.Equal(QuestionResponseGrader.GradingOutcome.InvalidConfiguration, result.Outcome);
     }
 }

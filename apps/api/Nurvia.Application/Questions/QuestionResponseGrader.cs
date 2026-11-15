@@ -27,12 +27,11 @@ namespace Nurvia.Application.Questions;
 ///   - MultipleTrueFalse, MatrixGrid, DragAndDrop, BowTie: the approved key is read
 ///     from the question version's ContentJsonData ("CorrectTrueFalse",
 ///     "CorrectSelections", "CorrectBuckets", "CorrectActions" + "CorrectCondition"
-///     + "CorrectParameters"). When an approved key is absent the legacy policy
-///     applies (a non-empty response earns credit) so historical question content
-///     is never silently re-scored as incorrect.
-///   - ExtendedResponse / ClinicalCaseStudy: legacy policy retained (a non-empty
-///     response earns credit); these types require human evaluation outside the
-///     automated engine.
+///     + "CorrectParameters"). Missing or malformed keys fail closed with zero credit
+///     (GradingOutcome.InvalidConfiguration).
+///   - ExtendedResponse / ClinicalCaseStudy: subjective/multi-part evaluation cannot
+///     be auto-graded as 100% correct; substantive responses return zero automated
+///     credit with GradingOutcome.PendingManualReview.
 /// </summary>
 public static class QuestionResponseGrader
 {
@@ -177,8 +176,8 @@ public static class QuestionResponseGrader
                 {
                     var selections = ParseStringDictionary(responseJson, "TrueFalseMap", "trueFalseMap");
                     var key = ParseContentKeyMap(qv.ContentJsonData, "CorrectTrueFalse", "TrueFalseMap", "Correct");
-                    if (key == null)
-                        return LegacyCredit(responseJson);
+                    if (key == null || key.Count == 0)
+                        return new QuestionResponseGradingResult(false, 0m, GradingOutcome.InvalidConfiguration);
 
                     int correctStatements = 0;
                     foreach (var (optionId, expected) in key)
@@ -189,7 +188,7 @@ public static class QuestionResponseGrader
                             correctStatements++;
                         }
                     }
-                    var fraction = key.Count == 0 ? 0m : Math.Round((decimal)correctStatements / key.Count, 4);
+                    var fraction = Math.Round((decimal)correctStatements / key.Count, 4);
                     return new QuestionResponseGradingResult(correctStatements == key.Count, fraction);
                 }
 
@@ -197,8 +196,8 @@ public static class QuestionResponseGrader
                 {
                     var selections = ParseStringDictionary(responseJson, "MatrixSelections", "matrixSelections");
                     var key = ParseContentKeyMap(qv.ContentJsonData, "CorrectSelections", "MatrixSelections", "Correct");
-                    if (key == null)
-                        return LegacyCredit(responseJson);
+                    if (key == null || key.Count == 0)
+                        return new QuestionResponseGradingResult(false, 0m, GradingOutcome.InvalidConfiguration);
 
                     int correctRows = 0;
                     foreach (var (rowId, expected) in key)
@@ -209,7 +208,7 @@ public static class QuestionResponseGrader
                             correctRows++;
                         }
                     }
-                    var fraction = key.Count == 0 ? 0m : Math.Round((decimal)correctRows / key.Count, 4);
+                    var fraction = Math.Round((decimal)correctRows / key.Count, 4);
                     return new QuestionResponseGradingResult(correctRows == key.Count, fraction);
                 }
 
@@ -217,8 +216,8 @@ public static class QuestionResponseGrader
                 {
                     var classifications = ParseStringDictionary(responseJson, "Buckets", "buckets");
                     var key = ParseContentKeyMap(qv.ContentJsonData, "CorrectBuckets", "Buckets", "Correct");
-                    if (key == null)
-                        return LegacyCredit(responseJson);
+                    if (key == null || key.Count == 0)
+                        return new QuestionResponseGradingResult(false, 0m, GradingOutcome.InvalidConfiguration);
 
                     int correctItems = 0;
                     foreach (var (itemId, expected) in key)
@@ -229,7 +228,7 @@ public static class QuestionResponseGrader
                             correctItems++;
                         }
                     }
-                    var fraction = key.Count == 0 ? 0m : Math.Round((decimal)correctItems / key.Count, 4);
+                    var fraction = Math.Round((decimal)correctItems / key.Count, 4);
                     return new QuestionResponseGradingResult(correctItems == key.Count, fraction);
                 }
 
@@ -242,7 +241,7 @@ public static class QuestionResponseGrader
                     var keyParameters = GetStringList(key, "CorrectParameters", "correctParameters") ?? new List<string>();
 
                     if (keyActions.Count == 0 && string.IsNullOrEmpty(keyCondition) && keyParameters.Count == 0)
-                        return LegacyCredit(responseJson); // No approved key authored: legacy policy.
+                        return new QuestionResponseGradingResult(false, 0m, GradingOutcome.InvalidConfiguration);
 
                     const int totalSlots = 5; // 2 actions + 1 condition + 2 parameters
                     int correctSlots = 0;
@@ -267,11 +266,21 @@ public static class QuestionResponseGrader
                     return new QuestionResponseGradingResult(correctSlots == totalSlots, fraction);
                 }
 
+                case QuestionType.ClinicalCaseStudy:
+                case QuestionType.ExtendedResponse:
+                {
+                    // Subjective / multi-step responses require manual evaluation outside
+                    // the automated engine and must never be auto-awarded 100% credit.
+                    var hasSubstantive = HasSubstantiveJson(responseJson);
+                    return new QuestionResponseGradingResult(
+                        false,
+                        0m,
+                        hasSubstantive ? GradingOutcome.PendingManualReview : GradingOutcome.AutoGraded);
+                }
+
                 default:
-                    // Extended Response, Clinical Case Study, and any future type keep
-                    // the legacy policy: a non-empty response earns credit and requires
-                    // human/AI-assisted evaluation outside the automated engine.
-                    return LegacyCredit(responseJson);
+                    // Unsupported or unknown question types fail closed with zero credit.
+                    return new QuestionResponseGradingResult(false, 0m, GradingOutcome.InvalidConfiguration);
             }
         }
         catch
@@ -280,27 +289,31 @@ public static class QuestionResponseGrader
         }
     }
 
-    public readonly record struct QuestionResponseGradingResult(bool IsCorrect, decimal Fraction);
+    public enum GradingOutcome
+    {
+        AutoGraded = 1,
+        PendingManualReview = 2,
+        InvalidConfiguration = 3
+    }
 
-    /// <summary>
-    /// Legacy scoring policy: only valid JSON containing at least one substantive non-empty
-    /// value earns full credit. Malformed JSON, null, whitespace, and empty arrays/objects
-    /// (including nested empty structures) never earn credit.
-    /// </summary>
-    private static QuestionResponseGradingResult LegacyCredit(string? responseJson)
+    public readonly record struct QuestionResponseGradingResult(
+        bool IsCorrect,
+        decimal Fraction,
+        GradingOutcome Outcome = GradingOutcome.AutoGraded);
+
+    private static bool HasSubstantiveJson(string? responseJson)
     {
         if (string.IsNullOrWhiteSpace(responseJson))
-            return new QuestionResponseGradingResult(false, 0m);
+            return false;
 
         try
         {
             using var doc = JsonDocument.Parse(responseJson);
-            var hasSubstantiveValue = ContainsSubstantiveValue(doc.RootElement);
-            return new QuestionResponseGradingResult(hasSubstantiveValue, hasSubstantiveValue ? 1m : 0m);
+            return ContainsSubstantiveValue(doc.RootElement);
         }
         catch (JsonException)
         {
-            return new QuestionResponseGradingResult(false, 0m);
+            return false;
         }
     }
 
