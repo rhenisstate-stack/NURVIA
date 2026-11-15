@@ -1,55 +1,50 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { LearnerShell } from "@/components/layout/learner-shell";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Download, BookOpen } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { BookOpen } from "lucide-react";
 
 export default function StudyGuidesPage() {
-  const guides = [
-    { title: "High-Yield Pharmacology Drug Classes & Antidotes", pages: "18 pages", category: "Pharmacology", downloads: "14.2k" },
-    { title: "Fluid & Electrolyte Imbalances Quick Clinical Cheat Sheet", pages: "12 pages", category: "Med-Surg", downloads: "21.8k" },
-    { title: "Pediatric Developmental Milestones & Vital Signs by Age", pages: "10 pages", category: "Pediatrics", downloads: "11.5k" },
-    { title: "Maternal Fetal Heart Rate Interpretation (VEAL CHOP Guide)", pages: "8 pages", category: "Maternity", downloads: "19.3k" },
-    { title: "Next Gen NCLEX Clinical Judgment Cognitive Skills Handbook", pages: "24 pages", category: "NCLEX Prep", downloads: "35.1k" },
-  ];
-
   return (
     <LearnerShell>
-      <div className="space-y-6">
+      <div className="space-y-6 max-w-3xl">
         <div className="space-y-1">
-          <Badge variant="teal">Study Guides</Badge>
+          <Badge variant="outline">Out of Scope — Future Module</Badge>
           <h1 className="font-brand text-2xl sm:text-3xl font-bold text-foreground">
-            Curated Study Guides & Outlines
+            Downloadable Study Guides
           </h1>
           <p className="text-xs sm:text-sm text-foreground-secondary">
-            High-yield nursing references distilled for fast memorization before exam day.
+            PDF study guide downloads are a planned future module. Use the live Mark K. Lecture Notes and Study Library below.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {guides.map((g) => (
-            <Card key={g.title} className="p-5 flex flex-col justify-between space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Badge variant="outline">{g.category}</Badge>
-                  <span className="text-[11px] text-foreground-muted">{g.pages} · {g.downloads} downloads</span>
-                </div>
-                <CardTitle className="text-base font-semibold">{g.title}</CardTitle>
-              </div>
-
-              <div className="pt-2 border-t border-border flex items-center justify-between">
-                <span className="text-xs text-brand-teal font-medium">Verified Nurse Educator Content</span>
-                <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Download PDF</span>
+        <Card className="p-6 flex items-start gap-4">
+          <BookOpen className="w-5 h-5 text-brand-teal shrink-0 mt-0.5" />
+          <div className="space-y-3">
+            <h2 className="font-brand text-base font-bold text-foreground">
+              Live Study Resources Available Now
+            </h2>
+            <p className="text-xs sm:text-sm text-foreground-secondary leading-relaxed">
+              Access published Mark K. Lecture Notes and curated Study Library sets backed by PostgreSQL.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Link href="/mark-k">
+                <Button size="sm" className="text-xs bg-brand-teal text-white hover:bg-brand-tealDark">
+                  Open Mark K. Lectures
                 </Button>
-              </div>
-            </Card>
-          ))}
-        </div>
+              </Link>
+              <Link href="/learner/library">
+                <Button size="sm" variant="outline" className="text-xs">
+                  Open Study Library
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </Card>
       </div>
     </LearnerShell>
   );

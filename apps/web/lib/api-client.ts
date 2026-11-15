@@ -613,5 +613,197 @@ export const nurviaApi = {
       method: 'GET',
     });
   },
+
+  // Admin Dashboard & Operations
+  async getAdminOverview(): Promise<ApiResponse<{
+    totalQuestions: number;
+    publishedQuestions: number;
+    totalExams: number;
+    publishedExams: number;
+    totalLearners: number;
+    activeLearners: number;
+    clinicalCaseStudies: number;
+    pipeline: { stage: string; count: number }[];
+    recentQuestions: {
+      id: string;
+      stemPreview: string;
+      category: string;
+      questionType: string;
+      status: string;
+      createdAtUtc: string;
+    }[];
+  }>> {
+    return request('/api/admin/overview');
+  },
+
+  async getAdminLearners(params?: { search?: string; pageNumber?: number; pageSize?: number }): Promise<ApiResponse<PagedResult<{
+    id: string;
+    name: string;
+    email: string;
+    pathway: string;
+    isActive: boolean;
+    completedExams: number;
+    averageScorePercentage: number | null;
+    createdAtUtc: string;
+  }>>> {
+    const query = buildQuery(params);
+    return request(`/api/admin/learners${query ? `?${query}` : ''}`);
+  },
+
+  async getAdminQuestionTypes(): Promise<ApiResponse<{
+    codeValue: number;
+    code: string;
+    name: string;
+    gradingMode: string;
+    description: string;
+    questionCount: number;
+  }[]>> {
+    return request('/api/admin/question-types');
+  },
+
+  async getAdminAnalytics(): Promise<ApiResponse<{
+    totalAttempts: number;
+    completedAttempts: number;
+    inProgressAttempts: number;
+    meanScorePercentage: number | null;
+    passRatePercentage: number | null;
+    trackBreakdown: {
+      pathway: string;
+      attemptCount: number;
+      completedCount: number;
+      meanScorePercentage: number | null;
+    }[];
+  }>> {
+    return request('/api/admin/analytics');
+  },
+
+  async getAdminTaxonomy(): Promise<ApiResponse<{
+    totalQuestions: number;
+    clientNeedsCategories: {
+      category: string;
+      questionCount: number;
+      subjects: string[];
+    }[];
+    pathways: string[];
+    subjects: string[];
+    topics: string[];
+  }>> {
+    return request('/api/admin/taxonomy');
+  },
+
+  async getAdminSystemStatus(): Promise<ApiResponse<{
+    environment: string;
+    databaseStatus: string;
+    pendingMigrationsCount: number;
+    aiTutorProvider: string;
+    emailDeliveryMode: string;
+    checkedAtUtc: string;
+  }>> {
+    return request('/api/admin/system-status');
+  },
+
+  // Learner Saved Questions
+  async getSavedQuestions(): Promise<ApiResponse<{
+    id: string;
+    questionId: string;
+    examId: string | null;
+    stem: string;
+    subject: string;
+    topic: string;
+    questionType: string;
+    notes: string | null;
+    savedAtUtc: string;
+  }[]>> {
+    return request('/api/learner/saved-questions');
+  },
+
+  async saveQuestion(questionId: string, payload?: { examId?: string | null; notes?: string | null }): Promise<ApiResponse<{
+    id: string;
+    questionId: string;
+    examId: string | null;
+    stem: string;
+    subject: string;
+    topic: string;
+    questionType: string;
+    notes: string | null;
+    savedAtUtc: string;
+  }>> {
+    return request(`/api/learner/saved-questions/${questionId}`, {
+      method: 'POST',
+      body: JSON.stringify(payload || {}),
+    });
+  },
+
+  async removeSavedQuestion(questionId: string): Promise<ApiResponse<string>> {
+    return request(`/api/learner/saved-questions/${questionId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Learner Study Planner
+  async getPlannerTasks(): Promise<ApiResponse<{
+    id: string;
+    title: string;
+    scheduledForUtc: string;
+    durationMinutes: number;
+    examId: string | null;
+    examTitle: string | null;
+    isCompleted: boolean;
+    completedAtUtc: string | null;
+    createdAtUtc: string;
+  }[]>> {
+    return request('/api/learner/planner');
+  },
+
+  async createPlannerTask(payload: {
+    title: string;
+    scheduledForUtc: string;
+    durationMinutes: number;
+    examId?: string | null;
+  }): Promise<ApiResponse<{
+    id: string;
+    title: string;
+    scheduledForUtc: string;
+    durationMinutes: number;
+    examId: string | null;
+    examTitle: string | null;
+    isCompleted: boolean;
+    completedAtUtc: string | null;
+    createdAtUtc: string;
+  }>> {
+    return request('/api/learner/planner', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async updatePlannerTask(taskId: string, payload: {
+    title?: string;
+    scheduledForUtc?: string;
+    durationMinutes?: number;
+    examId?: string | null;
+    isCompleted?: boolean;
+  }): Promise<ApiResponse<{
+    id: string;
+    title: string;
+    scheduledForUtc: string;
+    durationMinutes: number;
+    examId: string | null;
+    examTitle: string | null;
+    isCompleted: boolean;
+    completedAtUtc: string | null;
+    createdAtUtc: string;
+  }>> {
+    return request(`/api/learner/planner/${taskId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async deletePlannerTask(taskId: string): Promise<ApiResponse<string>> {
+    return request(`/api/learner/planner/${taskId}`, {
+      method: 'DELETE',
+    });
+  },
 };
 

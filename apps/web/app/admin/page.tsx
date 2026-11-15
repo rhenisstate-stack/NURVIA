@@ -3,7 +3,6 @@
 import * as React from "react";
 import Link from "next/link";
 import { AdminShell } from "@/components/layout/admin-shell";
-import { PreviewBanner } from "@/components/admin/preview-banner";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,75 +10,68 @@ import {
   FileQuestion,
   BookCheck,
   Users2,
-  DollarSign,
   Plus,
-  Filter,
-  Search,
   CheckCircle2,
-  Clock,
-  ArrowUpRight,
   Database,
-  Sliders,
-  Layers,
+  ArrowUpRight,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { getPersonalizedGreeting } from "@/lib/greeting-utils";
+import { nurviaApi } from "@/lib/api-client";
+
+interface OverviewData {
+  totalQuestions: number;
+  publishedQuestions: number;
+  totalExams: number;
+  publishedExams: number;
+  totalLearners: number;
+  activeLearners: number;
+  clinicalCaseStudies: number;
+  pipeline: { stage: string; count: number }[];
+  recentQuestions: {
+    id: string;
+    stemPreview: string;
+    category: string;
+    questionType: string;
+    status: string;
+    createdAtUtc: string;
+  }[];
+}
 
 export default function AdminDashboardPage() {
   const { user } = useAuth();
-  const contentPipeline = [
-    { stage: "Drafts", count: 342, badge: "default" as const },
-    { stage: "Validation", count: 85, badge: "warning" as const },
-    { stage: "Editorial Review", count: 120, badge: "info" as const },
-    { stage: "Approved", count: 210, badge: "teal" as const },
-    { stage: "Published", count: 12450, badge: "success" as const },
-    { stage: "Archived", count: 1420, badge: "outline" as const },
-  ];
+  const [data, setData] = React.useState<OverviewData | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
 
-  const recentQuestions = [
-    {
-      id: "Q-8902",
-      title: "Pediatric Asthma Exacerbation & Bronchodilator Administration",
-      category: "Pediatric Nursing",
-      type: "NGN Unfolding Case",
-      status: "Published",
-      author: "Dr. Sarah M., DNP",
-      updated: "10 mins ago",
-    },
-    {
-      id: "Q-8901",
-      title: "Digoxin Toxicity & Serum Electrolyte Monitoring",
-      category: "Pharmacology",
-      type: "Select All That Apply",
-      status: "Editorial Review",
-      author: "Prof. James L., MSN, RN",
-      updated: "25 mins ago",
-    },
-    {
-      id: "Q-8900",
-      title: "Postpartum Hemorrhage & Oxytocin Titration Protocol",
-      category: "Maternal Newborn",
-      type: "Multiple Choice",
-      status: "Published",
-      author: "Rebecca C., CNS",
-      updated: "1 hour ago",
-    },
-    {
-      id: "Q-8899",
-      title: "Chest Tube Drainage System Complications & Crepitus",
-      category: "Adult Med-Surg",
-      type: "Matrix Grid",
-      status: "Validation",
-      author: "Dr. Sarah M., DNP",
-      updated: "3 hours ago",
-    },
-  ];
+  React.useEffect(() => {
+    let active = true;
+    void nurviaApi.getAdminOverview().then((res) => {
+      if (!active) return;
+      if (res.success && res.data) {
+        setData(res.data);
+      } else {
+        setError(res.message || "Unable to load admin overview.");
+      }
+      setLoading(false);
+    });
+    return () => { active = false; };
+  }, []);
+
+  const badgeVariant = (stage: string) => {
+    switch (stage) {
+      case "Published": return "success" as const;
+      case "Approved": return "teal" as const;
+      case "Pending Review": return "info" as const;
+      case "Validation Failed": return "warning" as const;
+      case "Archived": return "outline" as const;
+      default: return "default" as const;
+    }
+  };
 
   return (
     <AdminShell>
       <div className="space-y-8">
-        <PreviewBanner moduleName="Admin Executive Overview" />
-        {/* Top Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5">
           <div>
             <h1 className="font-brand text-2xl sm:text-3xl font-bold text-foreground">
@@ -108,142 +100,129 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* Studio Metrics */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="p-5">
-            <div className="flex items-center justify-between text-xs text-foreground-muted mb-2 font-medium">
-              <span>Total Question Bank</span>
-              <FileQuestion className="w-4 h-4 text-brand-teal" />
-            </div>
-            <div className="text-2xl font-bold font-brand text-foreground">12,450</div>
-            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-1">
-              +145 added this week
-            </p>
-          </Card>
+        {error && (
+          <div role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-4 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200">
+            {error}
+          </div>
+        )}
 
-          <Card className="p-5">
-            <div className="flex items-center justify-between text-xs text-foreground-muted mb-2 font-medium">
-              <span>Published Exams</span>
-              <BookCheck className="w-4 h-4 text-brand-teal" />
-            </div>
-            <div className="text-2xl font-bold font-brand text-foreground">84</div>
-            <p className="text-[11px] text-foreground-secondary mt-1">
-              Across RN, PN & Exit Tracks
-            </p>
-          </Card>
-
-          <Card className="p-5">
-            <div className="flex items-center justify-between text-xs text-foreground-muted mb-2 font-medium">
-              <span>Active Learners</span>
-              <Users2 className="w-4 h-4 text-brand-teal" />
-            </div>
-            <div className="text-2xl font-bold font-brand text-foreground">3,890</div>
-            <p className="text-[11px] text-foreground-secondary mt-1">
-              Logged in during past 30 days
-            </p>
-          </Card>
-
-          <Card className="p-5">
-            <div className="flex items-center justify-between text-xs text-foreground-muted mb-2 font-medium">
-              <span>Clinical Vignettes</span>
-              <Database className="w-4 h-4 text-amber-600" />
-            </div>
-            <div className="text-2xl font-bold font-brand text-foreground">320 Cases</div>
-            <p className="text-[11px] text-foreground-secondary mt-1">
-              NGN 6-item unfolding sets
-            </p>
-          </Card>
-        </div>
-
-        {/* Content Publishing Lifecycle Pipeline */}
-        <Card>
-          <CardHeader className="p-6 pb-3">
-            <CardTitle className="text-lg">Content Lifecycle & Governance Pipeline</CardTitle>
-            <CardDescription className="text-xs">
-              Immutable versioning: Published items served to ongoing attempts remain locked.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-6 pt-3">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              {contentPipeline.map((pipe) => (
-                <div key={pipe.stage} className="p-3.5 rounded-xl border border-border bg-surface-muted/40 text-center space-y-1">
-                  <Badge variant={pipe.badge} className="text-[10px] mb-1">
-                    {pipe.stage}
-                  </Badge>
-                  <div className="text-xl font-bold font-brand text-foreground">
-                    {pipe.count.toLocaleString()}
-                  </div>
+        {loading ? (
+          <p className="py-10 text-center text-sm text-foreground-secondary" aria-live="polite">
+            Loading live studio metrics…
+          </p>
+        ) : data && (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="p-5">
+                <div className="flex items-center justify-between text-xs text-foreground-muted mb-2 font-medium">
+                  <span>Total Question Bank</span>
+                  <FileQuestion className="w-4 h-4 text-brand-teal" />
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                <div className="text-2xl font-bold font-brand text-foreground">
+                  {data.totalQuestions.toLocaleString()}
+                </div>
+                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-1">
+                  {data.publishedQuestions.toLocaleString()} published
+                </p>
+              </Card>
 
-        {/* Question Bank Table Preview */}
-        <Card>
-          <CardHeader className="p-6 pb-4 flex-row items-center justify-between space-y-0">
-            <div>
-              <CardTitle className="text-lg">Recent Question Repository Entries</CardTitle>
-              <CardDescription className="text-xs">
-                Authoritative questions with validated rationales and cognitive skill mappings
-              </CardDescription>
+              <Card className="p-5">
+                <div className="flex items-center justify-between text-xs text-foreground-muted mb-2 font-medium">
+                  <span>Published Exams</span>
+                  <BookCheck className="w-4 h-4 text-brand-teal" />
+                </div>
+                <div className="text-2xl font-bold font-brand text-foreground">
+                  {data.publishedExams.toLocaleString()}
+                </div>
+                <p className="text-[11px] text-foreground-secondary mt-1">
+                  {data.totalExams.toLocaleString()} total blueprints
+                </p>
+              </Card>
+
+              <Card className="p-5">
+                <div className="flex items-center justify-between text-xs text-foreground-muted mb-2 font-medium">
+                  <span>Active Learners</span>
+                  <Users2 className="w-4 h-4 text-brand-teal" />
+                </div>
+                <div className="text-2xl font-bold font-brand text-foreground">
+                  {data.activeLearners.toLocaleString()}
+                </div>
+                <p className="text-[11px] text-foreground-secondary mt-1">
+                  {data.totalLearners.toLocaleString()} registered learners
+                </p>
+              </Card>
+
+              <Card className="p-5">
+                <div className="flex items-center justify-between text-xs text-foreground-muted mb-2 font-medium">
+                  <span>Clinical Case Studies</span>
+                  <Database className="w-4 h-4 text-amber-600" />
+                </div>
+                <div className="text-2xl font-bold font-brand text-foreground">
+                  {data.clinicalCaseStudies.toLocaleString()}
+                </div>
+                <p className="text-[11px] text-foreground-secondary mt-1">
+                  Persisted ClinicalCaseStudy items
+                </p>
+              </Card>
             </div>
-            <div className="flex items-center gap-2">
-              <Link href="/admin/questions">
-                <Button variant="outline" size="sm" className="text-xs h-8 gap-1 text-brand-teal border-brand-teal/40">
-                  <FileQuestion className="w-3.5 h-3.5" /> Full Question Bank
-                </Button>
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0 overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-y border-border bg-surface-muted/60 text-foreground-secondary">
-                  <th className="py-3 px-4 font-semibold">ID</th>
-                  <th className="py-3 px-4 font-semibold">Question Stem / Concept</th>
-                  <th className="py-3 px-4 font-semibold">Specialty</th>
-                  <th className="py-3 px-4 font-semibold">Format</th>
-                  <th className="py-3 px-4 font-semibold">Status</th>
-                  <th className="py-3 px-4 font-semibold">Author</th>
-                  <th className="py-3 px-4 font-semibold">Updated</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {recentQuestions.map((q) => (
-                  <tr key={q.id} className="hover:bg-surface-muted/50 transition-colors">
-                    <td className="py-3.5 px-4 font-mono font-bold text-brand-teal">{q.id}</td>
-                    <td className="py-3.5 px-4 font-medium text-foreground max-w-xs truncate">
-                      {q.title}
-                    </td>
-                    <td className="py-3.5 px-4 text-foreground-secondary">{q.category}</td>
-                    <td className="py-3.5 px-4">
-                      <span className="bg-surface-muted border border-border px-2 py-0.5 rounded text-[11px]">
-                        {q.type}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <Badge
-                        variant={
-                          q.status === "Published"
-                            ? "success"
-                            : q.status === "Validation"
-                            ? "warning"
-                            : "info"
-                        }
-                        className="text-[10px]"
-                      >
-                        {q.status}
-                      </Badge>
-                    </td>
-                    <td className="py-3.5 px-4 text-foreground-secondary">{q.author}</td>
-                    <td className="py-3.5 px-4 text-foreground-muted">{q.updated}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </CardContent>
-        </Card>
+
+            <Card>
+              <CardHeader className="p-6 pb-3">
+                <CardTitle className="text-lg">Content Publishing Pipeline</CardTitle>
+                <CardDescription>Live question distribution across editorial lifecycle stages.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-6 pt-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                  {data.pipeline.map((p) => (
+                    <div key={p.stage} className="p-3.5 rounded-xl border border-border bg-surface-muted/30 space-y-2">
+                      <Badge variant={badgeVariant(p.stage)}>{p.stage}</Badge>
+                      <div className="text-2xl font-bold font-brand text-foreground">{p.count.toLocaleString()}</div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="p-6 pb-3 flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg">Recent Question Bank Items</CardTitle>
+                  <CardDescription>Latest persisted items in PostgreSQL.</CardDescription>
+                </div>
+                <Link href="/admin/questions">
+                  <Button variant="ghost" size="sm" className="text-xs gap-1">
+                    View all <ArrowUpRight className="w-3.5 h-3.5" />
+                  </Button>
+                </Link>
+              </CardHeader>
+              <CardContent className="p-6 pt-3">
+                {data.recentQuestions.length === 0 ? (
+                  <p className="text-sm text-foreground-secondary">No questions found in the database.</p>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {data.recentQuestions.map((q) => (
+                      <div key={q.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="space-y-1">
+                          <Link href={`/admin/questions/${q.id}/edit`} className="text-sm font-semibold text-foreground hover:text-brand-teal">
+                            {q.stemPreview}
+                          </Link>
+                          <div className="text-xs text-foreground-muted flex items-center gap-2">
+                            <span>{q.category}</span>
+                            <span>•</span>
+                            <span>{q.questionType}</span>
+                            <span>•</span>
+                            <span>{new Date(q.createdAtUtc).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                        <Badge variant={q.status === "Published" ? "success" : "outline"}>{q.status}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
     </AdminShell>
   );

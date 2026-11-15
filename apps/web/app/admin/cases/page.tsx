@@ -3,138 +3,112 @@
 import * as React from "react";
 import Link from "next/link";
 import { AdminShell } from "@/components/layout/admin-shell";
-import { PreviewBanner } from "@/components/admin/preview-banner";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Sparkles,
-  Plus,
-  Search,
-  CheckCircle2,
-  Clock,
-  ArrowRight,
-  Eye,
-  FileCheck,
-} from "lucide-react";
+import { Plus, ArrowRight } from "lucide-react";
+import { nurviaApi } from "@/lib/api-client";
+import type { QuestionDto } from "@/lib/api-types";
 
 export default function AdminCasesPage() {
-  const caseStudies = [
-    {
-      id: "CS-401",
-      title: "Acute Pulmonary Embolism Following Total Knee Arthroplasty",
-      patient: "M.K., 58yo Male (Post-Op Day 1)",
-      specialty: "Medical-Surgical",
-      itemsCount: 6,
-      status: "Published",
-      author: "Dr. Sarah M., DNP",
-      views: "14,200",
-    },
-    {
-      id: "CS-402",
-      title: "Diabetic Ketoacidosis & Hyperglycemic Emergency in Adolescence",
-      patient: "E.J., 16yo Female (ED Admission)",
-      specialty: "Critical Care / Endocrine",
-      itemsCount: 6,
-      status: "Published",
-      author: "Rebecca C., CNS",
-      views: "9,850",
-    },
-    {
-      id: "CS-403",
-      title: "Postpartum Hemorrhage with Chorioamnionitis Complication",
-      patient: "A.T., 29yo Female (Stage 4 Labor)",
-      specialty: "Maternal-Newborn",
-      itemsCount: 6,
-      status: "Review Pending",
-      author: "Prof. James L., MSN",
-      views: "1,120",
-    },
-    {
-      id: "CS-404",
-      title: "Severe Sepsis from Untreated Pyelonephritis in Geriatric Client",
-      patient: "H.W., 76yo Female (Inpatient Med-Surg)",
-      specialty: "Infection & Renal",
-      itemsCount: 6,
-      status: "Draft",
-      author: "Dr. Marcus D., DNP",
-      views: "0",
-    },
-  ];
+  const [cases, setCases] = React.useState<QuestionDto[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    let active = true;
+    void nurviaApi.getQuestions({ questionType: "ClinicalCaseStudy", pageSize: 50 }).then((res) => {
+      if (!active) return;
+      if (res.success && res.data) {
+        setCases(res.data.items);
+      } else {
+        setError(res.message || "Unable to load clinical case studies.");
+      }
+      setLoading(false);
+    });
+    return () => { active = false; };
+  }, []);
 
   return (
     <AdminShell>
       <div className="space-y-6">
-        <PreviewBanner moduleName="Unfolding Case Studies" />
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border">
           <div>
             <div className="flex items-center gap-2">
               <h1 className="font-brand text-2xl font-bold tracking-tight text-foreground">
-                Clinical Case Studies Studio
+                Clinical Case Studies
               </h1>
-              <Badge variant="teal">NGN 6-Step Vignettes</Badge>
+              <Badge variant="teal">ClinicalCaseStudy Items</Badge>
             </div>
             <p className="text-xs text-foreground-secondary mt-1">
-              Multi-tab unfolding patient scenarios featuring clinical progress notes, vitals flowsheets, lab panels, and physician orders.
+              Persisted ClinicalCaseStudy questions managed through the standard editorial lifecycle.
             </p>
           </div>
 
-          <Button size="sm" className="text-xs bg-brand-teal text-white hover:bg-brand-tealDark">
-            <Plus className="w-3.5 h-3.5 mr-1" />
-            Author New Case Study
-          </Button>
+          <Link href="/admin/questions/new">
+            <Button size="sm" className="text-xs bg-brand-teal text-white hover:bg-brand-tealDark">
+              <Plus className="w-3.5 h-3.5 mr-1" />
+              Author Case Study Question
+            </Button>
+          </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {caseStudies.map((cs) => (
-            <Card key={cs.id} className="p-5 flex flex-col justify-between space-y-4">
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs font-bold text-brand-teal">
-                    {cs.id}
+        {error && (
+          <div role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-4 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200">
+            {error}
+          </div>
+        )}
+
+        {loading ? (
+          <p className="py-10 text-center text-sm text-foreground-secondary" aria-live="polite">
+            Loading clinical case studies…
+          </p>
+        ) : cases.length === 0 ? (
+          <Card className="p-8 text-center space-y-3">
+            <p className="text-sm font-semibold text-foreground">No ClinicalCaseStudy items authored yet.</p>
+            <p className="text-xs text-foreground-secondary">
+              Create a new question with type ClinicalCaseStudy in the Question Bank studio to see it here.
+            </p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {cases.map((cs) => (
+              <Card key={cs.id} className="p-5 flex flex-col justify-between space-y-4">
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs font-bold text-brand-teal">
+                      {cs.code}
+                    </span>
+                    <Badge variant={cs.status === "Published" ? "teal" : "outline"}>
+                      {cs.status}
+                    </Badge>
+                  </div>
+
+                  <h3 className="font-brand text-base font-bold text-foreground leading-snug line-clamp-2">
+                    {cs.currentVersion?.stem || cs.topic}
+                  </h3>
+
+                  <div className="flex items-center gap-2 text-[11px] text-foreground-muted">
+                    <span>{cs.subject}</span>
+                    <span>•</span>
+                    <span>{cs.topic}</span>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-border flex items-center justify-between">
+                  <span className="text-[11px] text-foreground-muted">
+                    Pathway: {cs.pathway}
                   </span>
-                  <Badge
-                    variant={
-                      cs.status === "Published"
-                        ? "teal"
-                        : cs.status === "Review Pending"
-                        ? "warning"
-                        : "outline"
-                    }
-                  >
-                    {cs.status}
-                  </Badge>
+                  <Link href={`/admin/questions/${cs.id}/edit`}>
+                    <Button variant="ghost" size="sm" className="text-xs h-7 gap-1">
+                      Edit <ArrowRight className="w-3 h-3" />
+                    </Button>
+                  </Link>
                 </div>
-
-                <h3 className="font-brand text-base font-bold text-foreground leading-snug">
-                  {cs.title}
-                </h3>
-
-                <p className="text-xs text-foreground-secondary">
-                  <strong>Patient Vignette:</strong> {cs.patient}
-                </p>
-
-                <div className="flex items-center gap-2 text-[11px] text-foreground-muted">
-                  <span>{cs.specialty}</span>
-                  <span>•</span>
-                  <span>{cs.itemsCount} Cognitive Items</span>
-                  <span>•</span>
-                  <span>Author: {cs.author}</span>
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-border flex items-center justify-between text-xs">
-                <span className="text-foreground-muted">{cs.views} learner attempts</span>
-                <Link href="/admin/questions">
-                  <Button variant="outline" size="sm" className="text-xs font-semibold h-8">
-                    <span>Inspect Case</span>
-                    <ArrowRight className="w-3 h-3 ml-1" />
-                  </Button>
-                </Link>
-              </div>
-            </Card>
-          ))}
-        </div>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </AdminShell>
   );
