@@ -178,7 +178,15 @@ public static class DatabaseSeeder
             TimeLimitMinutes = 60,
             PassingScorePercentage = 78.0m,
             Status = ExamStatus.Published,
-            TotalQuestions = 2
+            TotalQuestions = 2,
+            // Verified academic metadata (DEF-05). Values below are derived strictly
+            // from the seeded examination's own blueprint and description; school,
+            // academic year and season are genuinely unknown and stay NULL so the
+            // Study Library filters never advertise empty values.
+            // Subject: the blueprint's SubjectDistributionJson is 100% Pharmacology.
+            Subject = "Pharmacology"
+            // Topic: multi-topic (cardiac, endocrine, psychotropic) — intentionally NULL.
+            // Difficulty: blueprint mixes Intermediate and Advanced — intentionally NULL.
         };
 
         var exam1v1 = new ExamVersion(exam1.Id, 1, "ATI Comprehensive Pharmacology Practice Exam", "Simulated assessment with full clinical rationales and NGN item formats.", author)
@@ -205,7 +213,13 @@ public static class DatabaseSeeder
             TimeLimitMinutes = 90,
             PassingScorePercentage = 80.0m,
             Status = ExamStatus.Published,
-            TotalQuestions = 3
+            TotalQuestions = 3,
+            // Verified academic metadata (DEF-05). A multi-specialty predictor spans
+            // several subjects (blueprint: Pharmacology, Medical-Surgical, Critical
+            // Care), so the honest subject label is "Comprehensive" — derived from
+            // the examination's own title and blueprint, never a placeholder for
+            // unknown school, year or season data, which stay NULL.
+            Subject = "Comprehensive"
         };
 
         var exam2v1 = new ExamVersion(exam2.Id, 1, "RN Comprehensive Predictor Exit Examination", "Timed high-stakes benchmark with unfolding clinical case studies.", author)
