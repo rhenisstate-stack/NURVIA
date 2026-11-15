@@ -87,16 +87,25 @@
 
 - **Authentication & CSRF:** Verified via `rbac-security.spec.ts` (401 unauthenticated, CSRF rejection without token, inactive user rejection).
 - **RBAC:** Verified learner 403 on `/api/admin/overview`, `/api/admin/learners`, and admin route redirects.
-- **Rate Limiting:** Confirmed `PasswordResetIpPolicy` (`AuthRateLimiting.cs`) enforces HTTP 429 on repeated `/forgot-password` bursts.
-- **Password Recovery:** Verified end-to-end locally via `DevelopmentEmailSink` (token reset, token replay rejection, old password rejection, new password sign-in).
+- **Rate Limiting & RBAC E2E Root Cause Remediation:**
+  - **Root Cause:** Running `rbac-security.spec.ts` alone triggered `429 Too Many Requests` on Test #7 (`signIn(learnerA)`) because `learnerA` performed 5 `signIn` calls across Tests #3–#6 plus 1 invalid-credential attempt in Test #7 (6 attempts in ~22.6s), exceeding `LoginPermitLimitPerAccount = 5` (per 60s window) in `AccountRateLimiter`. Additionally, running all Playwright specs sequentially from `127.0.0.1` shared the single IP partition (`LoginPermitLimitPerIp = 10`, `RegisterPermitLimitPerIp = 5`, `PasswordResetPermitLimitPerIp = 5`).
+  - **Corrective Change:** Added explicit, environment-gated test partition isolation via `X-Nurvia-Test-Partition` in `AuthRateLimiting.cs` (`GetTestPartitionKey`, `GetClientIpPartitionKey`, `IAccountRateLimiter`) and `AuthController.cs`. The header is honored **only** when `IHostEnvironment` is `Development` or `Test` (always ignored in `Production`/`Staging`). Production rate limits (`10/min` IP, `5/min` account) remain completely unchanged, and rate limiting remains active within each partition.
+  - **Regression & 429 Verification:** Added 3 xUnit tests in `AuthRateLimitingTests.cs` (proving `Production`/`Staging` ignore `X-Nurvia-Test-Partition` and `Development`/`Test` isolate partitions while enforcing quotas) and a dedicated Playwright test in `rbac-security.spec.ts` proving that 6 rapid login attempts within a single partition return HTTP `429` with a valid `Retry-After` header.
+- **Password Recovery & Development Email Isolation:**
+  - `DevelopmentEmailSink` is registered only inside `if (builder.Environment.IsDevelopment())` in `Program.cs`.
+  - `GET /api/dev/emails` and `DELETE /api/dev/emails` are mapped only inside `if (app.Environment.IsDevelopment())` in `Program.cs` (inaccessible in Production).
+  - Production/fallback `LoggingEmailSender` logs only the recipient email domain and never logs reset tokens or full reset URLs.
+  - Verified end-to-end locally via `DevelopmentEmailSink` (token reset, token replay rejection, old password rejection, new password sign-in).
 
 ---
 
 ## H. Test Results
 
-### Backend (`Nurvia.Tests` against isolated PostgreSQL `nurvia_test`)
-- Command: `DOTNET_ENVIRONMENT=Test TEST_CONNECTION_STRING="Host=localhost;Port=5432;Database=nurvia_test;Username=nurvia_user;..." dotnet test apps/api/Nurvia.Tests/Nurvia.Tests.csproj -c Release -- xUnit.ParallelizeTestCollections=false`
-- **Passed:** 265 | **Failed:** 0 | **Skipped:** 0
+### Backend (`Release` Build + `Nurvia.Tests` against isolated PostgreSQL `nurvia_test`)
+- Build Command: `dotnet build apps/api/Nurvia.slnx -c Release` → **Succeeded (0 warnings, 0 errors)**
+- Test Command: `$env:DOTNET_ENVIRONMENT="Test"; $env:TEST_CONNECTION_STRING="Host=localhost;Port=5432;Database=nurvia_test;..."; dotnet test apps/api/Nurvia.Tests/Nurvia.Tests.csproj -c Release --no-build -- xUnit.ParallelizeTestCollections=false`
+- **Passed:** 270 | **Failed:** 0 | **Skipped:** 0 (includes all auth/rate-limiting, RBAC, password recovery, admin/learner persistence, and PostgreSQL integration tests)
+- EF Core Snapshot Check: `dotnet ef migrations has-pending-model-changes --project apps/api/Nurvia.Infrastructure/Nurvia.Infrastructure.csproj --startup-project apps/api/Nurvia.Api/Nurvia.Api.csproj --no-build --configuration Release` → **`No changes have been made to the model since the last migration.`**
 
 ### Frontend Static & Unit Checks
 - `npx tsc --noEmit`: **0 errors**
@@ -106,8 +115,18 @@
 ### Playwright E2E (`E2E_WEB_URL=http://localhost:3005`, `E2E_API_URL=http://127.0.0.1:5055`)
 - `learner-journey.spec.ts`: **11 passed, 0 failed**
 - `local-track-a-completion.spec.ts`: **2 passed, 0 failed**
-- `rbac-security.spec.ts`: **6 passed, 1 failed** (test #7 `Invalid credentials are rejected with 401 and profile changes cannot alter roles` received `429 Too Many Requests` during `signIn` due to `LoginPermitLimitPerIp = 10` in `AuthRateLimiting.cs` across rapid sequential logins from `127.0.0.1`)
-- **Not Executed:** `lectures-and-admin.spec.ts`, `study-library-three-modes.spec.ts`, `superadmin-navigation.spec.ts` (covered partially by backend integration tests and existing unit suites).
+- `rbac-security.spec.ts`: **8 passed, 0 failed** (all 7 original RBAC/security tests + new 429 `Retry-After` burst test)
+- **Pre-existing Non-Track-A E2E Suites (run with `nurvia_db`):**
+  - `lectures-and-admin.spec.ts`: 2 failed (requires `Lectures:PublishSeededCatalogue=true` and clean `BootstrapAdmin` credentials matching `nurvia_db`)
+  - `superadmin-navigation.spec.ts`: 1 failed, 9 skipped (requires clean `BootstrapAdmin` credentials on `nurvia_db`, which already had a pre-existing Superadmin)
+  - `study-library-three-modes.spec.ts`: 1 passed, 1 timed out at 90s on `/learner/my-exams` (`Saved Study Sets` heading), 4 skipped
+
+---
+
+## I. Git Status & Exclusions
+
+- **Preserved Commits:** All 6 prior Track A commits (`2ac8c27`, `8298001`, `f294390`, `06f1e6b`, `adb7fc1`, `a4affc2`) and 5 pre-existing commits (`271f36d`, `3aab62e`, `ccd8eeb`, `fd726b9`, `2b8df3c`) plus local Track A completion commits (`6f7dbca`, `a798a90`, `15a09df`, `58eca0b`) remain intact. No push, deploy, reset, rebase, or history rewrite performed.
+- **Excluded from Commits:** `apps/web/tsconfig.tsbuildinfo`, transient Playwright artifacts (`apps/web/tests/e2e/artifacts/*`), `docs/evidence/*`, and local `.env*` files.
 
 ---
 
