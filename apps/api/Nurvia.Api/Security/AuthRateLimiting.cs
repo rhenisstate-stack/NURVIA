@@ -26,8 +26,8 @@ public sealed class AuthRateLimitOptions
 
 public interface IAccountRateLimiter
 {
-    (bool Allowed, int RetryAfterSeconds) TryAcquireLogin(string? email);
-    (bool Allowed, int RetryAfterSeconds) TryAcquirePasswordReset(string? email);
+    (bool Allowed, int RetryAfterSeconds) TryAcquireLogin(string? email, string? partitionScope = null);
+    (bool Allowed, int RetryAfterSeconds) TryAcquirePasswordReset(string? email, string? partitionScope = null);
 }
 
 public sealed class AccountRateLimiter : IAccountRateLimiter, IDisposable
@@ -47,11 +47,11 @@ public sealed class AccountRateLimiter : IAccountRateLimiter, IDisposable
             TimeSpan.FromSeconds(Math.Max(1, _options.PasswordResetWindowSeconds)));
     }
 
-    public (bool Allowed, int RetryAfterSeconds) TryAcquireLogin(string? email) =>
-        TryAcquire(_loginLimiter, NormalizeKey("login", email), Math.Max(1, _options.LoginWindowSeconds));
+    public (bool Allowed, int RetryAfterSeconds) TryAcquireLogin(string? email, string? partitionScope = null) =>
+        TryAcquire(_loginLimiter, NormalizeKey("login", email, partitionScope), Math.Max(1, _options.LoginWindowSeconds));
 
-    public (bool Allowed, int RetryAfterSeconds) TryAcquirePasswordReset(string? email) =>
-        TryAcquire(_passwordResetLimiter, NormalizeKey("reset", email), Math.Max(1, _options.PasswordResetWindowSeconds));
+    public (bool Allowed, int RetryAfterSeconds) TryAcquirePasswordReset(string? email, string? partitionScope = null) =>
+        TryAcquire(_passwordResetLimiter, NormalizeKey("reset", email, partitionScope), Math.Max(1, _options.PasswordResetWindowSeconds));
 
     private static (bool Allowed, int RetryAfterSeconds) TryAcquire(
         PartitionedRateLimiter<string> limiter,
@@ -69,12 +69,14 @@ public sealed class AccountRateLimiter : IAccountRateLimiter, IDisposable
         return (false, retryAfter);
     }
 
-    private static string NormalizeKey(string prefix, string? email)
+    private static string NormalizeKey(string prefix, string? email, string? partitionScope)
     {
         var normalized = string.IsNullOrWhiteSpace(email)
             ? "__empty__"
             : email.Trim().ToLowerInvariant();
-        return $"{prefix}:{normalized}";
+        return string.IsNullOrWhiteSpace(partitionScope)
+            ? $"{prefix}:{normalized}"
+            : $"{prefix}:{partitionScope.Trim()}:{normalized}";
     }
 
     private static PartitionedRateLimiter<string> CreateFixedWindowLimiter(int permitLimit, TimeSpan window) =>
@@ -102,6 +104,7 @@ public static class AuthRateLimitingExtensions
     public const string LoginIpPolicy = "auth-login-ip";
     public const string RegisterIpPolicy = "auth-register-ip";
     public const string PasswordResetIpPolicy = "auth-reset-ip";
+    public const string TestPartitionHeaderName = "X-Nurvia-Test-Partition";
 
     public static IServiceCollection AddNurviaRateLimiting(
         this IServiceCollection services,
@@ -183,6 +186,30 @@ public static class AuthRateLimitingExtensions
         return services;
     }
 
-    public static string GetClientIpPartitionKey(HttpContext context) =>
-        context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    /// <summary>
+    /// Returns an explicit test-only rate-limiter partition scope from <see cref="TestPartitionHeaderName"/>
+    /// ONLY when running in Development or Test environments. Always returns null in Production/Staging.
+    /// </summary>
+    public static string? GetTestPartitionKey(HttpContext context)
+    {
+        var env = context.RequestServices?.GetService<IHostEnvironment>();
+        if (env is null || (!env.IsDevelopment() && !env.IsEnvironment("Test")))
+            return null;
+
+        if (!context.Request.Headers.TryGetValue(TestPartitionHeaderName, out var values))
+            return null;
+
+        var raw = values.FirstOrDefault()?.Trim();
+        if (string.IsNullOrEmpty(raw))
+            return null;
+
+        return raw.Length > 64 ? raw[..64] : raw;
+    }
+
+    public static string GetClientIpPartitionKey(HttpContext context)
+    {
+        var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var testPartition = GetTestPartitionKey(context);
+        return testPartition is null ? ip : $"{ip}:test:{testPartition}";
+    }
 }

@@ -123,7 +123,8 @@ public sealed class AuthController : ControllerBase
     {
         if (_accountRateLimiter is not null)
         {
-            var (allowed, retryAfterSeconds) = _accountRateLimiter.TryAcquireLogin(request.Email);
+            var partitionScope = AuthRateLimitingExtensions.GetTestPartitionKey(HttpContext);
+            var (allowed, retryAfterSeconds) = _accountRateLimiter.TryAcquireLogin(request.Email, partitionScope);
             if (!allowed)
             {
                 Response.Headers.RetryAfter = retryAfterSeconds.ToString();
@@ -209,7 +210,8 @@ public sealed class AuthController : ControllerBase
     {
         if (_accountRateLimiter is not null)
         {
-            var (allowed, retryAfterSeconds) = _accountRateLimiter.TryAcquirePasswordReset(request.Email);
+            var partitionScope = AuthRateLimitingExtensions.GetTestPartitionKey(HttpContext);
+            var (allowed, retryAfterSeconds) = _accountRateLimiter.TryAcquirePasswordReset(request.Email, partitionScope);
             if (!allowed)
             {
                 Response.Headers.RetryAfter = retryAfterSeconds.ToString();
