@@ -20,6 +20,11 @@ const learnerB: Account = {
   name: "Rbac Learner B",
 };
 
+function partitionHeaders(scope?: string): Record<string, string> {
+  const id = scope ?? test.info().testId.replace(/[^a-zA-Z0-9_-]/g, "").slice(-40);
+  return { "X-Nurvia-Test-Partition": `rbac-${id}` };
+}
+
 async function getCsrf(request: APIRequestContext): Promise<string> {
   const res = await request.get(`${API}/api/auth/csrf`);
   expect(res.status()).toBe(200);
@@ -31,7 +36,7 @@ async function register(request: APIRequestContext, account: Account) {
   const csrf = await getCsrf(request);
   const res = await request.post(`${API}/api/auth/register`, {
     data: { name: account.name, email: account.email, password: account.password },
-    headers: { "X-CSRF-TOKEN": csrf },
+    headers: { "X-CSRF-TOKEN": csrf, ...partitionHeaders() },
   });
   expect([202, 200]).toContain(res.status());
 }
@@ -40,7 +45,7 @@ async function signIn(request: APIRequestContext, account: Account) {
   const csrf = await getCsrf(request);
   const res = await request.post(`${API}/api/auth/login`, {
     data: { email: account.email, password: account.password },
-    headers: { "X-CSRF-TOKEN": csrf },
+    headers: { "X-CSRF-TOKEN": csrf, ...partitionHeaders() },
   });
   expect(res.status()).toBe(200);
   const body = await res.json();
@@ -79,6 +84,7 @@ test.describe("Authentication, RBAC, and exam integrity", () => {
   test("Unsafe requests without CSRF token are rejected", async ({ request }) => {
     const res = await request.post(`${API}/api/auth/login`, {
       data: { email: learnerA.email, password: learnerA.password },
+      headers: partitionHeaders(),
     });
     expect(res.status()).toBe(400);
   });
@@ -235,7 +241,7 @@ test.describe("Authentication, RBAC, and exam integrity", () => {
     const csrf = await getCsrf(request);
     const bad = await request.post(`${API}/api/auth/login`, {
       data: { email: learnerA.email, password: "WrongPassword-Not-It-123" },
-      headers: { "X-CSRF-TOKEN": csrf },
+      headers: { "X-CSRF-TOKEN": csrf, ...partitionHeaders() },
     });
     expect(bad.status()).toBe(401);
 
@@ -267,5 +273,28 @@ test.describe("Authentication, RBAC, and exam integrity", () => {
       },
       headers: { "X-CSRF-TOKEN": await getCsrf(request) },
     });
+  });
+
+  test("Excessive login attempts within a single partition return 429 with Retry-After", async ({ request }) => {
+    const csrf = await getCsrf(request);
+    const targetEmail = `ratelimit.${stamp}@nurviatest.example`;
+    const headers = { "X-CSRF-TOKEN": csrf, ...partitionHeaders(`rl-burst-${stamp}`) };
+
+    // Production LoginPermitLimitPerAccount = 5; first 5 attempts are evaluated (401), 6th must return 429.
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      const res = await request.post(`${API}/api/auth/login`, {
+        data: { email: targetEmail, password: "WrongPassword-RateLimit-Test" },
+        headers,
+      });
+      expect(res.status()).toBe(401);
+    }
+
+    const throttled = await request.post(`${API}/api/auth/login`, {
+      data: { email: targetEmail, password: "WrongPassword-RateLimit-Test" },
+      headers,
+    });
+    expect(throttled.status()).toBe(429);
+    const retryAfter = Number(throttled.headers()["retry-after"]);
+    expect(Number.isFinite(retryAfter) && retryAfter >= 1).toBe(true);
   });
 });

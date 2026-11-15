@@ -2,6 +2,8 @@ using System.Net;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -104,5 +106,60 @@ public class AuthRateLimitingTests
         var key = AuthRateLimitingExtensions.GetClientIpPartitionKey(context);
 
         Assert.Equal("198.51.100.10", key);
+    }
+
+    [Theory]
+    [InlineData("Production", false)]
+    [InlineData("Staging", false)]
+    [InlineData("Development", true)]
+    [InlineData("Test", true)]
+    public void GetClientIpPartitionKey_TestPartitionHeader_IsOnlyHonoredInDevelopmentOrTest(
+        string environmentName,
+        bool expectedIsolated)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IHostEnvironment>(new StubHostEnvironment { EnvironmentName = environmentName });
+
+        var context = new DefaultHttpContext
+        {
+            RequestServices = services.BuildServiceProvider()
+        };
+        context.Connection.RemoteIpAddress = IPAddress.Loopback;
+        context.Request.Headers[AuthRateLimitingExtensions.TestPartitionHeaderName] = "rbac-test-7";
+
+        var key = AuthRateLimitingExtensions.GetClientIpPartitionKey(context);
+
+        if (expectedIsolated)
+            Assert.Equal("127.0.0.1:test:rbac-test-7", key);
+        else
+            Assert.Equal("127.0.0.1", key);
+    }
+
+    [Fact]
+    public void AccountRateLimiter_PartitionScope_IsolatesTestPartitionsWithoutDisablingLimits()
+    {
+        using var limiter = new AccountRateLimiter(Options.Create(new AuthRateLimitOptions
+        {
+            LoginPermitLimitPerAccount = 2,
+            LoginWindowSeconds = 60
+        }));
+
+        // Partition A consumes its full quota
+        Assert.True(limiter.TryAcquireLogin("learner@example.com", "suite-a").Allowed);
+        Assert.True(limiter.TryAcquireLogin("learner@example.com", "suite-a").Allowed);
+        Assert.False(limiter.TryAcquireLogin("learner@example.com", "suite-a").Allowed);
+
+        // Partition B remains isolated and still enforces its own quota
+        Assert.True(limiter.TryAcquireLogin("learner@example.com", "suite-b").Allowed);
+        Assert.True(limiter.TryAcquireLogin("learner@example.com", "suite-b").Allowed);
+        Assert.False(limiter.TryAcquireLogin("learner@example.com", "suite-b").Allowed);
+    }
+
+    private sealed class StubHostEnvironment : IHostEnvironment
+    {
+        public string EnvironmentName { get; set; } = Environments.Production;
+        public string ApplicationName { get; set; } = "Nurvia.Tests";
+        public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
+        public Microsoft.Extensions.FileProviders.IFileProvider ContentRootFileProvider { get; set; } = null!;
     }
 }

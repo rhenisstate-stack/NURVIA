@@ -7,6 +7,15 @@ const SUPERADMIN_PASSWORD = process.env.E2E_SUPERADMIN_PASSWORD || "SuperAdminE2
 const stamp = Date.now();
 const PASSWORD = "NurviaE2E-Lectures!2026";
 
+function partitionHeaders(): Record<string, string> {
+  const id = test.info().testId.replace(/[^a-zA-Z0-9_-]/g, "").slice(-40);
+  return { "X-Nurvia-Test-Partition": `lectures-${id}` };
+}
+
+test.beforeEach(async ({ page }) => {
+  await page.setExtraHTTPHeaders(partitionHeaders());
+});
+
 async function getCsrf(request: APIRequestContext): Promise<string> {
   const res = await request.get(`${API}/api/auth/csrf`);
   expect(res.ok()).toBeTruthy();
@@ -18,7 +27,7 @@ async function apiRegister(request: APIRequestContext, user: { name: string; ema
   const csrf = await getCsrf(request);
   const res = await request.post(`${API}/api/auth/register`, {
     data: user,
-    headers: { "X-CSRF-TOKEN": csrf },
+    headers: { "X-CSRF-TOKEN": csrf, ...partitionHeaders() },
   });
   expect([200, 202]).toContain(res.status());
 }
@@ -27,7 +36,7 @@ async function apiSignIn(request: APIRequestContext, email: string, password: st
   const csrf = await getCsrf(request);
   const res = await request.post(`${API}/api/auth/login`, {
     data: { email, password },
-    headers: { "X-CSRF-TOKEN": csrf },
+    headers: { "X-CSRF-TOKEN": csrf, ...partitionHeaders() },
   });
   expect(res.status()).toBe(200);
   const body = await res.json();

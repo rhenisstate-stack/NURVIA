@@ -20,6 +20,15 @@ const learner = {
   name: "Navigation Learner",
 };
 
+function partitionHeaders(): Record<string, string> {
+  const id = test.info().testId.replace(/[^a-zA-Z0-9_-]/g, "").slice(-40);
+  return { "X-Nurvia-Test-Partition": `superadmin-${id}` };
+}
+
+test.beforeEach(async ({ page }) => {
+  await page.setExtraHTTPHeaders(partitionHeaders());
+});
+
 async function getCsrf(request: APIRequestContext): Promise<string> {
   const res = await request.get(`${API}/api/auth/csrf`);
   expect(res.status()).toBe(200);
@@ -31,7 +40,7 @@ async function apiSignIn(request: APIRequestContext, account: { email: string; p
   const csrf = await getCsrf(request);
   const res = await request.post(`${API}/api/auth/login`, {
     data: { email: account.email, password: account.password },
-    headers: { "X-CSRF-TOKEN": csrf },
+    headers: { "X-CSRF-TOKEN": csrf, ...partitionHeaders() },
   });
   expect(res.status()).toBe(200);
   return (await res.json()).data as { id: string; role: string };
@@ -41,7 +50,7 @@ async function apiRegister(request: APIRequestContext, account: { email: string;
   const csrf = await getCsrf(request);
   const res = await request.post(`${API}/api/auth/register`, {
     data: { name: account.name, email: account.email, password: account.password },
-    headers: { "X-CSRF-TOKEN": csrf },
+    headers: { "X-CSRF-TOKEN": csrf, ...partitionHeaders() },
   });
   expect([200, 202]).toContain(res.status());
 }

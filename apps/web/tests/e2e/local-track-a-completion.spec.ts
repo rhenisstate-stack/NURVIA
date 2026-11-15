@@ -11,6 +11,11 @@ const testUser = {
 
 test.describe.configure({ mode: "serial" });
 
+test.beforeEach(async ({ page }, testInfo) => {
+  const id = testInfo.testId.replace(/[^a-zA-Z0-9_-]/g, "").slice(-40);
+  await page.setExtraHTTPHeaders({ "X-Nurvia-Test-Partition": `tracka-${id}` });
+});
+
 test.describe("Track A local completion E2E workflows", () => {
   test("1. Password recovery end-to-end via local DevelopmentEmailSink", async ({ page, request }) => {
     // Clear dev email sink before test

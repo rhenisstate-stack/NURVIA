@@ -14,6 +14,11 @@ const attemptRef = { id: "" as string, email: learner.email, score: "" as string
 
 test.describe.configure({ mode: "serial" });
 
+test.beforeEach(async ({ page }, testInfo) => {
+  const id = testInfo.testId.replace(/[^a-zA-Z0-9_-]/g, "").slice(-40);
+  await page.setExtraHTTPHeaders({ "X-Nurvia-Test-Partition": `journey-${id}` });
+});
+
 async function signInLearner(page: import("@playwright/test").Page) {
   await page.goto("/sign-in");
   await expect(page).toHaveURL(/\/sign-in/);

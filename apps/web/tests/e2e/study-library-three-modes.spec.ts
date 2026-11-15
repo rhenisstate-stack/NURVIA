@@ -37,6 +37,11 @@ async function signInLearner(page: Page, account: typeof learnerA) {
 
 test.describe.configure({ mode: "serial" });
 
+test.beforeEach(async ({ page }, testInfo) => {
+  const id = testInfo.testId.replace(/[^a-zA-Z0-9_-]/g, "").slice(-40);
+  await page.setExtraHTTPHeaders({ "X-Nurvia-Test-Partition": `studylib-${id}` });
+});
+
 test.describe("Study Library & Three-Mode Learning Experience", () => {
   test("1. Register Learner A and Learner B", async ({ page }) => {
     await registerLearner(page, learnerA);
