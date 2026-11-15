@@ -38,6 +38,13 @@ public class LearnerAnswerStateDto
     public bool IsAnswered { get; set; }
     public bool IsFlagged { get; set; }
     public DateTime SavedAtUtc { get; set; }
+
+    /// <summary>
+    /// Server-authoritative Tutor progression for this question (0 for non-Tutor
+    /// attempts). Never answer-bearing on its own: explanation content is fetched
+    /// per question through the authorized tutor session endpoint.
+    /// </summary>
+    public int TutorStageReached { get; set; }
 }
 
 public class AutosaveResponseRequest

@@ -530,11 +530,12 @@ public class ExamAttemptService : IExamAttemptService
         var questions = new List<ActiveExamQuestionDto>();
         var savedResponses = new Dictionary<Guid, LearnerAnswerStateDto>();
 
-        // Tutor attempts are learning sessions: the approved answer key and rationales
-        // are delivered so the runtime can give immediate feedback. Exam attempts are
-        // strictly sanitized regardless of any client hint — this decision is made
-        // exclusively from the persisted attempt record.
-        var revealAnswers = attempt.DeliveryMode == ExamDeliveryMode.Tutor;
+        // Confidentiality: Tutor and Exam modes are sanitized identically here.
+        // Answer keys, correctness flags, and rationales NEVER leave the server in
+        // the start/session payload — Tutor-mode correctness is released exclusively
+        // by the authorized tutor evaluate endpoint (Stages 4-6), whose per-question
+        // progression is tracked server-side on AttemptResponse.TutorStageReached.
+        // This decision is made exclusively from the persisted attempt record.
 
         var sortedExamQuestions = version.ExamQuestions.OrderBy(eq => eq.OrderIndex).ToList();
         int order = 1;
@@ -546,9 +547,9 @@ public class ExamAttemptService : IExamAttemptService
             if (q == null || qv == null)
                 continue;
 
-            // Strict DTO Sanitization: Exam-mode questions NEVER contain IsCorrect,
-            // specific rationales, or general rationales. Tutor-mode questions carry
-            // the approved key for immediate learning feedback.
+            // Strict DTO Sanitization: no active question (Exam or Tutor) ever
+            // contains IsCorrect, specific rationales, general rationales, or
+            // answer-bearing ContentJsonData.
             var activeQuestion = new ActiveExamQuestionDto
             {
                 Id = q.Id,
@@ -557,16 +558,16 @@ public class ExamAttemptService : IExamAttemptService
                 QuestionType = qv.QuestionType,
                 CognitiveSkill = qv.CognitiveSkill,
                 ClientNeedCategory = qv.ClientNeedCategory,
-                ContentJsonData = revealAnswers ? qv.ContentJsonData : SanitizeContentJsonForExamMode(qv.ContentJsonData),
-                GeneralRationale = revealAnswers ? qv.GeneralRationale : null,
+                ContentJsonData = SanitizeContentJsonForExamMode(qv.ContentJsonData),
+                GeneralRationale = null,
                 Options = qv.Options.OrderBy(o => o.DisplayOrder).Select(o => new ActiveExamOptionDto
                 {
                     Id = o.Id,
                     OptionIndex = o.OptionIndex,
                     OptionText = o.OptionText,
                     DisplayOrder = o.DisplayOrder,
-                    IsCorrect = revealAnswers && o.IsCorrect,
-                    SpecificRationale = revealAnswers ? o.SpecificRationale : null
+                    IsCorrect = false,
+                    SpecificRationale = null
                 }).ToList(),
                 Exhibits = qv.Exhibits.OrderBy(e => e.DisplayOrder).Select(e => new QuestionExhibitDto
                 {
@@ -588,7 +589,8 @@ public class ExamAttemptService : IExamAttemptService
                     ResponseJson = existingResp.ResponseJson,
                     IsAnswered = existingResp.IsAnswered,
                     IsFlagged = existingResp.IsFlagged,
-                    SavedAtUtc = existingResp.SavedAtUtc
+                    SavedAtUtc = existingResp.SavedAtUtc,
+                    TutorStageReached = attempt.DeliveryMode == ExamDeliveryMode.Tutor ? existingResp.TutorStageReached : 0
                 };
             }
         }

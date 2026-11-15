@@ -1,5 +1,14 @@
+using Nurvia.Domain.Enums;
+
 namespace Nurvia.Application.Tutor;
 
+/// <summary>
+/// Hint-request stages within the progressive Tutor experience. These are
+/// non-revealing learning aids: no hint stage ever returns answer keys,
+/// correctness, or rationales. The answer-bearing stages (4 Evaluation,
+/// 5 Explanation, 6 Reinforcement) are released only by the tutor evaluate
+/// endpoint after server-side grading.
+/// </summary>
 public enum TutorStage
 {
     FirstHint = 1,
@@ -50,4 +59,31 @@ public class TutorEvaluateResponseDto
     public string NursingPrinciple { get; set; } = string.Empty;
     public string Takeaway { get; set; } = string.Empty;
     public bool IsAiGenerated { get; set; }
+}
+
+/// <summary>
+/// Server-authoritative Tutor progression state for one question within an
+/// attempt. Stage numbering follows the six-stage learner experience:
+/// 1 Independent Thinking · 2 First Hint · 3 Guided Reasoning ·
+/// 4 Answer Evaluation · 5 Educational Explanation · 6 Knowledge Reinforcement.
+/// <see cref="Evaluation"/> is populated only once the learner's own answer has
+/// been evaluated server-side (stage &gt;= 4); it is never included preemptively.
+/// </summary>
+public class TutorQuestionStateDto
+{
+    public Guid QuestionId { get; set; }
+    public int StageReached { get; set; }
+    public TutorEvaluateResponseDto? Evaluation { get; set; }
+}
+
+/// <summary>
+/// Full Tutor session recovery payload: per-question stage state with already
+/// authorized evaluation content. Lets the learner's session survive a page
+/// refresh without re-releasing any answer-bearing information prematurely.
+/// </summary>
+public class TutorSessionStateDto
+{
+    public Guid AttemptId { get; set; }
+    public ExamDeliveryMode DeliveryMode { get; set; }
+    public List<TutorQuestionStateDto> Questions { get; set; } = new();
 }

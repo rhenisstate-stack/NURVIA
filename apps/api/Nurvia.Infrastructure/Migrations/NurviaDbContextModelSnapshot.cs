@@ -209,6 +209,9 @@ namespace Nurvia.Infrastructure.Migrations
                     b.Property<DateTime>("SavedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("TutorStageReached")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.HasIndex("QuestionId");
@@ -405,7 +408,9 @@ namespace Nurvia.Infrastructure.Migrations
 
                     b.Property<List<string>>("LearningObjectives")
                         .IsRequired()
-                        .HasColumnType("text[]");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text[]")
+                        .HasDefaultValueSql("'{}'::text[]");
 
                     b.Property<string>("ModeAllowed")
                         .IsRequired()

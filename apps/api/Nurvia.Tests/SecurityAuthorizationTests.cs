@@ -174,12 +174,12 @@ public class SecurityAuthorizationTests
     }
 
     [Fact]
-    public void ActiveExamDtos_SanitizationIsDecidedByPersistedDeliveryMode()
+    public void ActiveExamDtos_StartPayloadIsAlwaysSanitized_RegardlessOfDeliveryMode()
     {
-        // The DTO contract deliberately carries the answer-key fields; whether they
-        // are populated is decided server-side from the persisted attempt's
-        // DeliveryMode. Exam attempts are always sanitized, Tutor attempts receive
-        // the approved key for immediate learning feedback.
+        // DEF-04 confidentiality contract: the start/session payload NEVER contains
+        // answer-bearing fields. Exam and Tutor attempts are sanitized identically;
+        // Tutor correctness is released exclusively by the authorized tutor
+        // evaluate endpoint after server-side grading.
         var method = typeof(ExamAttemptService).GetMethod(
             "BuildStartAttemptDto",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
@@ -200,7 +200,7 @@ public class SecurityAuthorizationTests
             QuestionVersion = qv
         });
 
-        // Exam attempt: persisted DeliveryMode = Exam (default) -> strictly sanitized.
+        // Exam attempt: persisted DeliveryMode = Exam -> strictly sanitized.
         var examModeAttempt = new ExamAttempt(exam.Id, version.Id, "learner-1", "Learner One", 60, 75, 1);
         var examDto = (StartAttemptResultDto)method!.Invoke(null, new object[] { examModeAttempt, exam, version, 3600 })!;
 
@@ -210,15 +210,17 @@ public class SecurityAuthorizationTests
         Assert.Null(examOption.SpecificRationale);
         Assert.Null(examDto.Questions.Single().GeneralRationale);
 
-        // Tutor attempt: persisted DeliveryMode = Tutor -> approved key revealed.
+        // Tutor attempt: persisted DeliveryMode = Tutor -> identically sanitized.
+        // Answer keys and rationales may never reach the learner before the
+        // authorized tutor evaluation stage.
         var tutorAttempt = new ExamAttempt(exam.Id, version.Id, "learner-2", "Learner Two", 60, 75, 1,
             deliveryMode: ExamDeliveryMode.Tutor);
         var tutorDto = (StartAttemptResultDto)method.Invoke(null, new object[] { tutorAttempt, exam, version, 3600 })!;
 
         Assert.Equal(ExamDeliveryMode.Tutor, tutorDto.DeliveryMode);
         var tutorOption = Assert.Single(tutorDto.Questions.Single().Options);
-        Assert.True(tutorOption.IsCorrect);
-        Assert.Equal("Specific rationale text", tutorOption.SpecificRationale);
-        Assert.Equal("General rationale text", tutorDto.Questions.Single().GeneralRationale);
+        Assert.False(tutorOption.IsCorrect);
+        Assert.Null(tutorOption.SpecificRationale);
+        Assert.Null(tutorDto.Questions.Single().GeneralRationale);
     }
 }

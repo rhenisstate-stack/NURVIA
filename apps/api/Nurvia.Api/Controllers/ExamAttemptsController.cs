@@ -199,6 +199,33 @@ public class ExamAttemptsController : ControllerBase
         }
     }
 
+    [HttpGet("{id:guid}/tutor/session")]
+    public async Task<ActionResult<ApiResponse<TutorSessionStateDto>>> GetTutorSessionState(
+        Guid id,
+        CancellationToken ct)
+    {
+        var user = HttpContext.GetCurrentUser();
+        if (!user.IsAuthenticated)
+            return Unauthorized(ApiResponse<TutorSessionStateDto>.Error("Authentication is required."));
+
+        try
+        {
+            var result = await _tutorService.GetSessionStateAsync(id, user.Id, ct);
+            return Ok(ApiResponse<TutorSessionStateDto>.Ok(result));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, ApiResponse<TutorSessionStateDto>.Error(ex.Message));
+        }
+        catch (DomainException ex)
+        {
+            if (ex.Message.Contains("Access denied"))
+                return StatusCode(403, ApiResponse<TutorSessionStateDto>.Error(ex.Message));
+
+            return BadRequest(ApiResponse<TutorSessionStateDto>.Error(ex.Message));
+        }
+    }
+
     [HttpPost("{id:guid}/tutor/evaluate")]
     public async Task<ActionResult<ApiResponse<TutorEvaluateResponseDto>>> EvaluateTutorAnswer(
         Guid id,

@@ -7,6 +7,14 @@ public interface ITutorService
 {
     Task<TutorHintResponseDto> GetHintAsync(Guid attemptId, string learnerId, TutorHintRequest request, CancellationToken ct = default);
     Task<TutorEvaluateResponseDto> EvaluateAnswerAsync(Guid attemptId, string learnerId, TutorEvaluateRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Server-authoritative Tutor stage progression with already-authorized
+    /// evaluation content for each question. Used for session recovery after page
+    /// refresh; evaluation content is included only for questions whose own answer
+    /// has been evaluated server-side (stage &gt;= 4).
+    /// </summary>
+    Task<TutorSessionStateDto> GetSessionStateAsync(Guid attemptId, string learnerId, CancellationToken ct = default);
 }
 
 /// <summary>
