@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Nurvia.Application.Interfaces;
 using Nurvia.Application.Options;
 using Nurvia.Application.Security;
@@ -24,7 +23,11 @@ public static class DependencyInjection
         }
 
         services.AddDbContext<NurviaDbContext>(options =>
-            options.UseNpgsql(connectionString, b => b.MigrationsAssembly(typeof(NurviaDbContext).Assembly.FullName)));
+            options.UseNpgsql(connectionString, b =>
+            {
+                b.MigrationsAssembly(typeof(NurviaDbContext).Assembly.FullName);
+                b.EnableRetryOnFailure(maxRetryCount: 3, maxRetryDelay: TimeSpan.FromSeconds(5), errorCodesToAdd: null);
+            }));
 
         services.AddScoped<INurviaDbContext>(provider => provider.GetRequiredService<NurviaDbContext>());
 
@@ -32,6 +35,7 @@ public static class DependencyInjection
         services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
         services.AddScoped<IEmailSender, LoggingEmailSender>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IStaffInvitationService, StaffInvitationService>();
         services.AddScoped<IProfileService, ProfileService>();
         services.AddScoped<IAvatarService, AvatarService>();
         services.AddScoped<IAuditService, AuditService>();
@@ -43,6 +47,12 @@ public static class DependencyInjection
         services.AddScoped<IAdminDashboardService, AdminDashboardService>();
         services.AddScoped<ISavedQuestionsService, SavedQuestionsService>();
         services.AddScoped<IStudyPlannerService, StudyPlannerService>();
+        services.AddScoped<IFlashcardsService, FlashcardsService>();
+        services.AddScoped<ICarePlansService, CarePlansService>();
+        services.AddScoped<IStudyGuidesService, StudyGuidesService>();
+        services.AddScoped<ICommunityService, CommunityService>();
+        services.AddScoped<ITutorChatService, TutorChatService>();
+        services.AddScoped<ISubscriptionsService, SubscriptionsService>();
         services.AddSingleton<IAiTutorProvider, GroundedFallbackAiTutorProvider>();
         services.AddScoped<ITutorService, TutorService>();
 
@@ -57,5 +67,3 @@ public static class DependencyInjection
         return services;
     }
 }
-
-

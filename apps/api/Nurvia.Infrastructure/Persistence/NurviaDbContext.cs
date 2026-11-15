@@ -3,10 +3,14 @@ using Nurvia.Application.Interfaces;
 using Nurvia.Domain.Accounts;
 using Nurvia.Domain.Attempts;
 using Nurvia.Domain.Auditing;
+using Nurvia.Domain.Billing;
 using Nurvia.Domain.Common;
+using Nurvia.Domain.Community;
 using Nurvia.Domain.Exams;
-using Nurvia.Domain.Questions;
+using Nurvia.Domain.Learning;
 using Nurvia.Domain.Lectures;
+using Nurvia.Domain.Questions;
+using Nurvia.Domain.Tutor;
 
 namespace Nurvia.Infrastructure.Persistence;
 
@@ -22,8 +26,20 @@ public class NurviaDbContext : DbContext, INurviaDbContext
     public DbSet<UserAccount> UserAccounts => Set<UserAccount>();
     public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+    public DbSet<StaffInvitation> StaffInvitations => Set<StaffInvitation>();
     public DbSet<SavedQuestion> SavedQuestions => Set<SavedQuestion>();
     public DbSet<StudyPlanTask> StudyPlanTasks => Set<StudyPlanTask>();
+    public DbSet<Flashcard> Flashcards => Set<Flashcard>();
+    public DbSet<UserFlashcardProgress> UserFlashcardProgresses => Set<UserFlashcardProgress>();
+    public DbSet<CarePlan> CarePlans => Set<CarePlan>();
+    public DbSet<StudyGuide> StudyGuides => Set<StudyGuide>();
+    public DbSet<CommunityPost> CommunityPosts => Set<CommunityPost>();
+    public DbSet<CommunityReply> CommunityReplies => Set<CommunityReply>();
+    public DbSet<CommunityPostLike> CommunityPostLikes => Set<CommunityPostLike>();
+    public DbSet<TutorChatSession> TutorChatSessions => Set<TutorChatSession>();
+    public DbSet<TutorChatMessage> TutorChatMessages => Set<TutorChatMessage>();
+    public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
+    public DbSet<UserSubscription> UserSubscriptions => Set<UserSubscription>();
     public DbSet<QuestionVersion> QuestionVersions => Set<QuestionVersion>();
     public DbSet<QuestionOption> QuestionOptions => Set<QuestionOption>();
     public DbSet<QuestionExhibit> QuestionExhibits => Set<QuestionExhibit>();
