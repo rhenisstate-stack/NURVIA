@@ -15,6 +15,13 @@ var builder = WebApplication.CreateBuilder(args);
 // Add Infrastructure layer (PostgreSQL EF Core, repositories, domain services)
 builder.Services.AddInfrastructure(builder.Configuration);
 
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddSingleton<Nurvia.Infrastructure.Services.DevelopmentEmailSink>();
+    builder.Services.AddScoped<Nurvia.Application.Interfaces.IEmailSender>(sp =>
+        sp.GetRequiredService<Nurvia.Infrastructure.Services.DevelopmentEmailSink>());
+}
+
 // Add JWT Authentication & Security
 var jwtSecret = builder.Configuration["JwtSettings:Secret"];
 if (string.IsNullOrWhiteSpace(jwtSecret))
@@ -123,6 +130,15 @@ if (app.Environment.IsDevelopment())
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "NURVIA API v1");
         c.RoutePrefix = "swagger";
     });
+
+    app.MapGet("/api/dev/emails", (Nurvia.Infrastructure.Services.DevelopmentEmailSink sink) =>
+        Results.Ok(sink.GetMessages()));
+
+    app.MapDelete("/api/dev/emails", (Nurvia.Infrastructure.Services.DevelopmentEmailSink sink) =>
+    {
+        sink.Clear();
+        return Results.NoContent();
+    });
 }
 
 app.UseMiddleware<SecurityHeadersMiddleware>();
@@ -137,13 +153,31 @@ app.UseAuthorization();
 app.MapControllers();
 
 // Health and Status Endpoint
-app.MapGet("/api/health", () => Results.Ok(new
+app.MapGet("/api/health", async (NurviaDbContext dbContext, CancellationToken ct) =>
 {
-    Status = "Healthy",
-    Application = "NURVIA Core API",
-    Version = "2.0.0",
-    Timestamp = DateTime.UtcNow
-}))
+    var dbAvailable = false;
+    try
+    {
+        dbAvailable = await dbContext.Database.CanConnectAsync(ct);
+    }
+    catch
+    {
+        dbAvailable = false;
+    }
+
+    var payload = new
+    {
+        Status = dbAvailable ? "Healthy" : "Degraded",
+        Application = "NURVIA Core API",
+        Database = dbAvailable ? "Available" : "Unavailable",
+        Version = "2.0.0",
+        Timestamp = DateTime.UtcNow
+    };
+
+    return dbAvailable
+        ? Results.Ok(payload)
+        : Results.Json(payload, statusCode: StatusCodes.Status503ServiceUnavailable);
+})
 .WithName("HealthCheck")
 .WithOpenApi();
 

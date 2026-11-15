@@ -56,6 +56,47 @@ namespace Nurvia.Infrastructure.Migrations
                     b.ToTable("PasswordResetTokens", (string)null);
                 });
 
+            modelBuilder.Entity("Nurvia.Domain.Accounts.StudyPlanTask", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CompletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("ExamId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("ScheduledForUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(240)
+                        .HasColumnType("character varying(240)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "ScheduledForUtc");
+
+                    b.ToTable("StudyPlanTasks", (string)null);
+                });
+
             modelBuilder.Entity("Nurvia.Domain.Accounts.UserAccount", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1072,6 +1113,42 @@ namespace Nurvia.Infrastructure.Migrations
                     b.ToTable("QuestionVersions", (string)null);
                 });
 
+            modelBuilder.Entity("Nurvia.Domain.Questions.SavedQuestion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ExamId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid>("QuestionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("SavedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuestionId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("UserId", "QuestionId")
+                        .IsUnique();
+
+                    b.ToTable("SavedQuestions", (string)null);
+                });
+
             modelBuilder.Entity("Nurvia.Domain.Accounts.PasswordResetToken", b =>
                 {
                     b.HasOne("Nurvia.Domain.Accounts.UserAccount", null)
@@ -1272,6 +1349,17 @@ namespace Nurvia.Infrastructure.Migrations
                 {
                     b.HasOne("Nurvia.Domain.Questions.Question", "Question")
                         .WithMany("Versions")
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Question");
+                });
+
+            modelBuilder.Entity("Nurvia.Domain.Questions.SavedQuestion", b =>
+                {
+                    b.HasOne("Nurvia.Domain.Questions.Question", "Question")
+                        .WithMany()
                         .HasForeignKey("QuestionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();

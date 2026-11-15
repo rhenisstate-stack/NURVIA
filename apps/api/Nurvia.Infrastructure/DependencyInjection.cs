@@ -40,6 +40,9 @@ public static class DependencyInjection
         services.AddScoped<IExamService, ExamService>();
         services.AddScoped<IExamAttemptService, ExamAttemptService>();
         services.AddScoped<IStudyLibraryService, StudyLibraryService>();
+        services.AddScoped<IAdminDashboardService, AdminDashboardService>();
+        services.AddScoped<ISavedQuestionsService, SavedQuestionsService>();
+        services.AddScoped<IStudyPlannerService, StudyPlannerService>();
         services.AddSingleton<IAiTutorProvider, GroundedFallbackAiTutorProvider>();
         services.AddScoped<ITutorService, TutorService>();
 
