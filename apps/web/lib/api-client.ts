@@ -20,19 +20,26 @@
   UpdateLectureRequest,
   ReviewLectureRequest,
 } from './api-types';
-import { classifyError, ErrorType } from './utils/error-utils';
+import { classifyError, isRetryableError, ErrorType } from './utils/error-utils';
+import { resolveBackendBaseUrl } from './api-config.mjs';
 
-const API_BASE =
-  typeof window !== 'undefined'
-    ? '/api/backend'
-    : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5055';
+const DEFAULT_TIMEOUT_MS = 30_000;
+const MAX_IDEMPOTENT_RETRIES = 2;
+
+function getApiBase(): string {
+  if (typeof window !== 'undefined') {
+    return '/api/backend';
+  }
+  return resolveBackendBaseUrl(process.env);
+}
 
 function buildApiUrl(endpoint: string): string {
-  if (API_BASE === '/api/backend') {
-    return `${API_BASE}${endpoint.replace(/^\/api(?=\/)/, '')}`;
+  const apiBase = getApiBase();
+  if (apiBase === '/api/backend') {
+    return `${apiBase}${endpoint.replace(/^\/api(?=\/)/, '')}`;
   }
 
-  return `${API_BASE}${endpoint}`;
+  return `${apiBase}${endpoint}`;
 }
 let csrfTokenPromise: Promise<string> | null = null;
 
@@ -68,6 +75,36 @@ async function getCsrfToken(): Promise<string> {
   return csrfTokenPromise;
 }
 
+function createRequestSignal(callerSignal?: AbortSignal | null, timeoutMs = DEFAULT_TIMEOUT_MS): {
+  signal: AbortSignal;
+  cleanup: () => void;
+} {
+  const controller = new AbortController();
+  const timer = setTimeout(() => {
+    controller.abort(new Error('Request timeout connecting to NURVIA API'));
+  }, timeoutMs);
+
+  const onCallerAbort = () => {
+    controller.abort(callerSignal?.reason);
+  };
+
+  if (callerSignal) {
+    if (callerSignal.aborted) {
+      controller.abort(callerSignal.reason);
+    } else {
+      callerSignal.addEventListener('abort', onCallerAbort, { once: true });
+    }
+  }
+
+  return {
+    signal: controller.signal,
+    cleanup: () => {
+      clearTimeout(timer);
+      callerSignal?.removeEventListener('abort', onCallerAbort);
+    },
+  };
+}
+
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
   const headers = new Headers(options.headers);
 
@@ -78,69 +115,95 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     headers.set('Content-Type', 'application/json');
   }
 
-  try {
-    const method = (options.method || 'GET').toUpperCase();
-    if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
-      headers.set('X-CSRF-TOKEN', await getCsrfToken());
-    }
+  const method = (options.method || 'GET').toUpperCase();
+  const isIdempotent = method === 'GET' || method === 'HEAD';
+  const maxAttempts = isIdempotent ? MAX_IDEMPOTENT_RETRIES + 1 : 1;
 
-    const res = await fetch(buildApiUrl(endpoint), {
-      ...options,
-      headers,
-      credentials: 'include',
-      cache: 'no-store',
-    });
-
-    // HTTP 204 (and other empty-bodied responses) are legitimate: a 204 is a
-    // success with no content, and some error responses carry no body either.
-    // Never parse JSON from a bodyless response.
-    const raw = await res.text();
-    if (!raw) {
-      if (res.ok) {
-        return { success: true, message: '', statusCode: res.status } as ApiResponse<T>;
-      }
-      return {
-        success: false,
-        message: `Request failed (${res.status}).`,
-        statusCode: res.status,
-      };
-    }
-
-    let json: ApiResponse<T>;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const { signal, cleanup } = createRequestSignal(options.signal);
     try {
-      json = JSON.parse(raw) as ApiResponse<T>;
-    } catch {
+      if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+        headers.set('X-CSRF-TOKEN', await getCsrfToken());
+      }
+
+      const res = await fetch(buildApiUrl(endpoint), {
+        ...options,
+        headers,
+        signal,
+        credentials: 'include',
+        cache: 'no-store',
+      });
+
+      // Retry idempotent requests only on transient 502/503/504 responses.
+      if (isIdempotent && attempt < maxAttempts && [502, 503, 504].includes(res.status)) {
+        await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+        continue;
+      }
+
+      // HTTP 204 (and other empty-bodied responses) are legitimate: a 204 is a
+      // success with no content, and some error responses carry no body either.
+      // Never parse JSON from a bodyless response.
+      const raw = await res.text();
+      if (!raw) {
+        if (res.ok) {
+          return { success: true, message: '', statusCode: res.status } as ApiResponse<T>;
+        }
+        return {
+          success: false,
+          message: `Request failed (${res.status}).`,
+          statusCode: res.status,
+        };
+      }
+
+      let json: ApiResponse<T>;
+      try {
+        json = JSON.parse(raw) as ApiResponse<T>;
+      } catch {
+        return {
+          success: false,
+          message: `Request failed (${res.status}).`,
+          statusCode: res.status,
+        };
+      }
+
+      if (!res.ok && json.success) {
+        return { success: false, message: `Request failed (${res.status}).`, statusCode: res.status };
+      }
+      return { ...json, statusCode: res.status };
+    } catch (error: unknown) {
+      const callerAborted = Boolean(options.signal?.aborted);
+      if (!callerAborted && isIdempotent && attempt < maxAttempts && isRetryableError(error)) {
+        await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+        continue;
+      }
+
+      const errorType = classifyError(error);
+
+      if (errorType === ErrorType.NETWORK_ERROR) {
+        return {
+          success: false,
+          message: 'Network error connecting to NURVIA API',
+          statusCode: 0,
+          errors: ['Failed to connect to the server. Please check your internet connection.'],
+        };
+      }
+
+      const message = error instanceof Error ? error.message : 'Unknown network error';
       return {
         success: false,
-        message: `Request failed (${res.status}).`,
-        statusCode: res.status,
+        message: message || 'Network error connecting to NURVIA API',
+        errors: [message],
       };
+    } finally {
+      cleanup();
     }
-
-    if (!res.ok && json.success) {
-      return { success: false, message: `Request failed (${res.status}).`, statusCode: res.status };
-    }
-    return { ...json, statusCode: res.status };
-  } catch (error: unknown) {
-    // More specific error handling for network errors
-    const errorType = classifyError(error);
-
-    if (errorType === ErrorType.NETWORK_ERROR) {
-      return {
-        success: false,
-        message: 'Network error connecting to NURVIA API',
-        statusCode: 0,
-        errors: ['Failed to connect to the server. Please check your internet connection.']
-      };
-    }
-
-    const message = error instanceof Error ? error.message : 'Unknown network error';
-    return {
-      success: false,
-      message: message || 'Network error connecting to NURVIA API',
-      errors: [message],
-    };
   }
+
+  return {
+    success: false,
+    message: 'Network error connecting to NURVIA API',
+    statusCode: 0,
+  };
 }
 
 export const nurviaApi = {
