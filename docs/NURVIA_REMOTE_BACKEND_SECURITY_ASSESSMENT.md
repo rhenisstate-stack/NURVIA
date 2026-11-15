@@ -7,10 +7,12 @@
 
 ## 1. Transport Security (HTTP vs. HTTPS)
 
-- **Finding:** The supplied remote backend (`http://108.61.9.189:8008`) operates over plain **HTTP** on port `8008`.
-- **Risk:** Transmitting authentication credentials, session cookies, CSRF tokens, or learner assessment data over unencrypted HTTP exposes traffic to interception and prevents browsers from honoring `Secure` cookie attributes.
+- **HTTP Finding:** `http://108.61.9.189:8008` operates over plain **HTTP** on port `8008`.
+- **HTTPS Discovery (Phase 2.1):** Port `443` on `108.61.9.189` is open and served by `nginx/1.28.3 (Ubuntu)`.
+  - `GET https://108.61.9.189/health` fails hostname verification without `-k` because the TLS certificate is issued for `CN=explicitbackend.com` (Issuer: `CN=YE2, O=Let's Encrypt, C=US`; valid `2026-10-16` to `2027-01-14`).
+  - `GET https://explicitbackend.com/health` succeeds with valid TLS verification (`HTTP/1.1 200 OK`, `"healthy"`).
+- **Risk & Requirement:** Transmitting authentication credentials, session cookies, or CSRF tokens over `http://108.61.9.189:8008` is unsafe for production. Before switching `SKEW_LINE_DOTNET_BASE_URL` to `https://explicitbackend.com`, the backend owner must confirm `explicitbackend.com` is the approved production TLS origin for NURVIA.
 - **Mitigation Implemented in Frontend:** `apps/web/lib/api-config.mjs` provides `isHttpsBackendUrl()` and `resolveBackendBaseUrl(env, { requireHttps: true })`, and `apps/web/next.config.mjs` emits an explicit security warning during production builds when an `http://` backend URL is configured.
-- **Requirement:** Place the remote .NET backend behind an HTTPS reverse proxy before production deployment.
 
 ---
 

@@ -23,4 +23,17 @@
 1. **Expose OpenAPI Contract (Staging/Private):** Publish `/swagger/v1/swagger.json` (or supply the exported `openapi.json` artifact) for the `LexmaCasto` shared backend so exact routes, query parameters, pagination, and DTOs for `strata/institution/*`, `strata/learning/*`, `strata/assessment/*`, and `castoline/auth/*` can be integrated without guesswork.
 2. **Document Site-Header & Application Isolation Contract:** Specify the exact HTTP header name(s) expected by the site-header middleware (e.g., how `SKEW_LINE_APP_KEY=WEBSITE_1` and `SKEW_LINE_APP_DOMAIN` are transmitted) and confirm how NURVIA vs. PrepFord data isolation is enforced server-side.
 3. **Provide Approved Test Credentials:** Supply a non-destructive NURVIA test account (learner + staff/admin if applicable) and registered `SKEW_LINE_APP_DOMAIN` for live acceptance verification.
-4. **Enable HTTPS Reverse Proxy:** Terminate TLS in front of `108.61.9.189:8008` (e.g., `https://api.<domain>`) before any production or staging cookie-based authentication is enabled.
+4. **Confirm Production HTTPS Origin:** Confirm whether `https://explicitbackend.com` (currently live on `108.61.9.189:443` via `nginx/1.28.3` with a valid Let's Encrypt certificate) is the approved TLS endpoint for NURVIA.
+
+---
+
+## 3. Phase 7 — Frontend Module Integration Map (Contract-Ready)
+
+| Domain Module | Existing NURVIA Frontend Surface | Current API Integration | Remote Shared Backend Target (Unverified) |
+|---|---|---|---|
+| Institutions & Schools | `apps/web/components/study/StudyLibraryAdvancedFilters.tsx` (`schools`) | `/api/study-library/filters` | `/api/castoline/strata/institution/*` |
+| Academic Years & Classes/Grades | `StudyLibraryAdvancedFilters.tsx` (`academicYears`), `apps/web/app/admin/taxonomy/page.tsx` | `/api/study-library/filters` (classes/grades absent) | `/api/castoline/strata/learning/*` |
+| Subjects & Topics | `StudyLibraryAdvancedFilters.tsx` (`subjects`, `topics`), `apps/web/app/admin/taxonomy/page.tsx` | `/api/study-library/filters` | `/api/castoline/strata/learning/{subjects,topics}/*` |
+| Examination Seasons & Types | `StudyLibraryAdvancedFilters.tsx` (`seasons`, `categories`) | `/api/study-library/filters` | `/api/castoline/strata/assessment/*` |
+| Examinations & Sections | `apps/web/app/exams/page.tsx`, `apps/web/app/exams/[id]/page.tsx`, `apps/web/components/study/study-library-view.tsx`, `apps/web/app/admin/exams/page.tsx` | `/api/study-library*`, `/api/exams*` | `/api/castoline/strata/assessment/{assessments,exams,sections}/*` |
+| Question Bank | `apps/web/app/admin/questions/*`, `apps/web/app/exam-session/page.tsx`, `apps/web/components/exam/renderers/QuestionRendererRegistry.tsx` | `/api/questions*`, `/api/attempts*` | `/api/castoline/strata/assessment/questions/*` |

@@ -21,7 +21,8 @@
 
 | Module | HTTP Method | Endpoint | Authentication | Authorization | Application Scope | Query Parameters | Request DTO | Response DTO | Pagination | Status | Frontend Integration |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Health / Liveness | `GET` | `/health` | Public | None | Global | None | None | `"healthy"` (`application/json`) | N/A | **VERIFIED** | Available for server-side health checks |
+| Health / Liveness (HTTP) | `GET` | `/health` (`http://108.61.9.189:8008/health`) | Public | None | Global | None | None | `"healthy"` (`application/json`) | N/A | **VERIFIED** | Available for server-side health checks |
+| Health / Liveness (HTTPS) | `GET` | `/health` (`https://explicitbackend.com/health`) | Public | None | Global | None | None | `"healthy"` (`application/json`, `nginx/1.28.3`, Let's Encrypt TLS) | N/A | **VERIFIED** | Pending backend-owner confirmation as NURVIA TLS origin |
 | Web Shell / Landing | `GET` | `/` | Public | None | Shared (`LexmaCasto`) | None | None | HTML (`Home - Master Bank`) | N/A | **VERIFIED** | N/A (Backend Razor shell) |
 | Web Auth UI | `GET` | `/web/auth/absolute/login` | Public | None | Shared | None | None | HTML (`Login - Master Bank`) | N/A | **VERIFIED** | N/A (Backend Razor UI) |
 | Web Auth UI | `GET` | `/web/auth/absolute/register` | Public | None | Shared | None | None | HTML (`Register - Master Bank`) | N/A | **VERIFIED** | N/A (Backend Razor UI) |
