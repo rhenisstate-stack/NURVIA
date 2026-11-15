@@ -92,7 +92,10 @@ test.describe("Study Library & Three-Mode Learning Experience", () => {
     // Save ATI Pharmacology to My Library via overflow menu
     const moreBtn = page.getByRole("button", { name: /More actions for ATI Comprehensive Pharmacology Practice Exam/i });
     await moreBtn.click();
-    await page.getByRole("menuitem", { name: /Save to My Library/i }).click();
+    await Promise.all([
+      page.waitForResponse((res) => res.url().includes("/save") && res.request().method() === "POST" && res.ok()),
+      page.getByRole("menuitem", { name: /Save to My Library/i }).click(),
+    ]);
 
     // Verify in My Library and across page refresh
     await page.goto("/learner/my-exams");
@@ -102,13 +105,14 @@ test.describe("Study Library & Three-Mode Learning Experience", () => {
     await expect(page.getByText(/ATI Comprehensive Pharmacology Practice Exam/i).first()).toBeVisible({ timeout: 15_000 });
 
     // Desktop, Tablet & Mobile responsiveness check (no horizontal overflow)
+    await page.goto("/learner/library");
+    await expect(page.getByRole("heading", { name: "Study Library" })).toBeVisible();
     for (const vp of [
       { width: 1280, height: 800 },
       { width: 768, height: 1024 },
       { width: 390, height: 844 },
     ]) {
       await page.setViewportSize(vp);
-      await page.goto("/learner/library");
       await expect(page.getByRole("heading", { name: "Study Library" })).toBeVisible();
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 2);
       expect(overflow).toBe(false);

@@ -136,6 +136,12 @@
   --shadow-lg: 0 12px 32px rgb(0 0 0 / 0.45);
 }
 
+html,
+body {
+  overflow-x: clip;
+  max-width: 100%;
+}
+
 body {
   color: var(--text-primary);
   background: var(--background);

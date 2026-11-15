@@ -176,7 +176,8 @@ export function LearnerShell({ children }: { children: React.ReactNode }) {
     }
   }, [status, user, pathname, router]);
 React.useEffect(() => {
-    if (status !== "authenticated" || !user) {
+    const userId = user?.id;
+    if (status !== "authenticated" || !userId) {
       setAvatarUrl(null);
       return;
     }
@@ -251,7 +252,7 @@ React.useEffect(() => {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex">
+    <div className="min-h-screen bg-background text-foreground flex overflow-x-clip">
       {/* Mobile Drawer Backdrop */}
       {mobileOpen && (
         <div
@@ -418,17 +419,17 @@ React.useEffect(() => {
       {/* Main Content Area */}
       <div
         className={cn(
-          "flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out",
+          "flex-1 flex flex-col min-w-0",
           collapsed ? "lg:ml-[76px]" : "lg:ml-[264px]"
         )}
       >
         {/* Top Learner Navbar matching screenshot */}
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-surface/90 backdrop-blur-md px-4 sm:px-6">
-          <div className="flex items-center gap-3">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-2 border-b border-border bg-surface/90 backdrop-blur-md px-4 sm:px-6 overflow-x-hidden">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden"
+              className="lg:hidden shrink-0"
               onClick={() => setMobileOpen(true)}
               aria-label="Open navigation sidebar"
             >
@@ -436,7 +437,7 @@ React.useEffect(() => {
             </Button>
 
             {/* Global Search Bar */}
-            <form onSubmit={handleGlobalSearch} className="relative hidden sm:block w-72 md:w-96">
+            <form onSubmit={handleGlobalSearch} className="relative hidden sm:block w-full max-w-44 md:max-w-64 lg:max-w-80 min-w-0">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground-muted" />
               <input
                 type="search"
@@ -448,7 +449,7 @@ React.useEffect(() => {
             </form>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
   <SuperadminSwitcher />
   <ThemeToggle />
   <UserAccountMenu avatarUrl={avatarUrl} />
@@ -456,7 +457,7 @@ React.useEffect(() => {
         </header>
 
         {/* Page Content Body */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+        <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
           {children}
         </main>
       </div>
