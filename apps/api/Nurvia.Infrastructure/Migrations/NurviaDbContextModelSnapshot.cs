@@ -23,6 +23,39 @@ namespace Nurvia.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Nurvia.Domain.Accounts.PasswordResetToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime?>("UsedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("PasswordResetTokens", (string)null);
+                });
+
             modelBuilder.Entity("Nurvia.Domain.Accounts.UserAccount", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1037,6 +1070,15 @@ namespace Nurvia.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("QuestionVersions", (string)null);
+                });
+
+            modelBuilder.Entity("Nurvia.Domain.Accounts.PasswordResetToken", b =>
+                {
+                    b.HasOne("Nurvia.Domain.Accounts.UserAccount", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Nurvia.Domain.Accounts.UserProfile", b =>

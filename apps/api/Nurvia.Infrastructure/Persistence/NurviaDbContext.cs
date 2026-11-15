@@ -21,6 +21,7 @@ public class NurviaDbContext : DbContext, INurviaDbContext
     public DbSet<Lecture> Lectures => Set<Lecture>();
     public DbSet<UserAccount> UserAccounts => Set<UserAccount>();
     public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
+    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
     public DbSet<QuestionVersion> QuestionVersions => Set<QuestionVersion>();
     public DbSet<QuestionOption> QuestionOptions => Set<QuestionOption>();
     public DbSet<QuestionExhibit> QuestionExhibits => Set<QuestionExhibit>();

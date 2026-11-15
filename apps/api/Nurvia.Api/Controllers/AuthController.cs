@@ -1,10 +1,12 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Npgsql;
 using Nurvia.Api.Common;
+using Nurvia.Api.Security;
 using Nurvia.Application.Common;
 using Nurvia.Application.Security;
 
@@ -40,6 +42,21 @@ public sealed class AssignRoleRequest
     public string Role { get; set; } = string.Empty;
 }
 
+public sealed class ForgotPasswordRequest
+{
+    [Required, EmailAddress, MaxLength(320)]
+    public string Email { get; set; } = string.Empty;
+}
+
+public sealed class ResetPasswordRequest
+{
+    [Required, MinLength(16), MaxLength(512)]
+    public string Token { get; set; } = string.Empty;
+
+    [Required, MinLength(12), MaxLength(256)]
+    public string NewPassword { get; set; } = string.Empty;
+}
+
 [ApiController]
 [Route("api/[controller]")]
 public sealed class AuthController : ControllerBase
@@ -49,6 +66,7 @@ public sealed class AuthController : ControllerBase
     private readonly IJwtService _jwtService;
     private readonly IAntiforgery _antiforgery;
     private readonly JwtSettings _jwtSettings;
+    private readonly IAccountRateLimiter? _accountRateLimiter;
     private readonly ILogger<AuthController> _logger;
 
     public AuthController(
@@ -56,13 +74,15 @@ public sealed class AuthController : ControllerBase
         IJwtService jwtService,
         IAntiforgery antiforgery,
         IOptions<JwtSettings> jwtSettings,
-        ILogger<AuthController> logger)
+        ILogger<AuthController> logger,
+        IAccountRateLimiter? accountRateLimiter = null)
     {
         _authService = authService;
         _jwtService = jwtService;
         _antiforgery = antiforgery;
         _jwtSettings = jwtSettings.Value;
         _logger = logger;
+        _accountRateLimiter = accountRateLimiter;
     }
 
     [HttpGet("csrf")]
@@ -73,6 +93,7 @@ public sealed class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
+    [EnableRateLimiting(AuthRateLimitingExtensions.RegisterIpPolicy)]
     public async Task<ActionResult<ApiResponse<string>>> Register(
         [FromBody] SignUpRequest request, CancellationToken cancellationToken)
     {
@@ -96,9 +117,22 @@ public sealed class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting(AuthRateLimitingExtensions.LoginIpPolicy)]
     public async Task<ActionResult<ApiResponse<AuthUserDto>>> Login(
         [FromBody] LoginRequest request, CancellationToken cancellationToken)
     {
+        if (_accountRateLimiter is not null)
+        {
+            var (allowed, retryAfterSeconds) = _accountRateLimiter.TryAcquireLogin(request.Email);
+            if (!allowed)
+            {
+                Response.Headers.RetryAfter = retryAfterSeconds.ToString();
+                return StatusCode(
+                    StatusCodes.Status429TooManyRequests,
+                    ApiResponse<AuthUserDto>.Error("Too many sign-in attempts. Please try again later."));
+            }
+        }
+
         var user = await _authService.AuthenticateAsync(
             request.Email, request.Password, cancellationToken);
         if (user == null)
@@ -166,6 +200,68 @@ public sealed class AuthController : ControllerBase
     {
         ClearSessionCookie();
         return Ok(ApiResponse<string>.Ok("Signed out successfully."));
+    }
+
+    [HttpPost("forgot-password")]
+    [EnableRateLimiting(AuthRateLimitingExtensions.PasswordResetIpPolicy)]
+    public async Task<ActionResult<ApiResponse<string>>> ForgotPassword(
+        [FromBody] ForgotPasswordRequest request, CancellationToken cancellationToken)
+    {
+        if (_accountRateLimiter is not null)
+        {
+            var (allowed, retryAfterSeconds) = _accountRateLimiter.TryAcquirePasswordReset(request.Email);
+            if (!allowed)
+            {
+                Response.Headers.RetryAfter = retryAfterSeconds.ToString();
+                return StatusCode(
+                    StatusCodes.Status429TooManyRequests,
+                    ApiResponse<string>.Error("Too many password reset requests. Please try again later."));
+            }
+        }
+
+        var origin = Request.Headers.Origin.FirstOrDefault();
+        var baseUrl = !string.IsNullOrWhiteSpace(origin) && Uri.TryCreate(origin, UriKind.Absolute, out _)
+            ? $"{origin.TrimEnd('/')}/reset-password"
+            : $"{Request.Scheme}://{Request.Host}/reset-password";
+
+        await _authService.RequestPasswordResetAsync(request.Email, baseUrl, cancellationToken);
+
+        return Accepted(ApiResponse<string>.Ok(
+            "If an account with that email exists, password reset instructions have been sent."));
+    }
+
+    [HttpPost("reset-password")]
+    [EnableRateLimiting(AuthRateLimitingExtensions.PasswordResetIpPolicy)]
+    public async Task<ActionResult<ApiResponse<string>>> ResetPassword(
+        [FromBody] ResetPasswordRequest request, CancellationToken cancellationToken)
+    {
+        var updated = await _authService.ResetPasswordAsync(request.Token, request.NewPassword, cancellationToken);
+        if (!updated)
+            return BadRequest(ApiResponse<string>.Error("The password reset token is invalid or has expired."));
+
+        ClearSessionCookie();
+        return Ok(ApiResponse<string>.Ok("Your password has been reset. You may now sign in."));
+    }
+
+    [HttpGet("users")]
+    public async Task<ActionResult<ApiResponse<PagedResult<AuthUserSummaryDto>>>> GetUsers(
+        [FromQuery] string? search = null,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 25,
+        CancellationToken cancellationToken = default)
+    {
+        var caller = HttpContext.GetCurrentUser();
+        if (!caller.IsAuthenticated)
+            return Unauthorized(ApiResponse<PagedResult<AuthUserSummaryDto>>.Error("Authentication is required."));
+
+        if (!string.Equals(caller.Role, "Administrator", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(caller.Role, "Superadmin", StringComparison.OrdinalIgnoreCase))
+        {
+            return Forbid();
+        }
+
+        var result = await _authService.GetUsersAsync(search, pageNumber, pageSize, cancellationToken);
+        return Ok(ApiResponse<PagedResult<AuthUserSummaryDto>>.Ok(result));
     }
 
     [HttpPost("assign-role")]

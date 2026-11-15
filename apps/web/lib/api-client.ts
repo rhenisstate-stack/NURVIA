@@ -268,6 +268,43 @@ export const nurviaApi = {
     return request<string>('/api/auth/logout', { method: 'POST' });
   },
 
+  async forgotPassword(payload: { email: string }): Promise<ApiResponse<string>> {
+    return request<string>('/api/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async resetPassword(payload: { token: string; newPassword: string }): Promise<ApiResponse<string>> {
+    return request<string>('/api/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async getUsers(params?: { search?: string; pageNumber?: number; pageSize?: number }): Promise<
+    ApiResponse<
+      PagedResult<{
+        id: string;
+        name: string;
+        email: string;
+        role: string;
+        isActive: boolean;
+        createdAtUtc: string;
+      }>
+    >
+  > {
+    const query = buildQuery(params);
+    return request(`/api/auth/users${query ? `?${query}` : ''}`);
+  },
+
+  async assignRole(payload: { targetUserId: string; role: string }): Promise<ApiResponse<string>> {
+    return request<string>('/api/auth/assign-role', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
   // Questions
   async getQuestions(params?: Record<string, any>): Promise<ApiResponse<PagedResult<QuestionDto>>> {
     const query = buildQuery(params);

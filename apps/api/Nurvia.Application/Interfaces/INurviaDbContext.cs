@@ -11,6 +11,7 @@ public interface INurviaDbContext
 {
     DbSet<UserAccount> UserAccounts { get; }
     DbSet<UserProfile> UserProfiles { get; }
+    DbSet<PasswordResetToken> PasswordResetTokens { get; }
     DbSet<Question> Questions { get; }
     DbSet<Lecture> Lectures { get; }
     DbSet<QuestionVersion> QuestionVersions { get; }

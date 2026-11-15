@@ -1,3 +1,5 @@
+using Nurvia.Application.Common;
+
 namespace Nurvia.Application.Security;
 
 public sealed class AuthUserDto
@@ -6,6 +8,16 @@ public sealed class AuthUserDto
     public string Name { get; init; } = string.Empty;
     public string Email { get; init; } = string.Empty;
     public string Role { get; init; } = string.Empty;
+}
+
+public sealed class AuthUserSummaryDto
+{
+    public string Id { get; init; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
+    public string Email { get; init; } = string.Empty;
+    public string Role { get; init; } = string.Empty;
+    public bool IsActive { get; init; }
+    public DateTime CreatedAtUtc { get; init; }
 }
 
 public sealed class RegistrationRequest
@@ -28,4 +40,7 @@ public interface IAuthService
     Task<AuthUserDto?> UpdateProfileAsync(string id, string name, CancellationToken cancellationToken);
     Task<bool> AssignRoleAsync(string targetUserId, string role, string updatedBy, string callerRole, CancellationToken cancellationToken);
     Task<bool> BootstrapSuperadminAsync(string name, string email, string password, CancellationToken cancellationToken);
+    Task RequestPasswordResetAsync(string email, string resetBaseUrl, CancellationToken cancellationToken);
+    Task<bool> ResetPasswordAsync(string token, string newPassword, CancellationToken cancellationToken);
+    Task<PagedResult<AuthUserSummaryDto>> GetUsersAsync(string? search, int pageNumber, int pageSize, CancellationToken cancellationToken);
 }

@@ -30,6 +30,7 @@ public static class DependencyInjection
 
         // Register Application Services
         services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
+        services.AddScoped<IEmailSender, LoggingEmailSender>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IProfileService, ProfileService>();
         services.AddScoped<IAvatarService, AvatarService>();
