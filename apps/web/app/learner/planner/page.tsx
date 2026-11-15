@@ -56,7 +56,7 @@ export default function StudyPlannerPage() {
                     </div>
                   </div>
                   {!t.done ? (
-                    <Link href="/exam-session">
+                    <Link href="/exams">
                       <Button size="sm" className="h-7 text-xs bg-brand-navy hover:bg-brand-navyDeep text-white dark:bg-brand-teal">
                         Start Task
                       </Button>

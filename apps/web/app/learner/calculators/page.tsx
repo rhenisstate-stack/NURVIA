@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calculator, Sparkles, CheckCircle2 } from "lucide-react";
+import { calculateIvRates } from "@/lib/calculators";
 
 export default function CalculatorsPage() {
   // IV Drip rate state
@@ -13,8 +14,9 @@ export default function CalculatorsPage() {
   const [timeHours, setTimeHours] = React.useState<number>(8);
   const [dropFactor, setDropFactor] = React.useState<number>(15);
 
-  const dripRate = Math.round((volume * dropFactor) / (timeHours * 60));
-  const hourlyRate = Math.round(volume / timeHours);
+  const ivResult = calculateIvRates({ volume, timeHours, dropFactor });
+  const dripRateDisplay = ivResult.valid && ivResult.dripRate !== null ? ivResult.dripRate : "—";
+  const hourlyRateDisplay = ivResult.valid && ivResult.hourlyRate !== null ? ivResult.hourlyRate : "—";
 
   return (
     <LearnerShell>
@@ -78,16 +80,23 @@ export default function CalculatorsPage() {
             <div>
               <span className="text-xs font-bold text-brand-teal uppercase tracking-wider block">Calculated Infusion Rate</span>
               <div className="text-2xl font-bold font-brand text-foreground">
-                {dripRate} <span className="text-xs font-normal text-foreground-secondary">drops per minute (gtt/min)</span>
+                {dripRateDisplay} <span className="text-xs font-normal text-foreground-secondary">drops per minute (gtt/min)</span>
               </div>
               <p className="text-[11px] text-foreground-muted mt-0.5">
-                Electronic infusion pump rate: <strong>{hourlyRate} mL/hr</strong>
+                Electronic infusion pump rate: <strong>{hourlyRateDisplay}{ivResult.valid ? " mL/hr" : ""}</strong>
               </p>
+              {ivResult.error && (
+                <p role="alert" className="text-xs font-medium text-rose-700 dark:text-rose-300 mt-1">
+                  {ivResult.error}
+                </p>
+              )}
             </div>
 
             <div className="text-xs text-foreground-secondary p-2.5 rounded-lg bg-surface border border-border sm:max-w-xs">
               <span className="font-semibold text-foreground block">Worked Formula:</span>
-              ({volume} mL Ã— {dropFactor}) Ã· ({timeHours} Ã— 60 min) = {dripRate} gtt/min
+              {ivResult.valid
+                ? `(${volume} mL × ${dropFactor}) ÷ (${timeHours} × 60 min) = ${dripRateDisplay} gtt/min`
+                : "Enter valid positive infusion time and non-negative volume to compute rates."}
             </div>
           </div>
         </Card>

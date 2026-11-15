@@ -53,7 +53,7 @@ export default function SavedQuestionsPage() {
                 </p>
               </div>
 
-              <Link href="/exam-session">
+              <Link href="/learner/custom-practice">
                 <Button size="sm" className="text-xs h-8 gap-1.5 bg-brand-navy hover:bg-brand-navyDeep text-white dark:bg-brand-teal">
                   <RotateCcw className="w-3.5 h-3.5" />
                   <span>Practice Question</span>

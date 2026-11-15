@@ -71,7 +71,7 @@ export default function NclexPage() {
               Master the NGN Clinical Judgment Measurement Model with authentic adaptive testing, unfolding clinical vignettes, and dual-rationale breakdowns.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-              <Link href="/exam-session?track=RN&category=NCLEX">
+              <Link href="/exams?track=RN">
                 <Button size="lg" className="h-12 px-7 text-sm font-semibold bg-brand-navy text-white hover:bg-brand-navyDeep dark:bg-brand-teal">
                   Launch NCLEX-RN Simulation
                   <ArrowRight className="w-4 h-4 ml-2" />
@@ -235,7 +235,7 @@ export default function NclexPage() {
               Take an interactive simulation with real timing, NGN question formats, and detailed performance metrics.
             </p>
             <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
-              <Link href="/exam-session?track=RN&category=NCLEX">
+              <Link href="/exams?track=RN">
                 <Button size="lg" className="h-11 px-6 text-xs font-semibold bg-brand-navy text-white hover:bg-brand-navyDeep dark:bg-brand-teal">
                   Start NCLEX Practice Exam
                   <ArrowRight className="w-4 h-4 ml-1.5" />

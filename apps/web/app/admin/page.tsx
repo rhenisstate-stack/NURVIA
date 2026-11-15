@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { AdminShell } from "@/components/layout/admin-shell";
+import { PreviewBanner } from "@/components/admin/preview-banner";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -77,6 +78,7 @@ export default function AdminDashboardPage() {
   return (
     <AdminShell>
       <div className="space-y-8">
+        <PreviewBanner moduleName="Admin Executive Overview" />
         {/* Top Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5">
           <div>

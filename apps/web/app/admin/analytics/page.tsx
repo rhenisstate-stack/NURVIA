@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { AdminShell } from "@/components/layout/admin-shell";
+import { PreviewBanner } from "@/components/admin/preview-banner";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ export default function AdminAnalyticsPage() {
   return (
     <AdminShell>
       <div className="space-y-6">
+        <PreviewBanner moduleName="Platform Analytics" />
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border">
           <div>
             <div className="flex items-center gap-2">

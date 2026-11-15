@@ -174,4 +174,26 @@ test('7. Dynamic route edit page safely handles dynamic route params via usePara
   assert(editPage.includes('params?.id'), 'Safe parameter extraction missing');
 });
 
+// 8. Password Recovery Routes Exist & Sign-In Links to Forgot Password
+test('8. Password recovery pages exist and sign-in links to /forgot-password', () => {
+  assert(fs.existsSync(path.join(webRoot, 'app', 'forgot-password', 'page.tsx')), 'forgot-password/page.tsx missing');
+  assert(fs.existsSync(path.join(webRoot, 'app', 'reset-password', 'page.tsx')), 'reset-password/page.tsx missing');
+  const signInPage = fs.readFileSync(path.join(webRoot, 'app', 'sign-in', 'page.tsx'), 'utf8');
+  assert(signInPage.includes('href="/forgot-password"'), 'sign-in page must link to /forgot-password');
+});
+
+// 9. No Broken /exam-session Links Without examId or attemptId
+test('9. No pages link to /exam-session without examId or attemptId', () => {
+  const filesToCheck = [
+    path.join(webRoot, 'app', 'nclex', 'page.tsx'),
+    path.join(webRoot, 'app', 'learner', 'planner', 'page.tsx'),
+    path.join(webRoot, 'app', 'learner', 'saved-questions', 'page.tsx'),
+  ];
+  for (const file of filesToCheck) {
+    const content = fs.readFileSync(file, 'utf8');
+    assert(!/href=["']\/exam-session(?:\?[^"']*)?["']/.test(content) || /examId=|attemptId=/.test(content),
+      `Broken /exam-session link without examId/attemptId found in ${file}`);
+  }
+});
+
 console.log(`\nAll ${totalTests} test suites PASSED successfully (${passedTests}/${totalTests})!`);
