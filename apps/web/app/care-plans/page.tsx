@@ -5,120 +5,48 @@ import Link from "next/link";
 import { PublicShell } from "@/components/layout/public-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { nurviaApi } from "@/lib/api-client";
+import type { CarePlanDto } from "@/lib/api-types";
 import {
   HeartHandshake,
   Search,
-  Filter,
   FileText,
   CheckCircle2,
   AlertCircle,
-  ChevronRight,
-  Sparkles,
-  BookOpen,
-  ArrowRight,
-  Stethoscope,
 } from "lucide-react";
 
-interface CarePlan {
-  id: string;
-  title: string;
-  specialty: "Med-Surg" | "Maternal-Newborn" | "Pediatrics" | "Mental Health" | "Critical Care";
-  diagnosis: string;
-  relatedTo: string;
-  outcomes: string[];
-  interventionsCount: number;
-  previewIntervention: string;
-  rationale: string;
-}
-
-const sampleCarePlans: CarePlan[] = [
-  {
-    id: "cp-01",
-    title: "Heart Failure (Fluid Volume Excess)",
-    specialty: "Med-Surg",
-    diagnosis: "Excess Fluid Volume related to decreased cardiac output and renal perfusion",
-    relatedTo: "Compromised regulatory mechanisms secondary to biventricular pump failure",
-    outcomes: [
-      "Client maintains clear lung sounds bilaterally without adventitious crackles",
-      "Euvolemia demonstrated by stable daily weight and absence of peripheral pitting edema",
-    ],
-    interventionsCount: 6,
-    previewIntervention: "Auscultate breath sounds and assess for S3 gallop every 4 hours while monitoring daily weights on the same scale.",
-    rationale: "Early detection of pulmonary vascular congestion enables prompt diuretic titration prior to acute respiratory distress.",
-  },
-  {
-    id: "cp-02",
-    title: "Type 1 Diabetes (Diabetic Ketoacidosis)",
-    specialty: "Critical Care",
-    diagnosis: "Deficient Fluid Volume and Metabolic Acidosis related to osmotic diuresis and ketoacid accumulation",
-    relatedTo: "Absolute insulin deficiency and hyperosmolar hyperglycemia",
-    outcomes: [
-      "Serum potassium maintained between 3.5 and 5.0 mEq/L during continuous regular insulin infusion",
-      "Anion gap normalizes and arterial pH exceeds 7.30",
-    ],
-    interventionsCount: 8,
-    previewIntervention: "Verify potassium level is above 3.3 mEq/L prior to initiating IV regular insulin infusion.",
-    rationale: "Insulin drives extracellular potassium intracellularly; administering insulin without adequate baseline potassium precipitates fatal cardiac arrhythmias.",
-  },
-  {
-    id: "cp-03",
-    title: "Postpartum Hemorrhage Risk",
-    specialty: "Maternal-Newborn",
-    diagnosis: "Risk for Bleeding related to uterine atony secondary to prolonged oxytocin augmentation",
-    relatedTo: "Myometrial fatigue and retained placental fragments",
-    outcomes: [
-      "Uterine fundus remains firm, midline, and at or below umbilicus",
-      "Lochia rubra remains moderate without saturating more than 1 perineal pad per hour",
-    ],
-    interventionsCount: 5,
-    previewIntervention: "Perform fundal massage immediately upon noting a boggy uterus and assist client to void.",
-    rationale: "Uterine massage stimulates myometrial smooth muscle contraction, compressing open placental site sinuses to arrest hemorrhage.",
-  },
-  {
-    id: "cp-04",
-    title: "Pediatric Acute Asthma Exacerbation",
-    specialty: "Pediatrics",
-    diagnosis: "Impaired Gas Exchange related to bronchospasm, mucosal edema, and increased secretions",
-    relatedTo: "Hyperreactive airway response triggered by viral upper respiratory tract infection",
-    outcomes: [
-      "Client achieves SpO2 â‰¥ 95% on room air with decrease in accessory muscle retractions",
-      "Respiratory rate returns to baseline within pediatric age-adjusted norms",
-    ],
-    interventionsCount: 6,
-    previewIntervention: "Administer prescribed short-acting beta2 agonist (albuterol) via metered-dose inhaler with spacer every 20 minutes for 3 doses.",
-    rationale: "Rapid bronchodilation relieves airflow obstruction and reverses acute alveolar hypoventilation.",
-  },
-  {
-    id: "cp-05",
-    title: "Major Depressive Disorder (Self-Harm Risk)",
-    specialty: "Mental Health",
-    diagnosis: "Risk for Self-Directed Violence related to profound hopelessness and vegetative signs",
-    relatedTo: "Neurochemical imbalance and severe psychological distress",
-    outcomes: [
-      "Client verbalizes intent to seek nurse assistance if thoughts of self-harm intensify",
-      "Client identifies at least two positive coping mechanisms to manage acute despair",
-    ],
-    interventionsCount: 7,
-    previewIntervention: "Maintain 15-minute irregular safety checks and establish a trusting, non-judgmental therapeutic alliance.",
-    rationale: "Irregular intervals prevent predictable windows while frequent nurse presence fosters safety and emotional containment.",
-  },
-];
-
 export default function CarePlansPage() {
+  const [plans, setPlans] = React.useState<CarePlanDto[]>([]);
+  const [loading, setLoading] = React.useState(true);
   const [search, setSearch] = React.useState("");
   const [selectedSpecialty, setSelectedSpecialty] = React.useState<string>("All");
-  const [selectedPlan, setSelectedPlan] = React.useState<CarePlan | null>(null);
+  const [selectedPlan, setSelectedPlan] = React.useState<CarePlanDto | null>(null);
 
   const specialties = ["All", "Med-Surg", "Critical Care", "Maternal-Newborn", "Pediatrics", "Mental Health"];
 
-  const filteredPlans = sampleCarePlans.filter((cp) => {
-    const matchesSearch =
-      search.trim() === "" ||
-      cp.title.toLowerCase().includes(search.toLowerCase()) ||
-      cp.diagnosis.toLowerCase().includes(search.toLowerCase());
-    const matchesSpec = selectedSpecialty === "All" || cp.specialty === selectedSpecialty;
-    return matchesSearch && matchesSpec;
-  });
+  React.useEffect(() => {
+    let active = true;
+    const timer = window.setTimeout(() => {
+      void nurviaApi
+        .getCarePlans({
+          specialty: selectedSpecialty === "All" ? undefined : selectedSpecialty,
+          search: search.trim() || undefined,
+        })
+        .then((res) => {
+          if (!active) return;
+          if (res.success && res.data) {
+            setPlans(res.data);
+          }
+          setLoading(false);
+        });
+    }, 150);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [selectedSpecialty, search]);
+
+  const filteredPlans = plans;
 
   return (
     <PublicShell>
@@ -185,7 +113,7 @@ export default function CarePlansPage() {
                     <div className="flex items-center justify-between">
                       <Badge variant="teal">{plan.specialty}</Badge>
                       <span className="text-[11px] font-mono text-foreground-muted">
-                        {plan.interventionsCount} Interventions
+                        {plan.interventions.length} Interventions
                       </span>
                     </div>
 
@@ -202,7 +130,7 @@ export default function CarePlansPage() {
                       <span className="font-semibold text-brand-teal flex items-center gap-1">
                         <CheckCircle2 className="w-3.5 h-3.5" /> High-Yield Clinical Priority:
                       </span>
-                      <p className="line-clamp-2 italic">{plan.previewIntervention}</p>
+                      <p className="line-clamp-2 italic">{plan.interventions[0] ?? ""}</p>
                     </div>
                   </div>
 
@@ -289,7 +217,7 @@ export default function CarePlansPage() {
                   </h4>
                   <div className="mt-1 p-3 rounded-lg bg-brand-teal/10 border border-brand-teal/20 space-y-2">
                     <p className="font-semibold text-foreground">
-                      <strong>Intervention:</strong> {selectedPlan.previewIntervention}
+                      <strong>Intervention:</strong> {selectedPlan.interventions[0] ?? ""}
                     </p>
                     <p className="text-foreground-secondary">
                       <strong>Clinical Rationale:</strong> {selectedPlan.rationale}

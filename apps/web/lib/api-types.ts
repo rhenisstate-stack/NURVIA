@@ -564,3 +564,130 @@ export interface TutorSessionStateDto {
   deliveryMode: 'Exam' | 'Tutor';
   questions: TutorQuestionStateDto[];
 }
+
+export interface FlashcardDto {
+  id: string;
+  category: string;
+  pathway: string;
+  front: string;
+  back: string;
+  hint?: string | null;
+  isSystemCard: boolean;
+  isOwnedByCaller: boolean;
+  repetitions: number;
+  intervalDays: number;
+  easeFactor: number;
+  lastRating: string;
+  nextReviewAtUtc: string;
+  lastReviewedAtUtc?: string | null;
+}
+
+export interface CarePlanDto {
+  id: string;
+  title: string;
+  specialty: string;
+  diagnosis: string;
+  relatedTo: string;
+  outcomes: string[];
+  interventions: string[];
+  rationale: string;
+  isSystemPlan: boolean;
+  isOwnedByCaller: boolean;
+  createdAtUtc: string;
+}
+
+export interface StudyGuideSummaryDto {
+  id: string;
+  title: string;
+  slug: string;
+  category: string;
+  pathway: string;
+  summary: string;
+  readingMinutes: number;
+  isPublished: boolean;
+  createdAtUtc: string;
+}
+
+export interface StudyGuideDetailDto extends StudyGuideSummaryDto {
+  contentMarkdown: string;
+}
+
+export interface CommunityReplyDto {
+  id: string;
+  postId: string;
+  authorName: string;
+  content: string;
+  isOwnedByCaller: boolean;
+  createdAtUtc: string;
+}
+
+export interface CommunityPostDto {
+  id: string;
+  channelId: string;
+  channelName: string;
+  authorName: string;
+  cohortLabel: string;
+  title: string;
+  content: string;
+  replyCount: number;
+  likeCount: number;
+  likedByCaller: boolean;
+  isOwnedByCaller: boolean;
+  createdAtUtc: string;
+  replies?: CommunityReplyDto[] | null;
+}
+
+export interface TutorChatMessageDto {
+  id: string;
+  role: 'User' | 'Assistant';
+  content: string;
+  createdAtUtc: string;
+}
+
+export interface TutorChatSessionDto {
+  id: string;
+  title: string;
+  pathway: string;
+  topic: string;
+  createdAtUtc: string;
+  updatedAtUtc: string;
+  messages?: TutorChatMessageDto[] | null;
+}
+
+export interface SubscriptionPlanDto {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  monthlyPriceUsd: number;
+  billingInterval: string;
+  features: string[];
+  isActive: boolean;
+}
+
+export interface UserSubscriptionDto {
+  id: string;
+  userId: string;
+  userEmail?: string | null;
+  userName?: string | null;
+  planId: string;
+  planCode: string;
+  planName: string;
+  status: string;
+  source: string;
+  startsAtUtc: string;
+  expiresAtUtc?: string | null;
+  notes?: string | null;
+}
+
+export interface StaffInvitationDto {
+  id: string;
+  email: string;
+  role: string;
+  invitedByUserId: string;
+  expiresAtUtc: string;
+  acceptedAtUtc?: string | null;
+  revokedAtUtc?: string | null;
+  createdAtUtc: string;
+  status: 'Pending' | 'Accepted' | 'Revoked' | 'Expired';
+}

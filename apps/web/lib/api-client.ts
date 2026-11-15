@@ -169,7 +169,14 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
       if (!res.ok && json.success) {
         return { success: false, message: `Request failed (${res.status}).`, statusCode: res.status };
       }
-      return { ...json, statusCode: res.status };
+      const normalizedMessage =
+        !json.success &&
+        (!json.message || json.message === 'Operation failed') &&
+        Array.isArray(json.errors) &&
+        json.errors.length > 0
+          ? json.errors[0]
+          : json.message;
+      return { ...json, message: normalizedMessage, statusCode: res.status };
     } catch (error: unknown) {
       const callerAborted = Boolean(options.signal?.aborted);
       if (!callerAborted && isIdempotent && attempt < maxAttempts && isRetryableError(error)) {
@@ -803,6 +810,235 @@ export const nurviaApi = {
   async deletePlannerTask(taskId: string): Promise<ApiResponse<string>> {
     return request(`/api/learner/planner/${taskId}`, {
       method: 'DELETE',
+    });
+  },
+
+  // Flashcards & Spaced Repetition
+  async getFlashcards(params?: { category?: string; dueOnly?: boolean }): Promise<ApiResponse<import('./api-types').FlashcardDto[]>> {
+    const query = buildQuery(params);
+    return request(`/api/flashcards${query ? `?${query}` : ''}`);
+  },
+
+  async createFlashcard(payload: {
+    category: string;
+    pathway: string;
+    front: string;
+    back: string;
+    hint?: string;
+  }): Promise<ApiResponse<import('./api-types').FlashcardDto>> {
+    return request('/api/flashcards', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async deleteFlashcard(id: string): Promise<ApiResponse<string>> {
+    return request(`/api/flashcards/${id}`, { method: 'DELETE' });
+  },
+
+  async reviewFlashcard(id: string, rating: 'Again' | 'Hard' | 'Good' | 'Easy'): Promise<ApiResponse<import('./api-types').FlashcardDto>> {
+    return request(`/api/flashcards/${id}/review`, {
+      method: 'POST',
+      body: JSON.stringify({ rating }),
+    });
+  },
+
+  // Care Plans
+  async getCarePlans(params?: { specialty?: string; search?: string }): Promise<ApiResponse<import('./api-types').CarePlanDto[]>> {
+    const query = buildQuery(params);
+    return request(`/api/care-plans${query ? `?${query}` : ''}`);
+  },
+
+  async createCarePlan(payload: {
+    title: string;
+    specialty: string;
+    diagnosis: string;
+    relatedTo: string;
+    outcomes: string[];
+    interventions: string[];
+    rationale: string;
+  }): Promise<ApiResponse<import('./api-types').CarePlanDto>> {
+    return request('/api/care-plans', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async deleteCarePlan(id: string): Promise<ApiResponse<string>> {
+    return request(`/api/care-plans/${id}`, { method: 'DELETE' });
+  },
+
+  // Study Guides
+  async getStudyGuides(params?: { category?: string; pathway?: string; search?: string }): Promise<ApiResponse<import('./api-types').StudyGuideSummaryDto[]>> {
+    const query = buildQuery(params);
+    return request(`/api/study-guides${query ? `?${query}` : ''}`);
+  },
+
+  async getStudyGuideById(id: string): Promise<ApiResponse<import('./api-types').StudyGuideDetailDto>> {
+    return request(`/api/study-guides/${id}`);
+  },
+
+  async createStudyGuide(payload: {
+    title: string;
+    category: string;
+    pathway: string;
+    summary: string;
+    contentMarkdown: string;
+    readingMinutes?: number;
+    isPublished?: boolean;
+  }): Promise<ApiResponse<import('./api-types').StudyGuideDetailDto>> {
+    return request('/api/study-guides', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  // Community
+  async getCommunityPosts(params?: { channelId?: string; search?: string }): Promise<ApiResponse<import('./api-types').CommunityPostDto[]>> {
+    const query = buildQuery(params);
+    return request(`/api/community/posts${query ? `?${query}` : ''}`);
+  },
+
+  async getCommunityPost(id: string): Promise<ApiResponse<import('./api-types').CommunityPostDto>> {
+    return request(`/api/community/posts/${id}`);
+  },
+
+  async createCommunityPost(payload: {
+    channelId: string;
+    cohortLabel: string;
+    title: string;
+    content: string;
+  }): Promise<ApiResponse<import('./api-types').CommunityPostDto>> {
+    return request('/api/community/posts', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async addCommunityReply(postId: string, content: string): Promise<ApiResponse<import('./api-types').CommunityReplyDto>> {
+    return request(`/api/community/posts/${postId}/replies`, {
+      method: 'POST',
+      body: JSON.stringify({ content }),
+    });
+  },
+
+  async toggleCommunityLike(postId: string): Promise<ApiResponse<{ liked: boolean; likeCount: number }>> {
+    return request(`/api/community/posts/${postId}/like`, { method: 'POST' });
+  },
+
+  async deleteCommunityPost(postId: string): Promise<ApiResponse<string>> {
+    return request(`/api/community/posts/${postId}`, { method: 'DELETE' });
+  },
+
+  // AI Tutor Chat Sessions
+  async getTutorSessions(): Promise<ApiResponse<import('./api-types').TutorChatSessionDto[]>> {
+    return request('/api/tutor/sessions');
+  },
+
+  async createTutorSession(payload: { title?: string; pathway?: string; topic?: string }): Promise<ApiResponse<import('./api-types').TutorChatSessionDto>> {
+    return request('/api/tutor/sessions', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async getTutorSession(id: string): Promise<ApiResponse<import('./api-types').TutorChatSessionDto>> {
+    return request(`/api/tutor/sessions/${id}`);
+  },
+
+  async sendTutorMessage(id: string, message: string): Promise<ApiResponse<import('./api-types').TutorChatSessionDto>> {
+    return request(`/api/tutor/sessions/${id}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    });
+  },
+
+  async deleteTutorSession(id: string): Promise<ApiResponse<string>> {
+    return request(`/api/tutor/sessions/${id}`, { method: 'DELETE' });
+  },
+
+  // Subscriptions & Entitlements
+  async getSubscriptionPlans(): Promise<ApiResponse<import('./api-types').SubscriptionPlanDto[]>> {
+    return request('/api/subscriptions/plans');
+  },
+
+  async getMySubscription(): Promise<ApiResponse<{
+    activeSubscription: import('./api-types').UserSubscriptionDto | null;
+    plans: import('./api-types').SubscriptionPlanDto[];
+    paymentProviderConfigured: boolean;
+  }>> {
+    return request('/api/subscriptions/me');
+  },
+
+  async activateFreeTier(): Promise<ApiResponse<import('./api-types').UserSubscriptionDto>> {
+    return request('/api/subscriptions/activate-free', { method: 'POST' });
+  },
+
+  async requestCheckout(planId: string): Promise<ApiResponse<string>> {
+    return request('/api/subscriptions/checkout', {
+      method: 'POST',
+      body: JSON.stringify({ planId }),
+    });
+  },
+
+  async getAdminSubscriptions(): Promise<ApiResponse<import('./api-types').UserSubscriptionDto[]>> {
+    return request('/api/admin/subscriptions');
+  },
+
+  async createSubscriptionPlan(payload: {
+    code: string;
+    name: string;
+    description: string;
+    monthlyPriceUsd: number;
+    billingInterval: string;
+    features: string[];
+    isActive?: boolean;
+  }): Promise<ApiResponse<import('./api-types').SubscriptionPlanDto>> {
+    return request('/api/admin/plans', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async grantEntitlement(payload: {
+    targetUserId: string;
+    planId: string;
+    durationDays: number;
+    notes?: string;
+  }): Promise<ApiResponse<import('./api-types').UserSubscriptionDto>> {
+    return request('/api/admin/subscriptions/grant', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async revokeEntitlement(subscriptionId: string): Promise<ApiResponse<string>> {
+    return request(`/api/admin/subscriptions/${subscriptionId}/revoke`, { method: 'POST' });
+  },
+
+  // Staff Invitations
+  async getStaffInvitations(): Promise<ApiResponse<import('./api-types').StaffInvitationDto[]>> {
+    return request('/api/auth/invitations');
+  },
+
+  async createStaffInvitation(payload: { email: string; role: string }): Promise<ApiResponse<{
+    invitation: import('./api-types').StaffInvitationDto;
+    devInviteToken?: string | null;
+  }>> {
+    return request('/api/auth/invitations', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async revokeStaffInvitation(id: string): Promise<ApiResponse<string>> {
+    return request(`/api/auth/invitations/${id}`, { method: 'DELETE' });
+  },
+
+  async acceptStaffInvitation(payload: { token: string; name: string; password: string }): Promise<ApiResponse<string>> {
+    return request('/api/auth/invitations/accept', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     });
   },
 };

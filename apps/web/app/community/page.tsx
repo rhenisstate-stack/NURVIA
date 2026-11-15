@@ -6,15 +6,13 @@ import { PublicShell } from "@/components/layout/public-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { nurviaApi } from "@/lib/api-client";
+import type { CommunityPostDto } from "@/lib/api-types";
 import {
   Users,
-  MessageSquare,
-  ShieldCheck,
   Search,
-  BookOpen,
   Sparkles,
   ArrowRight,
-  Flame,
   Award,
   Lock,
   HeartHandshake,
@@ -25,8 +23,6 @@ interface CommunityCategory {
   id: string;
   name: string;
   description: string;
-  topicsCount: number;
-  repliesCount: number;
   badge: string;
   icon: React.ElementType;
 }
@@ -36,8 +32,6 @@ const communityCategories: CommunityCategory[] = [
     id: "nclex-cohorts",
     name: "NCLEX 2026 Test-Taker Cohorts",
     description: "Connect with nursing graduates testing in your upcoming window. Share testing center experiences and study routines.",
-    topicsCount: 124,
-    repliesCount: 890,
     badge: "Active Cohort",
     icon: Users,
   },
@@ -45,8 +39,6 @@ const communityCategories: CommunityCategory[] = [
     id: "ati-hesi-debriefs",
     name: "ATI & HESI Specialty Debriefs",
     description: "Discuss proctored benchmark pacing, Level 2 / Level 3 score strategies, and HESI exit conversion formulas.",
-    topicsCount: 86,
-    repliesCount: 540,
     badge: "Proctored Exams",
     icon: Award,
   },
@@ -54,8 +46,6 @@ const communityCategories: CommunityCategory[] = [
     id: "clinical-cases",
     name: "NGN Unfolding Case Study Debriefs",
     description: "Peer dissection of complex unfolding vignettes: prioritizing cues, recognizing systemic complications, and evaluating outcomes.",
-    topicsCount: 65,
-    repliesCount: 412,
     badge: "Clinical Reasoning",
     icon: Sparkles,
   },
@@ -63,8 +53,6 @@ const communityCategories: CommunityCategory[] = [
     id: "wellness-support",
     name: "Nursing School Resilience & Mental Health",
     description: "A safe, supportive space for nursing students dealing with burnout, test anxiety, clinical exhaustion, and work-life balance.",
-    topicsCount: 48,
-    repliesCount: 310,
     badge: "Peer Support",
     icon: HeartHandshake,
   },
@@ -72,6 +60,19 @@ const communityCategories: CommunityCategory[] = [
 
 export default function CommunityPage() {
   const [search, setSearch] = React.useState("");
+  const [posts, setPosts] = React.useState<CommunityPostDto[]>([]);
+
+  React.useEffect(() => {
+    let active = true;
+    void nurviaApi.getCommunityPosts().then((res) => {
+      if (active && res.success && res.data) {
+        setPosts(res.data);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const filteredCategories = communityCategories.filter(
     (c) =>
@@ -146,11 +147,16 @@ export default function CommunityPage() {
                     </CardHeader>
                     <CardContent className="p-6 pt-0 space-y-4">
                       <div className="flex items-center gap-4 text-xs text-foreground-muted">
-                        <span>{cat.topicsCount} Discussions</span>
+                        <span>{posts.filter((p) => p.channelId === cat.id).length} Discussions</span>
                         <span>•</span>
-                        <span>{cat.repliesCount} Responses</span>
+                        <span>
+                          {posts
+                            .filter((p) => p.channelId === cat.id)
+                            .reduce((sum, p) => sum + (p.replies?.length ?? 0), 0)}{" "}
+                          Responses
+                        </span>
                       </div>
-                      <Link href="/learner" className="block w-full">
+                      <Link href="/learner/community" className="block w-full">
                         <Button
                           variant="outline"
                           size="sm"

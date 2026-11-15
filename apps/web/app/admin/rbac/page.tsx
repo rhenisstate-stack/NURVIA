@@ -7,7 +7,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { nurviaApi } from "@/lib/api-client";
-import { Lock, ShieldCheck, Search, RefreshCw } from "lucide-react";
+import type { StaffInvitationDto } from "@/lib/api-types";
+import { Lock, ShieldCheck, Search, RefreshCw, MailPlus, Ban } from "lucide-react";
 
 interface UserSummary {
   id: string;
@@ -75,6 +76,12 @@ export default function AdminRbacPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
 
+  const [invitations, setInvitations] = React.useState<StaffInvitationDto[]>([]);
+  const [inviteEmail, setInviteEmail] = React.useState("");
+  const [inviteRole, setInviteRole] = React.useState("Author");
+  const [inviting, setInviting] = React.useState(false);
+  const [latestDevToken, setLatestDevToken] = React.useState<string | null>(null);
+
   const loadUsers = React.useCallback(async (page: number, query: string) => {
     setLoading(true);
     setError(null);
@@ -116,6 +123,47 @@ export default function AdminRbacPage() {
   React.useEffect(() => {
     void loadUsers(pageNumber, search);
   }, [loadUsers, pageNumber, search]);
+
+  const loadInvitations = React.useCallback(async () => {
+    const res = await nurviaApi.getStaffInvitations();
+    if (res.success && res.data) {
+      setInvitations(res.data);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    void loadInvitations();
+  }, [loadInvitations]);
+
+  const handleCreateInvitation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setInviting(true);
+    setError(null);
+    setStatusMessage(null);
+    setLatestDevToken(null);
+    const res = await nurviaApi.createStaffInvitation({ email: inviteEmail, role: inviteRole });
+    if (res.success && res.data) {
+      setStatusMessage(`Invitation sent for ${res.data.invitation.email} (${res.data.invitation.role}).`);
+      if (res.data.devInviteToken) {
+        setLatestDevToken(res.data.devInviteToken);
+      }
+      setInviteEmail("");
+      await loadInvitations();
+    } else {
+      setError(res.message || "Unable to create staff invitation.");
+    }
+    setInviting(false);
+  };
+
+  const handleRevokeInvitation = async (id: string) => {
+    const res = await nurviaApi.revokeStaffInvitation(id);
+    if (res.success) {
+      setStatusMessage("Staff invitation revoked.");
+      await loadInvitations();
+    } else {
+      setError(res.message || "Unable to revoke invitation.");
+    }
+  };
 
   const handleAssignRole = async (target: UserSummary) => {
     const selectedRole = pendingRoles[target.id] ?? target.role;
@@ -305,6 +353,66 @@ export default function AdminRbacPage() {
               </Button>
             </div>
           </div>
+        </Card>
+
+        <Card className="p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <MailPlus className="w-4 h-4 text-brand-teal" />
+            <h2 className="text-sm font-bold text-foreground">Staff Invitations</h2>
+          </div>
+          <form onSubmit={handleCreateInvitation} className="flex flex-col sm:flex-row gap-3">
+            <input
+              type="email"
+              required
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              placeholder="staff.member@nurvia.edu"
+              className="flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-xs text-foreground"
+            />
+            <select
+              aria-label="Invited role"
+              value={inviteRole}
+              onChange={(e) => setInviteRole(e.target.value)}
+              className="rounded-lg border border-border bg-surface px-3 py-2 text-xs text-foreground"
+            >
+              {assignableRoles.map((r) => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
+            <Button type="submit" size="sm" disabled={inviting} className="bg-brand-teal text-white text-xs">
+              {inviting ? "Creating..." : "Create Invitation"}
+            </Button>
+          </form>
+          {latestDevToken && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+              <strong>Development Invitation Token:</strong> <code className="select-all">{latestDevToken}</code>
+            </div>
+          )}
+          {invitations.length > 0 && (
+            <div className="divide-y divide-border border-t border-border pt-2">
+              {invitations.map((inv) => (
+                <div key={inv.id} className="py-2.5 flex items-center justify-between gap-3 text-xs">
+                  <div>
+                    <span className="font-semibold text-foreground">{inv.email}</span>
+                    <span className="mx-2 text-foreground-muted">·</span>
+                    <Badge variant="outline" className="text-[10px]">{inv.role}</Badge>
+                    <span className="mx-2 text-foreground-muted">·</span>
+                    <Badge variant={inv.status === "Pending" ? "teal" : "outline"} className="text-[10px]">{inv.status}</Badge>
+                  </div>
+                  {inv.status === "Pending" && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => void handleRevokeInvitation(inv.id)}
+                      className="h-7 px-2 text-rose-600 hover:text-rose-700 text-xs gap-1"
+                    >
+                      <Ban className="w-3.5 h-3.5" /> Revoke
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </Card>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
