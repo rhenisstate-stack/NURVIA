@@ -91,19 +91,26 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Configure CORS for Next.js frontend
+// Configure CORS for Next.js frontend (environment-driven)
+var allowedCorsOrigins = CorsConfigurationHelper.ResolveAllowedOrigins(
+    builder.Configuration, builder.Environment.IsDevelopment());
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "https://localhost:3000")
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+        if (allowedCorsOrigins.Length > 0)
+        {
+            policy.WithOrigins(allowedCorsOrigins)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        }
     });
 });
 
 builder.Services.AddHealthChecks();
+builder.Services.AddNurviaRateLimiting(builder.Configuration);
 
 var app = builder.Build();
 
@@ -118,7 +125,10 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+app.UseMiddleware<SecurityHeadersMiddleware>();
+app.UseForwardedHeaders();
 app.UseCors("AllowFrontend");
+app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();
