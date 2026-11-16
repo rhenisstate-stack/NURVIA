@@ -8,10 +8,12 @@ import {
   validateSameOriginRequest,
 } from '@/lib/lexmacasto/session';
 
+const NO_STORE_HEADERS = { 'Cache-Control': 'no-store' };
+
 export async function POST(request: NextRequest) {
   const csrf = validateSameOriginRequest(request);
   if (!csrf.ok) {
-    return NextResponse.json({ success: false, message: csrf.reason }, { status: 403 });
+    return NextResponse.json({ success: false, message: csrf.reason }, { status: 403, headers: NO_STORE_HEADERS });
   }
 
   let body: Record<string, unknown> = {};
@@ -38,11 +40,14 @@ export async function POST(request: NextRequest) {
     'learner';
 
   if (!session) {
-    const response = NextResponse.json({
-      success: true,
-      message: 'Signed out locally.',
-      data: 'Signed out locally.',
-    });
+    const response = NextResponse.json(
+      {
+        success: true,
+        message: 'Signed out locally.',
+        data: 'Signed out locally.',
+      },
+      { headers: NO_STORE_HEADERS }
+    );
     clearServerCastoSession(response);
     return response;
   }
@@ -68,17 +73,20 @@ export async function POST(request: NextRequest) {
         message: result.message || 'Backend session revocation failed.',
         errorCode: result.errorCode,
       },
-      { status: result.status >= 400 ? result.status : 502 }
+      { status: result.status >= 400 ? result.status : 502, headers: NO_STORE_HEADERS }
     );
     clearServerCastoSession(response);
     return response;
   }
 
-  const response = NextResponse.json({
-    success: true,
-    message: result.message || 'Signed out.',
-    data: 'Signed out.',
-  });
+  const response = NextResponse.json(
+    {
+      success: true,
+      message: result.message || 'Signed out.',
+      data: 'Signed out.',
+    },
+    { headers: NO_STORE_HEADERS }
+  );
   clearServerCastoSession(response);
   return response;
 }

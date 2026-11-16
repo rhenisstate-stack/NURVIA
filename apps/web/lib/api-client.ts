@@ -21,30 +21,13 @@
   ReviewLectureRequest,
 } from './api-types';
 import { classifyError, isRetryableError, ErrorType } from './utils/error-utils';
+import { parseApiResponse } from './api-response';
+import { buildApiUrl, DEDICATED_AUTH_ROUTES } from './api-url.mjs';
+
+export { parseApiResponse, buildApiUrl, DEDICATED_AUTH_ROUTES };
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_IDEMPOTENT_RETRIES = 2;
-
-function getApiBase(): string {
-  if (typeof window !== 'undefined') {
-    return '/api/backend';
-  }
-  const serverBase = (process.env.SKEW_LINE_DOTNET_BASE_URL || process.env.NEXT_PUBLIC_API_URL || '').trim().replace(/\/+$/, '');
-  return serverBase || '/api/backend';
-}
-
-function buildApiUrl(endpoint: string): string {
-  const apiBase = getApiBase();
-  if (apiBase === '/api/backend') {
-    // Route auth & academic strata directly to NURVIA's Next.js Route Handlers
-    if (endpoint.startsWith('/api/auth/') || endpoint.startsWith('/api/strata/')) {
-      return endpoint;
-    }
-    return `${apiBase}${endpoint.replace(/^\/api(?=\/)/, '')}`;
-  }
-
-  return `${apiBase}${endpoint}`;
-}
 
 function buildQuery(params?: Record<string, unknown>) {
   const query = new URLSearchParams();
@@ -92,7 +75,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   if (options.body instanceof FormData) {
     // Let the browser generate multipart/form-data and its boundary.
     headers.delete('Content-Type');
-  } else if (!headers.has('Content-Type')) {
+  } else if (options.body !== undefined && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
 
@@ -117,43 +100,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
         continue;
       }
 
-      // HTTP 204 (and other empty-bodied responses) are legitimate: a 204 is a
-      // success with no content, and some error responses carry no body either.
-      // Never parse JSON from a bodyless response.
-      const raw = await res.text();
-      if (!raw) {
-        if (res.ok) {
-          return { success: true, message: '', statusCode: res.status } as ApiResponse<T>;
-        }
-        return {
-          success: false,
-          message: `Request failed (${res.status}).`,
-          statusCode: res.status,
-        };
-      }
-
-      let json: ApiResponse<T>;
-      try {
-        json = JSON.parse(raw) as ApiResponse<T>;
-      } catch {
-        return {
-          success: false,
-          message: `Request failed (${res.status}).`,
-          statusCode: res.status,
-        };
-      }
-
-      if (!res.ok && json.success) {
-        return { success: false, message: `Request failed (${res.status}).`, statusCode: res.status };
-      }
-      const normalizedMessage =
-        !json.success &&
-        (!json.message || json.message === 'Operation failed') &&
-        Array.isArray(json.errors) &&
-        json.errors.length > 0
-          ? json.errors[0]
-          : json.message;
-      return { ...json, message: normalizedMessage, statusCode: res.status };
+      return await parseApiResponse<T>(res);
     } catch (error: unknown) {
       const callerAborted = Boolean(options.signal?.aborted);
       if (!callerAborted && isIdempotent && attempt < maxAttempts && isRetryableError(error)) {

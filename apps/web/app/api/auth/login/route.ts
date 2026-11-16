@@ -95,12 +95,15 @@ export async function POST(request: NextRequest) {
     (typeof result.data.data?.redirect_url === 'string' && result.data.data.redirect_url) ||
     undefined;
 
-  const response = NextResponse.json({
-    success: true,
-    message: result.message,
-    data: sanitizedUser,
-    redirect_url: redirectUrl,
-  });
+  const response = NextResponse.json(
+    {
+      success: true,
+      message: result.message,
+      data: sanitizedUser,
+      redirect_url: redirectUrl,
+    },
+    { headers: { 'Cache-Control': 'no-store' } }
+  );
 
   setServerCastoSession(response, credentials, sanitizedUser.dashboardName || payload.dashboardName);
   return response;

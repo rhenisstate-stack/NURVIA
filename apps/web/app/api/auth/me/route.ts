@@ -10,12 +10,14 @@ import {
 } from '@/lib/lexmacasto/client';
 import { clearServerCastoSession, getServerCastoSession } from '@/lib/lexmacasto/session';
 
+const NO_STORE_HEADERS = { 'Cache-Control': 'no-store' };
+
 export async function GET(request: NextRequest) {
   const session = await getServerCastoSession();
   if (!session) {
     return NextResponse.json(
       { success: false, message: 'Not authenticated.', errorCode: 'UNAUTHORIZED' },
-      { status: 401 }
+      { status: 401, headers: NO_STORE_HEADERS }
     );
   }
 
@@ -36,7 +38,7 @@ export async function GET(request: NextRequest) {
         message: result.message,
         errorCode: result.errorCode,
       },
-      { status: result.status }
+      { status: result.status, headers: NO_STORE_HEADERS }
     );
     if (result.status === 401) {
       clearServerCastoSession(response);
@@ -58,15 +60,18 @@ export async function GET(request: NextRequest) {
         message: 'Unable to verify authenticated user profile.',
         errorCode: 'UNAUTHORIZED',
       },
-      { status: 401 }
+      { status: 401, headers: NO_STORE_HEADERS }
     );
     clearServerCastoSession(response);
     return response;
   }
 
-  return NextResponse.json({
-    success: true,
-    message: 'OK',
-    data: sanitizedUser,
-  });
+  return NextResponse.json(
+    {
+      success: true,
+      message: 'OK',
+      data: sanitizedUser,
+    },
+    { headers: { 'Cache-Control': 'no-store' } }
+  );
 }
