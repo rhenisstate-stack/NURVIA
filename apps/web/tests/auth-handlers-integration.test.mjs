@@ -652,6 +652,53 @@ try {
     mockMode = 'ok';
   });
 
+  await test('10. Registration normalizes local phone to E.164, rejects invalid phone, and strips any client-supplied challenge', async () => {
+    recordedBackendRequests.length = 0;
+    const badPhoneRes = await fetch(`${WEB_ORIGIN}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: WEB_ORIGIN },
+      body: JSON.stringify({
+        username: 'New Nurse',
+        email: 'nurse@example.com',
+        phone: 'abc-12',
+        password: 'StrongPassword123!',
+        passwordConfirmation: 'StrongPassword123!',
+        agree: true,
+      }),
+    });
+    assert.equal(badPhoneRes.status, 400);
+
+    const okRes = await fetch(`${WEB_ORIGIN}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: WEB_ORIGIN },
+      body: JSON.stringify({
+        username: 'New Nurse',
+        email: 'nurse@example.com',
+        phone: '0712345678',
+        password: 'StrongPassword123!',
+        passwordConfirmation: 'StrongPassword123!',
+        agree: true,
+        challenge: 'fake-client-challenge',
+      }),
+    });
+    assert.equal(okRes.status, 201);
+    assert.equal(recordedBackendRequests[0].body.phone, '+254712345678');
+    assert.equal(recordedBackendRequests[0].body.challenge, undefined);
+
+    recordedBackendRequests.length = 0;
+    const loginRes = await fetch(`${WEB_ORIGIN}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: WEB_ORIGIN },
+      body: JSON.stringify({
+        email: 'learner@nurvia.test',
+        password: 'StrongPassword123!',
+        challenge: 'fake-client-challenge',
+      }),
+    });
+    assert.equal(loginRes.status, 200);
+    assert.equal(recordedBackendRequests[0].body.challenge, undefined);
+  });
+
   console.log(`\nAuth Route Handler Integration Tests: ${passed} passed.`);
 } finally {
   if (nextProc) nextProc.kill();

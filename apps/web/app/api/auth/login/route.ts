@@ -78,7 +78,6 @@ export async function POST(request: NextRequest) {
     role: 'Learner',
     ...(loginMethod === 'password' && password !== undefined ? { password } : {}),
     ...(loginMethod === 'pin' && pin !== undefined ? { pin: pin.trim() } : {}),
-    ...(typeof body.challenge === 'string' && body.challenge.trim() ? { challenge: body.challenge.trim() } : {}),
     ...(typeof body.fingerprint === 'string' && body.fingerprint.trim()
       ? { fingerprint: body.fingerprint.trim().slice(0, 128) }
       : {}),

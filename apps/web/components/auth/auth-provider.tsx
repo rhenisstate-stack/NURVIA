@@ -18,7 +18,6 @@ export interface SignInCredentials {
   pin?: string;
   loginMethod?: string;
   LoginProvider?: string;
-  challenge?: string;
   fingerprint?: string;
   dashboardName?: string;
   role?: string;

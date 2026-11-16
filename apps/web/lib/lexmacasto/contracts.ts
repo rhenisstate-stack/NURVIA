@@ -173,7 +173,6 @@ export interface LexmaCastoLoginPayload {
   pin?: string;
   loginMethod: LoginMethod;
   LoginProvider?: string;
-  challenge?: string;
   fingerprint?: string;
   ipAddress?: string;
   dashboardName?: string;
@@ -194,7 +193,6 @@ export interface LexmaCastoRegisterPayload {
   dashboardName?: string;
   provider?: string;
   providerPayload?: string | Record<string, unknown>;
-  challenge?: string;
 }
 
 export interface LexmaCastoLogoutPayload {

@@ -206,4 +206,32 @@ test.describe("NURVIA Phase 3.1 Authentication Route Remediation", () => {
       rememberMe: false,
     });
   });
+
+  test("sign-up country-code picker searches, normalizes E.164 phone, has no challenge UI, and has no mobile overflow", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto("/sign-up");
+    await expect(page.getByRole("heading", { name: /create your learner account/i })).toBeVisible();
+
+    // No horizontal overflow on small mobile viewport
+    const hasOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+    expect(hasOverflow).toBe(false);
+
+    // No challenge input or placeholder exists
+    await expect(page.getByLabel(/challenge/i)).toHaveCount(0);
+
+    // Open searchable country-code picker and select United Kingdom (+44)
+    await page.getByRole("button", { name: /country dialing code/i }).click();
+    const searchInput = page.getByLabel(/search country or dialing code/i);
+    await expect(searchInput).toBeVisible();
+    await searchInput.fill("United Kingdom");
+    await page.getByRole("option", { name: /united kingdom/i }).click();
+
+    await expect(page.getByRole("button", { name: /united kingdom \(\+44\)/i })).toBeVisible();
+
+    // Enter local UK national number with leading zero and verify E.164 preview
+    await page.getByLabel(/phone number/i).fill("07911123456");
+    await expect(page.getByText(/international format: \+447911123456/i)).toBeVisible();
+  });
 });

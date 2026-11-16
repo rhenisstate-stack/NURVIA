@@ -9,13 +9,14 @@
         "build": "next build",
         "start": "next start",
         "lint": "eslint .",
-        "test": "node tests/navigation-and-carousel.test.mjs && node tests/learning-integration.test.mjs && node tests/question-renderers.test.mjs && node tests/hero-redesign.test.mjs && node tests/remote-api-config.test.mjs && node tests/calculators.test.mjs && node tests/lexmacasto-integration.test.mjs && node tests/lexmacasto-phase2-security.test.mjs && node tests/auth-route-remediation.test.mjs",
+        "test": "node tests/navigation-and-carousel.test.mjs && node tests/learning-integration.test.mjs && node tests/question-renderers.test.mjs && node tests/hero-redesign.test.mjs && node tests/remote-api-config.test.mjs && node tests/calculators.test.mjs && node tests/lexmacasto-integration.test.mjs && node tests/lexmacasto-phase2-security.test.mjs && node tests/auth-route-remediation.test.mjs && node tests/phone-country-picker.test.mjs",
         "test:e2e": "playwright test",
         "test:e2e headed": "playwright test --headed"
     },
     "dependencies": {
         "clsx": "^2.1.1",
         "framer-motion": "^14.12.0",
+        "libphonenumber-js": "^1.13.16",
         "lucide-react": "^0.454.0",
         "next": "^15.5.0",
         "react": "^19.0.0",

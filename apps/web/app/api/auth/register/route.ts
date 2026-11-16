@@ -8,6 +8,7 @@ import {
   sanitizeAuthUser,
 } from '@/lib/lexmacasto/client';
 import { setServerCastoSession, validateSameOriginRequest } from '@/lib/lexmacasto/session';
+import { DEFAULT_PHONE_COUNTRY, normalizePhoneNumber } from '@/lib/phone';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PIN_PATTERN = /^\d{4,12}$/;
@@ -76,6 +77,13 @@ export async function POST(request: NextRequest) {
   if (!phone) {
     return noStoreJson({ success: false, message: 'Phone number is required.', errorCode: 'VALIDATION_ERROR' }, 400);
   }
+  const normalizedPhone = normalizePhoneNumber(phone, DEFAULT_PHONE_COUNTRY, { allowPossible: true });
+  if (!normalizedPhone.valid || !normalizedPhone.e164) {
+    return noStoreJson(
+      { success: false, message: normalizedPhone.error || 'Enter a valid phone number.', errorCode: 'VALIDATION_ERROR' },
+      400
+    );
+  }
   if (!agree) {
     return noStoreJson(
       { success: false, message: 'You must agree to the terms and privacy policy.', errorCode: 'VALIDATION_ERROR' },
@@ -130,7 +138,7 @@ export async function POST(request: NextRequest) {
   const payload: LexmaCastoRegisterPayload = {
     username,
     email,
-    phone,
+    phone: normalizedPhone.e164,
     loginMethod,
     agree: true,
     role: 'Learner',
@@ -139,7 +147,6 @@ export async function POST(request: NextRequest) {
     ...(includePassword && password !== undefined ? { password, passwordConfirmation } : {}),
     ...(includePin && pin !== undefined ? { pin: pin.trim(), pinConfirmation: pinConfirmation?.trim() } : {}),
     ...(providerPayload !== undefined ? { providerPayload } : {}),
-    ...(typeof body.challenge === 'string' && body.challenge.trim() ? { challenge: body.challenge.trim() } : {}),
   };
 
   const siteMeta = extractSiteMetadataFromRequestHeaders(request.headers, '/api/auth/register');
