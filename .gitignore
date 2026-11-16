@@ -5,6 +5,7 @@ out/
 build/
 dist/
 tsconfig.tsbuildinfo
+*.tsbuildinfo
 
 # .NET
 bin/
@@ -45,3 +46,5 @@ pg-data/
 
 .tsbuildinfo
 docs/evidence/
+test-results/
+playwright-report/
