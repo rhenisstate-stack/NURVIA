@@ -31,12 +31,13 @@ export interface StrataHierarchyFilters extends StudyLibraryFiltersDto {
  * StudyLibraryFiltersDto without fabricating missing AcademicYear or Season data.
  */
 export async function fetchStrataFilterOptions(): Promise<StrataHierarchyFilters | null> {
-  const [schoolsRes, subjectsRes, topicsRes, examsRes, institutionsRes, programsRes, coursesRes, cohortsRes, classesRes] =
+  const [schoolsRes, subjectsRes, topicsRes, examsRes, sectionsRes, institutionsRes, programsRes, coursesRes, cohortsRes, classesRes] =
     await Promise.all([
       nurviaApi.getStrata('schools'),
       nurviaApi.getStrata('subjects'),
       nurviaApi.getStrata('topics'),
       nurviaApi.getStrata('exams'),
+      nurviaApi.getStrata('sections'),
       nurviaApi.getStrata('institutions'),
       nurviaApi.getStrata('programs'),
       nurviaApi.getStrata('courses'),
@@ -49,6 +50,7 @@ export async function fetchStrataFilterOptions(): Promise<StrataHierarchyFilters
     subjectsRes.success ||
     topicsRes.success ||
     examsRes.success ||
+    sectionsRes.success ||
     institutionsRes.success;
 
   if (!anySuccess) {
@@ -59,6 +61,7 @@ export async function fetchStrataFilterOptions(): Promise<StrataHierarchyFilters
   const subjectItems = subjectsRes.success && subjectsRes.data ? subjectsRes.data.items : [];
   const topicItems = topicsRes.success && topicsRes.data ? topicsRes.data.items : [];
   const examItems = examsRes.success && examsRes.data ? examsRes.data.items : [];
+  const sectionItems = sectionsRes.success && sectionsRes.data ? sectionsRes.data.items : [];
   const institutionItems = institutionsRes.success && institutionsRes.data ? institutionsRes.data.items : [];
   const programItems = programsRes.success && programsRes.data ? programsRes.data.items : [];
   const courseItems = coursesRes.success && coursesRes.data ? coursesRes.data.items : [];
@@ -68,7 +71,7 @@ export async function fetchStrataFilterOptions(): Promise<StrataHierarchyFilters
   // Extract academicYears and seasons ONLY if present on actual returned records
   const yearSet = new Set<number>();
   const seasonSet = new Set<string>();
-  for (const rec of [...examItems, ...cohortItems, ...classItems]) {
+  for (const rec of [...examItems, ...sectionItems, ...cohortItems, ...classItems]) {
     const rawYear = rec.academicYear ?? rec.year;
     if (typeof rawYear === 'number' && Number.isFinite(rawYear)) {
       yearSet.add(rawYear);

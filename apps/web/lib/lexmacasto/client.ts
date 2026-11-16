@@ -174,9 +174,10 @@ export async function lexmaCastoRequest<T = unknown>(
 
   const headers: Record<string, string> = {
     Accept: 'application/json',
+    ...(options.headers || {}),
+    // Server-owned privileged headers ALWAYS override any caller-supplied headers
     ...siteHeaders,
     ...authHeaders,
-    ...(options.headers || {}),
   };
 
   let bodyString: string | undefined;

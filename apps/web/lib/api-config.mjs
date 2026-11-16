@@ -116,8 +116,9 @@ export function resolveApplicationIdentity(env = process.env) {
     );
   }
 
-  // Validate domain is either a valid URL or valid hostname (no whitespace or header injection)
-  if (/[\r\n\s]/.test(appKey) || /[\r\n\s]/.test(appDomain)) {
+  // Reject control chars / CRLF (header injection) in appKey while preserving internal spaces;
+  // reject any whitespace or control chars in appDomain.
+  if (/[\r\n\0\x01-\x1F\x7F]/.test(appKey) || /[\r\n\s\0\x01-\x1F\x7F]/.test(appDomain)) {
     throw new BackendConfigurationError(
       'Invalid characters in NURVIA application identity configuration.',
       'INVALID_APP_IDENTITY'

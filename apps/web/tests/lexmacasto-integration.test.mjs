@@ -41,6 +41,11 @@ test('1. Application identity fails closed when SKEW_LINE_APP_KEY or SKEW_LINE_A
     () => resolveApplicationIdentity({ SKEW_LINE_APP_KEY: 'valid-test-key\r\nInjected: 1', SKEW_LINE_APP_DOMAIN: 'https://nurvia-black.vercel.app' }),
     (err) => err instanceof BackendConfigurationError && err.code === 'INVALID_APP_IDENTITY'
   );
+  const spaceIdentity = resolveApplicationIdentity({
+    SKEW_LINE_APP_KEY: 'app key with space',
+    SKEW_LINE_APP_DOMAIN: 'https://nurvia-black.vercel.app',
+  });
+  assert.equal(spaceIdentity.appKey, 'app key with space');
 });
 
 test('2. Production mode rejects HTTP backend origin and requires complete identity', () => {
@@ -85,10 +90,12 @@ test('4. next.config.mjs enforces HTTPS in production and removes direct /api/ba
 
 test('5. api-client.ts removes unsupported /api/auth/csrf preflight and routes auth/strata to Next.js Route Handlers', () => {
   const apiClientSrc = fs.readFileSync(path.join(webDir, 'lib/api-client.ts'), 'utf8');
+  const apiUrlSrc = fs.readFileSync(path.join(webDir, 'lib/api-url.mjs'), 'utf8');
   assert.equal(apiClientSrc.includes('/api/auth/csrf'), false);
   assert.equal(apiClientSrc.includes('/api/auth/refresh'), false);
-  assert.equal(apiClientSrc.includes("endpoint.startsWith('/api/auth/')"), true);
-  assert.equal(apiClientSrc.includes("endpoint.startsWith('/api/strata/')"), true);
+  assert.equal(apiClientSrc.includes('buildApiUrl'), true);
+  assert.equal(apiUrlSrc.includes('DEDICATED_AUTH_ROUTES.has(pathname)'), true);
+  assert.equal(apiUrlSrc.includes("endpoint.startsWith('/api/strata/')"), true);
 });
 
 test('6. LexmaCasto contracts define all 22 verified strata endpoints, mandatory fetchtype, and correct classes route', () => {

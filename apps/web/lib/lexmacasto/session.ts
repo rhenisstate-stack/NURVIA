@@ -89,6 +89,7 @@ export function clearServerCastoSession(
 /**
  * Validates same-origin CSRF protection for cookie-authenticated state-changing requests.
  * Rejects cross-site browser requests without requiring a backend /csrf endpoint.
+ * Does not trust arbitrary X-Forwarded-Host headers.
  */
 export function validateSameOriginRequest(request: NextRequest): { ok: true } | { ok: false; reason: string } {
   const method = request.method.toUpperCase();
@@ -101,29 +102,37 @@ export function validateSameOriginRequest(request: NextRequest): { ok: true } | 
     return { ok: false, reason: 'Cross-site state-changing request rejected.' };
   }
 
-  const expectedHost = request.headers.get('x-forwarded-host') || request.headers.get('host') || request.nextUrl.host;
+  const expectedHost = (request.headers.get('host') || request.nextUrl.host || '').toLowerCase();
   const origin = request.headers.get('origin');
   const referer = request.headers.get('referer');
 
   if (origin) {
     try {
-      const originHost = new URL(origin).host;
-      if (originHost !== expectedHost) {
+      const originUrl = new URL(origin);
+      if (originUrl.host.toLowerCase() !== expectedHost) {
         return { ok: false, reason: 'Request origin mismatch.' };
       }
+      return { ok: true };
     } catch {
       return { ok: false, reason: 'Invalid request origin header.' };
     }
-  } else if (referer) {
+  }
+
+  if (referer) {
     try {
-      const refererHost = new URL(referer).host;
-      if (refererHost !== expectedHost) {
+      const refererUrl = new URL(referer);
+      if (refererUrl.host.toLowerCase() !== expectedHost) {
         return { ok: false, reason: 'Request referer mismatch.' };
       }
+      return { ok: true };
     } catch {
       return { ok: false, reason: 'Invalid request referer header.' };
     }
   }
 
-  return { ok: true };
+  if (secFetchSite === 'same-origin') {
+    return { ok: true };
+  }
+
+  return { ok: false, reason: 'Missing Origin or Referer header on state-changing request.' };
 }
