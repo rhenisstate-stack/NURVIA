@@ -9,16 +9,25 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/auth-provider";
 import { nurviaApi } from "@/lib/api-client";
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PIN_PATTERN = /^\d{4,12}$/;
+
+type RegisterMethod = "password" | "pin" | "both";
+
 export default function SignUpPage() {
   const router = useRouter();
   const { status, user } = useAuth();
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [phone, setPhone] = React.useState("");
+  const [loginMethod, setLoginMethod] = React.useState<RegisterMethod>("password");
   const [password, setPassword] = React.useState("");
   const [confirmation, setConfirmation] = React.useState("");
+  const [pin, setPin] = React.useState("");
+  const [pinConfirmation, setPinConfirmation] = React.useState("");
   const [agree, setAgree] = React.useState(false);
   const [showPassword, setShowPassword] = React.useState(false);
+  const [showPin, setShowPin] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState(false);
@@ -50,18 +59,40 @@ export default function SignUpPage() {
       setError("Full name is required (minimum 2 characters).");
       return;
     }
+    if (!EMAIL_PATTERN.test(email.trim())) {
+      setError("Enter a valid email address.");
+      return;
+    }
     if (!phone.trim()) {
       setError("Phone number is required.");
       return;
     }
-    if (password !== confirmation) {
-      setError("Passwords do not match.");
-      return;
+
+    const usesPassword = loginMethod === "password" || loginMethod === "both";
+    const usesPin = loginMethod === "pin" || loginMethod === "both";
+
+    if (usesPassword) {
+      if (password.length < 12) {
+        setError("Use at least 12 characters for your password.");
+        return;
+      }
+      if (password !== confirmation) {
+        setError("Passwords do not match.");
+        return;
+      }
     }
-    if (password.length < 12) {
-      setError("Use at least 12 characters for your password.");
-      return;
+
+    if (usesPin) {
+      if (!PIN_PATTERN.test(pin.trim())) {
+        setError("Use a 4 to 12 digit numeric PIN.");
+        return;
+      }
+      if (pin !== pinConfirmation) {
+        setError("PINs do not match.");
+        return;
+      }
     }
+
     if (!agree) {
       setError("You must agree to the terms and privacy policy.");
       return;
@@ -72,9 +103,10 @@ export default function SignUpPage() {
       username: name.trim(),
       email: email.trim(),
       phone: phone.trim(),
-      password,
-      passwordConfirmation: confirmation,
-      loginMethod: "password",
+      ...(usesPassword ? { password, passwordConfirmation: confirmation } : {}),
+      ...(usesPin ? { pin: pin.trim(), pinConfirmation: pinConfirmation.trim() } : {}),
+      loginMethod,
+      provider: "email",
       agree,
     });
     setSubmitting(false);
@@ -153,46 +185,141 @@ export default function SignUpPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <label htmlFor="password" className="text-sm font-semibold text-foreground">Password</label>
-                <div className="relative">
-                  <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    autoComplete="new-password"
-                    required
-                    minLength={12}
-                    maxLength={256}
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    aria-describedby="password-hint"
-                    className="h-11 w-full rounded-lg border border-border bg-background px-3 pr-12 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((visible) => !visible)}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                    className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-foreground-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                <span id="register-method-label" className="block text-sm font-semibold text-foreground">
+                  Sign-in method
+                </span>
+                <div
+                  role="radiogroup"
+                  aria-labelledby="register-method-label"
+                  className="grid grid-cols-3 gap-2 rounded-lg border border-border bg-background p-1"
+                >
+                  {(
+                    [
+                      { value: "password", label: "Password" },
+                      { value: "pin", label: "PIN" },
+                      { value: "both", label: "Both" },
+                    ] as const
+                  ).map((option) => {
+                    const selected = loginMethod === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        onClick={() => {
+                          setLoginMethod(option.value);
+                          setError(null);
+                        }}
+                        className={`h-9 rounded-md text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal ${
+                          selected
+                            ? "bg-brand-teal text-white shadow-sm"
+                            : "text-foreground-secondary hover:text-foreground"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
                 </div>
-                <p id="password-hint" className="text-xs text-foreground-muted">Use at least 12 characters. Your password is stored as a one-way hash.</p>
               </div>
-              <div className="space-y-1.5">
-                <label htmlFor="confirmation" className="text-sm font-semibold text-foreground">Confirm password</label>
-                <input
-                  id="confirmation"
-                  name="confirmation"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="new-password"
-                  required
-                  maxLength={256}
-                  value={confirmation}
-                  onChange={(event) => setConfirmation(event.target.value)}
-                  className="h-11 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
-                />
-              </div>
+
+              {(loginMethod === "password" || loginMethod === "both") && (
+                <>
+                  <div className="space-y-1.5">
+                    <label htmlFor="password" className="text-sm font-semibold text-foreground">Password</label>
+                    <div className="relative">
+                      <input
+                        id="password"
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        autoComplete="new-password"
+                        required
+                        minLength={12}
+                        maxLength={256}
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                        aria-describedby="password-hint"
+                        className="h-11 w-full rounded-lg border border-border bg-background px-3 pr-12 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((visible) => !visible)}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-foreground-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    <p id="password-hint" className="text-xs text-foreground-muted">Use at least 12 characters. Your password is stored as a one-way hash.</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label htmlFor="confirmation" className="text-sm font-semibold text-foreground">Confirm password</label>
+                    <input
+                      id="confirmation"
+                      name="confirmation"
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                      required
+                      maxLength={256}
+                      value={confirmation}
+                      onChange={(event) => setConfirmation(event.target.value)}
+                      className="h-11 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
+                    />
+                  </div>
+                </>
+              )}
+
+              {(loginMethod === "pin" || loginMethod === "both") && (
+                <>
+                  <div className="space-y-1.5">
+                    <label htmlFor="pin" className="text-sm font-semibold text-foreground">PIN</label>
+                    <div className="relative">
+                      <input
+                        id="pin"
+                        name="pin"
+                        type={showPin ? "text" : "password"}
+                        inputMode="numeric"
+                        autoComplete="new-password"
+                        required
+                        minLength={4}
+                        maxLength={12}
+                        pattern="\d{4,12}"
+                        value={pin}
+                        onChange={(event) => setPin(event.target.value)}
+                        aria-describedby="pin-hint"
+                        className="h-11 w-full rounded-lg border border-border bg-background px-3 pr-12 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPin((visible) => !visible)}
+                        aria-label={showPin ? "Hide PIN" : "Show PIN"}
+                        className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-foreground-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
+                      >
+                        {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    <p id="pin-hint" className="text-xs text-foreground-muted">Use a 4 to 12 digit numeric PIN.</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label htmlFor="pin-confirmation" className="text-sm font-semibold text-foreground">Confirm PIN</label>
+                    <input
+                      id="pin-confirmation"
+                      name="pinConfirmation"
+                      type={showPin ? "text" : "password"}
+                      inputMode="numeric"
+                      autoComplete="new-password"
+                      required
+                      minLength={4}
+                      maxLength={12}
+                      pattern="\d{4,12}"
+                      value={pinConfirmation}
+                      onChange={(event) => setPinConfirmation(event.target.value)}
+                      className="h-11 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
+                    />
+                  </div>
+                </>
+              )}
               <div className="flex items-start gap-2.5">
                 <input
                   id="agree"

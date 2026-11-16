@@ -150,8 +150,9 @@ export const nurviaApi = {
     pinConfirmation?: string;
     loginMethod?: string;
     agree?: boolean;
+    dashboardName?: string;
     provider?: string;
-    providerPayload?: Record<string, unknown>;
+    providerPayload?: string | Record<string, unknown>;
     challenge?: string;
   }): Promise<ApiResponse<string>> {
     return request<string>('/api/auth/register', {
@@ -169,6 +170,8 @@ export const nurviaApi = {
     challenge?: string;
     fingerprint?: string;
     dashboardName?: string;
+    role?: string;
+    rememberMe?: boolean;
   }): Promise<ApiResponse<AuthUserDto>> {
     return request<AuthUserDto>('/api/auth/login', {
       method: 'POST',

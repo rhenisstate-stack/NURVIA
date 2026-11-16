@@ -12,11 +12,24 @@ type AuthStatus = "loading" | "authenticated" | "unauthenticated" | "error";
 // user is never treated as authenticated.
 const SESSION_CHECK_TIMEOUT_MS = 15000;
 
+export interface SignInCredentials {
+  email: string;
+  password?: string;
+  pin?: string;
+  loginMethod?: string;
+  LoginProvider?: string;
+  challenge?: string;
+  fingerprint?: string;
+  dashboardName?: string;
+  role?: string;
+  rememberMe?: boolean;
+}
+
 interface AuthContextValue {
   status: AuthStatus;
   user: AuthUserDto | null;
   error: string | null;
-  signIn: (credentials: { email: string; password: string }) => Promise<ApiResponse<AuthUserDto>>;
+  signIn: (credentials: SignInCredentials) => Promise<ApiResponse<AuthUserDto>>;
   signOut: () => Promise<ApiResponse<string>>;
   updateProfile: (name: string) => Promise<ApiResponse<AuthUserDto>>;
   refresh: () => Promise<void>;
@@ -60,7 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void refresh();
   }, [refresh]);
 
-  const signIn = React.useCallback(async (credentials: { email: string; password: string }) => {
+  const signIn = React.useCallback(async (credentials: SignInCredentials) => {
     const response = await nurviaApi.login(credentials);
     if (response.success && response.data) {
       setUser(response.data);

@@ -30,12 +30,18 @@ function safeReturnTo() {
   }
 }
 
+type SignInMethod = "password" | "pin";
+
 export default function SignInPage() {
   const router = useRouter();
   const { status, user, signIn } = useAuth();
   const [email, setEmail] = React.useState("");
+  const [loginMethod, setLoginMethod] = React.useState<SignInMethod>("password");
   const [password, setPassword] = React.useState("");
+  const [pin, setPin] = React.useState("");
+  const [rememberMe, setRememberMe] = React.useState(true);
   const [showPassword, setShowPassword] = React.useState(false);
+  const [showPin, setShowPin] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const completedSignIn = React.useRef(false);
@@ -56,9 +62,39 @@ export default function SignInPage() {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-    setSubmitting(true);
 
-    const response = await signIn({ email: email.trim(), password });
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setError("Email address is required.");
+      return;
+    }
+    if (loginMethod === "password" && !password) {
+      setError("Password is required.");
+      return;
+    }
+    if (loginMethod === "pin" && !pin.trim()) {
+      setError("PIN is required.");
+      return;
+    }
+
+    setSubmitting(true);
+    const response = await signIn(
+      loginMethod === "pin"
+        ? {
+            email: trimmedEmail,
+            pin: pin.trim(),
+            loginMethod: "pin",
+            LoginProvider: "email",
+            rememberMe,
+          }
+        : {
+            email: trimmedEmail,
+            password,
+            loginMethod: "password",
+            LoginProvider: "email",
+            rememberMe,
+          }
+    );
     setSubmitting(false);
     if (!response.success || !response.data) {
       setError(response.message || "Unable to sign in. Please try again.");
@@ -103,33 +139,114 @@ export default function SignInPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <label htmlFor="password" className="text-sm font-semibold text-foreground">Password</label>
-                <Link href="/forgot-password" className="text-xs font-semibold text-brand-teal underline-offset-4 hover:underline">
-                  Forgot password?
-                </Link>
+              <span id="signin-method-label" className="block text-sm font-semibold text-foreground">
+                Sign-in method
+              </span>
+              <div
+                role="radiogroup"
+                aria-labelledby="signin-method-label"
+                className="grid grid-cols-2 gap-2 rounded-lg border border-border bg-background p-1"
+              >
+                {(
+                  [
+                    { value: "password", label: "Password" },
+                    { value: "pin", label: "PIN" },
+                  ] as const
+                ).map((option) => {
+                  const selected = loginMethod === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() => {
+                        setLoginMethod(option.value);
+                        setError(null);
+                      }}
+                      className={`h-9 rounded-md text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal ${
+                        selected
+                          ? "bg-brand-teal text-white shadow-sm"
+                          : "text-foreground-secondary hover:text-foreground"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
               </div>
-              <div className="relative">
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="current-password"
-                  required
-                  maxLength={256}
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  className="h-11 w-full rounded-lg border border-border bg-background px-3 pr-12 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((visible) => !visible)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-foreground-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
+            </div>
+
+            {loginMethod === "password" ? (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <label htmlFor="password" className="text-sm font-semibold text-foreground">Password</label>
+                  <Link href="/forgot-password" className="text-xs font-semibold text-brand-teal underline-offset-4 hover:underline">
+                    Forgot password?
+                  </Link>
+                </div>
+                <div className="relative">
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
+                    required
+                    maxLength={256}
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    className="h-11 w-full rounded-lg border border-border bg-background px-3 pr-12 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((visible) => !visible)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-foreground-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
+            ) : (
+              <div className="space-y-1.5">
+                <label htmlFor="pin" className="text-sm font-semibold text-foreground">PIN</label>
+                <div className="relative">
+                  <input
+                    id="pin"
+                    name="pin"
+                    type={showPin ? "text" : "password"}
+                    inputMode="numeric"
+                    autoComplete="current-password"
+                    required
+                    maxLength={12}
+                    value={pin}
+                    onChange={(event) => setPin(event.target.value)}
+                    className="h-11 w-full rounded-lg border border-border bg-background px-3 pr-12 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPin((visible) => !visible)}
+                    aria-label={showPin ? "Hide PIN" : "Show PIN"}
+                    className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-foreground-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
+                  >
+                    {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2.5">
+              <input
+                id="rememberMe"
+                name="rememberMe"
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(event) => setRememberMe(event.target.checked)}
+                className="h-4 w-4 rounded border-border text-brand-teal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
+              />
+              <label htmlFor="rememberMe" className="text-xs text-foreground-secondary">
+                Keep me signed in on this device
+              </label>
             </div>
             {error && <p role="alert" className="text-sm text-rose-700 dark:text-rose-300">{error}</p>}
             <Button type="submit" className="w-full" isLoading={submitting} disabled={submitting}>
