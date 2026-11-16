@@ -10,6 +10,7 @@ import {
 import { setServerCastoSession, validateSameOriginRequest } from '@/lib/lexmacasto/session';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PIN_PATTERN = /^\d{4,12}$/;
 
 function noStoreJson(body: Record<string, unknown>, status: number): NextResponse {
   return NextResponse.json(body, {
@@ -24,9 +25,21 @@ export async function POST(request: NextRequest) {
     return noStoreJson({ success: false, message: csrf.reason, errorCode: 'FORBIDDEN' }, 403);
   }
 
+  const contentType = (request.headers.get('content-type') || '').toLowerCase();
+  if (!contentType.includes('application/json')) {
+    return noStoreJson(
+      { success: false, message: 'Unsupported Content-Type. Expected application/json.', errorCode: 'VALIDATION_ERROR' },
+      415
+    );
+  }
+
   let body: Record<string, unknown>;
   try {
-    body = (await request.json()) as Record<string, unknown>;
+    const parsed = (await request.json()) as unknown;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return noStoreJson({ success: false, message: 'Invalid JSON request body.', errorCode: 'VALIDATION_ERROR' }, 400);
+    }
+    body = parsed as Record<string, unknown>;
   } catch {
     return noStoreJson({ success: false, message: 'Invalid JSON request body.', errorCode: 'VALIDATION_ERROR' }, 400);
   }
@@ -87,8 +100,14 @@ export async function POST(request: NextRequest) {
     }
   }
   if (loginMethod === 'pin' || loginMethod === 'both') {
-    if (!pin) {
+    if (!pin || !pin.trim()) {
       return noStoreJson({ success: false, message: 'PIN is required.', errorCode: 'VALIDATION_ERROR' }, 400);
+    }
+    if (!PIN_PATTERN.test(pin.trim())) {
+      return noStoreJson(
+        { success: false, message: 'Use a 4 to 12 digit numeric PIN.', errorCode: 'VALIDATION_ERROR' },
+        400
+      );
     }
     if (pin !== pinConfirmation) {
       return noStoreJson({ success: false, message: 'PINs do not match.', errorCode: 'VALIDATION_ERROR' }, 400);
@@ -97,8 +116,17 @@ export async function POST(request: NextRequest) {
 
   const provider =
     typeof body.provider === 'string' && body.provider.trim() ? body.provider.trim() : 'email';
+  const providerPayload =
+    typeof body.providerPayload === 'string' && body.providerPayload.trim()
+      ? body.providerPayload.trim()
+      : body.providerPayload && typeof body.providerPayload === 'object' && !Array.isArray(body.providerPayload)
+        ? (body.providerPayload as Record<string, unknown>)
+        : undefined;
 
-  // Prevent client-side privilege escalation: public registration is always Learner.
+  // Prevent client-side privilege escalation: public registration is always Learner on web.
+  const includePassword = loginMethod === 'password' || loginMethod === 'both';
+  const includePin = loginMethod === 'pin' || loginMethod === 'both';
+
   const payload: LexmaCastoRegisterPayload = {
     username,
     email,
@@ -106,13 +134,11 @@ export async function POST(request: NextRequest) {
     loginMethod,
     agree: true,
     role: 'Learner',
+    dashboardName: 'web',
     provider,
-    ...(password !== undefined ? { password, passwordConfirmation } : {}),
-    ...(pin !== undefined ? { pin, pinConfirmation } : {}),
-    ...(typeof body.dashboardName === 'string' && body.dashboardName ? { dashboardName: body.dashboardName } : {}),
-    ...(body.providerPayload && typeof body.providerPayload === 'object'
-      ? { providerPayload: body.providerPayload as Record<string, unknown> }
-      : {}),
+    ...(includePassword && password !== undefined ? { password, passwordConfirmation } : {}),
+    ...(includePin && pin !== undefined ? { pin: pin.trim(), pinConfirmation: pinConfirmation?.trim() } : {}),
+    ...(providerPayload !== undefined ? { providerPayload } : {}),
     ...(typeof body.challenge === 'string' && body.challenge.trim() ? { challenge: body.challenge.trim() } : {}),
   };
 

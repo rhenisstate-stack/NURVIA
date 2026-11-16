@@ -193,7 +193,7 @@ export interface LexmaCastoRegisterPayload {
   role?: string;
   dashboardName?: string;
   provider?: string;
-  providerPayload?: Record<string, unknown>;
+  providerPayload?: string | Record<string, unknown>;
   challenge?: string;
 }
 

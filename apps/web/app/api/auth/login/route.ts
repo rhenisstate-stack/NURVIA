@@ -19,14 +19,26 @@ function noStoreJson(body: Record<string, unknown>, status: number): NextRespons
 export async function POST(request: NextRequest) {
   const csrf = validateSameOriginRequest(request);
   if (!csrf.ok) {
-    return noStoreJson({ success: false, message: csrf.reason }, 403);
+    return noStoreJson({ success: false, message: csrf.reason, errorCode: 'FORBIDDEN' }, 403);
+  }
+
+  const contentType = (request.headers.get('content-type') || '').toLowerCase();
+  if (!contentType.includes('application/json')) {
+    return noStoreJson(
+      { success: false, message: 'Unsupported Content-Type. Expected application/json.', errorCode: 'VALIDATION_ERROR' },
+      415
+    );
   }
 
   let body: Record<string, unknown>;
   try {
-    body = (await request.json()) as Record<string, unknown>;
+    const parsed = (await request.json()) as unknown;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return noStoreJson({ success: false, message: 'Invalid JSON request body.', errorCode: 'VALIDATION_ERROR' }, 400);
+    }
+    body = parsed as Record<string, unknown>;
   } catch {
-    return noStoreJson({ success: false, message: 'Invalid JSON request body.' }, 400);
+    return noStoreJson({ success: false, message: 'Invalid JSON request body.', errorCode: 'VALIDATION_ERROR' }, 400);
   }
 
   const email = typeof body.email === 'string' ? body.email.trim() : '';
@@ -47,7 +59,7 @@ export async function POST(request: NextRequest) {
   if (loginMethod === 'password' && !password) {
     return noStoreJson({ success: false, message: 'Password is required.' }, 400);
   }
-  if (loginMethod === 'pin' && !pin) {
+  if (loginMethod === 'pin' && (!pin || !pin.trim())) {
     return noStoreJson({ success: false, message: 'PIN is required.' }, 400);
   }
 
@@ -55,16 +67,21 @@ export async function POST(request: NextRequest) {
     typeof body.LoginProvider === 'string' && body.LoginProvider.trim()
       ? body.LoginProvider.trim()
       : 'email';
+  const rememberMe = body.rememberMe !== false;
 
+  // Server controls role and dashboardName rather than trusting client-supplied values.
   const payload: LexmaCastoLoginPayload = {
     email,
     loginMethod,
     LoginProvider: loginProvider,
-    ...(password !== undefined ? { password } : {}),
-    ...(pin !== undefined ? { pin } : {}),
+    dashboardName: 'web',
+    role: 'Learner',
+    ...(loginMethod === 'password' && password !== undefined ? { password } : {}),
+    ...(loginMethod === 'pin' && pin !== undefined ? { pin: pin.trim() } : {}),
     ...(typeof body.challenge === 'string' && body.challenge.trim() ? { challenge: body.challenge.trim() } : {}),
-    ...(typeof body.fingerprint === 'string' && body.fingerprint ? { fingerprint: body.fingerprint } : {}),
-    ...(typeof body.dashboardName === 'string' && body.dashboardName ? { dashboardName: body.dashboardName } : {}),
+    ...(typeof body.fingerprint === 'string' && body.fingerprint.trim()
+      ? { fingerprint: body.fingerprint.trim().slice(0, 128) }
+      : {}),
   };
 
   const siteMeta = extractSiteMetadataFromRequestHeaders(request.headers, '/api/auth/login');
@@ -110,16 +127,22 @@ export async function POST(request: NextRequest) {
     (typeof result.data.data?.redirect_url === 'string' && result.data.data.redirect_url) ||
     undefined;
 
-  const response = NextResponse.json(
+  const response = noStoreJson(
     {
       success: true,
       message: result.message,
       data: sanitizedUser,
       redirect_url: redirectUrl,
     },
-    { headers: { 'Cache-Control': 'no-store' } }
+    result.status
   );
 
-  setServerCastoSession(response, credentials, sanitizedUser.dashboardName || payload.dashboardName);
+  setServerCastoSession(
+    response,
+    credentials,
+    sanitizedUser.dashboardName || payload.dashboardName,
+    process.env.NODE_ENV === 'production',
+    rememberMe
+  );
   return response;
 }

@@ -14,13 +14,16 @@ export const CASTO_DASHBOARD_COOKIE = 'nurvia_casto_dashboard';
 
 const DEFAULT_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7; // 7 days
 
-export function getSessionCookieOptions(isProduction = process.env.NODE_ENV === 'production') {
+export function getSessionCookieOptions(
+  isProduction = process.env.NODE_ENV === 'production',
+  rememberMe = true
+) {
   return {
     httpOnly: true,
     secure: isProduction,
     sameSite: 'lax' as const,
     path: '/',
-    maxAge: DEFAULT_SESSION_MAX_AGE_SECONDS,
+    ...(rememberMe ? { maxAge: DEFAULT_SESSION_MAX_AGE_SECONDS } : {}),
   };
 }
 
@@ -63,9 +66,10 @@ export function setServerCastoSession(
   response: NextResponse,
   credentials: CastoSessionCredentials,
   dashboardName?: string,
-  isProduction = process.env.NODE_ENV === 'production'
+  isProduction = process.env.NODE_ENV === 'production',
+  rememberMe = true
 ): void {
-  const opts = getSessionCookieOptions(isProduction);
+  const opts = getSessionCookieOptions(isProduction, rememberMe);
   response.cookies.set(CASTO_LINE_COOKIE, credentials.castoLine, opts);
   response.cookies.set(CASTO_BADGE_COOKIE, credentials.castoBadge, opts);
   if (dashboardName) {

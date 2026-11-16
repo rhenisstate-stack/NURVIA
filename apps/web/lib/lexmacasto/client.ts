@@ -356,16 +356,23 @@ export function extractCastoCredentialsFromLogin(
 ): CastoSessionCredentials | null {
   if (!payload || typeof payload !== 'object') return null;
   const userObj = payload.user ?? payload.data?.user;
-  const castoLine =
+  const rawLine =
     (typeof userObj?.castoLine === 'string' && userObj.castoLine.trim()) ||
     (typeof payload.data?.castoLine === 'string' && payload.data.castoLine.trim()) ||
     (typeof payload.castoLine === 'string' && payload.castoLine.trim()) ||
     '';
-  const castoBadge =
+  const rawBadge =
     (typeof userObj?.castoBadge === 'string' && userObj.castoBadge.trim()) ||
     (typeof payload.data?.castoBadge === 'string' && payload.data.castoBadge.trim()) ||
     (typeof payload.castoBadge === 'string' && payload.castoBadge.trim()) ||
     '';
+
+  if (/[\r\n\0\x01-\x1F\x7F]/.test(rawLine) || /[\r\n\0\x01-\x1F\x7F]/.test(rawBadge)) {
+    return null;
+  }
+
+  const castoLine = sanitizeHeaderValue(rawLine, 2048);
+  const castoBadge = sanitizeHeaderValue(rawBadge, 2048);
 
   if (!castoLine || !castoBadge) return null;
   return { castoLine, castoBadge };
