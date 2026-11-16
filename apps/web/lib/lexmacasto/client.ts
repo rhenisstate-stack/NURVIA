@@ -82,6 +82,9 @@ function mapStatusToErrorCode(status: number): NormalizedBackendErrorCode {
   return 'BACKEND_ERROR';
 }
 
+const SENSITIVE_BACKEND_MESSAGE_PATTERN =
+  /at\s+\S+\s+\(|stack\s*trace|sql\s+exception|connection\s+string|108\.61\.9\.189|explicitbackend\.com|SKEW_LINE_APP_KEY|x-site-key|x-casto-line|x-casto-badge|castoline|castobadge|bearer\s+[A-Za-z0-9._-]+/i;
+
 function sanitizeBackendMessage(rawMessage: unknown, status: number): string {
   if (typeof rawMessage !== 'string' || !rawMessage.trim()) {
     if (status === 401) return 'Authentication is required.';
@@ -93,14 +96,49 @@ function sanitizeBackendMessage(rawMessage: unknown, status: number): string {
   }
 
   const msg = rawMessage.trim();
+  if (msg.startsWith('<')) {
+    return sanitizeBackendMessage(undefined, status);
+  }
   // Strip potential stack traces or internal infrastructure leakage
-  const firstLine = msg.split(/\r?\n/)[0].slice(0, 300);
-  if (/at\s+\S+\s+\(|stack\s*trace|sql\s+exception|connection\s+string|108\.61\.9\.189|SKEW_LINE_APP_KEY/i.test(firstLine)) {
+  const firstLine = msg.split(/\r?\n/)[0].slice(0, 300).trim();
+  if (!firstLine || SENSITIVE_BACKEND_MESSAGE_PATTERN.test(firstLine)) {
     return status >= 500
       ? 'The backend service encountered an internal error.'
       : 'Request could not be completed.';
   }
   return firstLine;
+}
+
+function extractBackendErrors(rawErrors: unknown, status: number): string[] | undefined {
+  if (Array.isArray(rawErrors)) {
+    const list = rawErrors
+      .filter((e): e is string => typeof e === 'string' && e.trim().length > 0)
+      .map((e) => sanitizeBackendMessage(e, status));
+    return list.length > 0 ? list : undefined;
+  }
+
+  if (rawErrors && typeof rawErrors === 'object') {
+    const collected: string[] = [];
+    for (const [field, value] of Object.entries(rawErrors as Record<string, unknown>)) {
+      const messages = Array.isArray(value)
+        ? value.filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+        : typeof value === 'string' && value.trim().length > 0
+          ? [value]
+          : [];
+      for (const msg of messages) {
+        const sanitized = sanitizeBackendMessage(msg, status);
+        const safeField = field.replace(/[^\w.\-\s]/g, '').trim();
+        if (safeField && !sanitized.toLowerCase().includes(safeField.toLowerCase())) {
+          collected.push(`${safeField}: ${sanitized}`);
+        } else {
+          collected.push(sanitized);
+        }
+      }
+    }
+    return collected.length > 0 ? collected : undefined;
+  }
+
+  return undefined;
 }
 
 export function extractSiteMetadataFromRequestHeaders(
@@ -210,8 +248,10 @@ export async function lexmaCastoRequest<T = unknown>(
       };
     }
 
+    const contentType = (response.headers.get('content-type') || '').toLowerCase();
     const rawText = await response.text();
-    if (!rawText) {
+    const trimmed = rawText.trim();
+    if (!trimmed) {
       if (response.ok) {
         return {
           ok: true,
@@ -227,10 +267,8 @@ export async function lexmaCastoRequest<T = unknown>(
       };
     }
 
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(rawText);
-    } catch {
+    const isHtml = contentType.includes('text/html') || trimmed.startsWith('<');
+    if (isHtml) {
       return {
         ok: false,
         status: response.ok ? 502 : response.status,
@@ -241,17 +279,49 @@ export async function lexmaCastoRequest<T = unknown>(
       };
     }
 
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch {
+      const looksLikeJson = trimmed.startsWith('{') || trimmed.startsWith('[');
+      return {
+        ok: false,
+        status: response.ok ? 502 : response.status,
+        message: response.ok
+          ? 'Unexpected non-JSON response from backend.'
+          : looksLikeJson
+            ? sanitizeBackendMessage(undefined, response.status)
+            : sanitizeBackendMessage(trimmed, response.status),
+        errorCode: response.ok ? 'UNEXPECTED_RESPONSE' : mapStatusToErrorCode(response.status),
+      };
+    }
+
     const record = (parsed && typeof parsed === 'object' ? parsed : {}) as Record<string, unknown>;
-    const rawMsg = record.message ?? record.error;
+    const nestedData =
+      record.data && typeof record.data === 'object' ? (record.data as Record<string, unknown>) : undefined;
+    const rawMsg =
+      record.message ??
+      record.Message ??
+      record.error ??
+      record.Error ??
+      record.detail ??
+      record.title ??
+      nestedData?.message ??
+      nestedData?.error;
 
     if (!response.ok || record.success === false) {
-      const errors = Array.isArray(record.errors)
-        ? record.errors.filter((e): e is string => typeof e === 'string').map((e) => sanitizeBackendMessage(e, response.status))
-        : undefined;
+      const errors = extractBackendErrors(record.errors ?? record.Errors, response.status);
+      const isGenericProblemTitle =
+        typeof rawMsg === 'string' && /^one or more validation errors occurred\.?$/i.test(rawMsg.trim());
+      const resolvedMessage =
+        errors && errors.length > 0 && (!rawMsg || isGenericProblemTitle)
+          ? errors[0]
+          : sanitizeBackendMessage(rawMsg, response.status);
+
       return {
         ok: false,
         status: response.ok ? 400 : response.status,
-        message: sanitizeBackendMessage(rawMsg, response.status),
+        message: resolvedMessage,
         errorCode: mapStatusToErrorCode(response.ok ? 400 : response.status),
         errors,
       };

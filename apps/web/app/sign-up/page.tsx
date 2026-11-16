@@ -14,8 +14,10 @@ export default function SignUpPage() {
   const { status, user } = useAuth();
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
+  const [phone, setPhone] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [confirmation, setConfirmation] = React.useState("");
+  const [agree, setAgree] = React.useState(false);
   const [showPassword, setShowPassword] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -44,6 +46,14 @@ export default function SignUpPage() {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    if (name.trim().length < 2) {
+      setError("Full name is required (minimum 2 characters).");
+      return;
+    }
+    if (!phone.trim()) {
+      setError("Phone number is required.");
+      return;
+    }
     if (password !== confirmation) {
       setError("Passwords do not match.");
       return;
@@ -52,19 +62,28 @@ export default function SignUpPage() {
       setError("Use at least 12 characters for your password.");
       return;
     }
+    if (!agree) {
+      setError("You must agree to the terms and privacy policy.");
+      return;
+    }
 
     setSubmitting(true);
     const response = await nurviaApi.register({
       username: name.trim(),
       email: email.trim(),
+      phone: phone.trim(),
       password,
       passwordConfirmation: confirmation,
       loginMethod: "password",
-      agree: true,
+      agree,
     });
     setSubmitting(false);
     if (!response.success) {
-      setError(response.message || "Unable to create your account. Please try again.");
+      const detail =
+        Array.isArray(response.errors) && response.errors.length > 0 && response.errors[0] !== response.message
+          ? `${response.message} (${response.errors[0]})`
+          : response.message;
+      setError(detail || "Unable to create your account. Please try again.");
       return;
     }
     setSuccess(true);
@@ -119,6 +138,21 @@ export default function SignUpPage() {
                 />
               </div>
               <div className="space-y-1.5">
+                <label htmlFor="phone" className="text-sm font-semibold text-foreground">Phone number</label>
+                <input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  autoComplete="tel"
+                  required
+                  maxLength={32}
+                  value={phone}
+                  onChange={(event) => setPhone(event.target.value)}
+                  placeholder="+1 555 010 9988"
+                  className="h-11 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
+                />
+              </div>
+              <div className="space-y-1.5">
                 <label htmlFor="password" className="text-sm font-semibold text-foreground">Password</label>
                 <div className="relative">
                   <input
@@ -158,6 +192,23 @@ export default function SignUpPage() {
                   onChange={(event) => setConfirmation(event.target.value)}
                   className="h-11 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
                 />
+              </div>
+              <div className="flex items-start gap-2.5">
+                <input
+                  id="agree"
+                  name="agree"
+                  type="checkbox"
+                  required
+                  checked={agree}
+                  onChange={(event) => setAgree(event.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-border text-brand-teal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
+                />
+                <label htmlFor="agree" className="text-xs leading-relaxed text-foreground-secondary">
+                  I agree to the NURVIA{" "}
+                  <Link href="/terms" className="font-semibold text-brand-teal underline-offset-4 hover:underline">Terms of Service</Link>
+                  {" "}and{" "}
+                  <Link href="/privacy" className="font-semibold text-brand-teal underline-offset-4 hover:underline">Privacy Policy</Link>.
+                </label>
               </div>
               {error && <p role="alert" className="text-sm text-rose-700 dark:text-rose-300">{error}</p>}
               <Button type="submit" className="w-full" isLoading={submitting} disabled={submitting || status === "loading"}>

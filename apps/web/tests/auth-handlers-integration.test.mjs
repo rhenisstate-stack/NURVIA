@@ -62,6 +62,40 @@ const mockBackend = http.createServer(async (req, res) => {
     res.end('{not valid json');
     return;
   }
+  if (mockMode === 'problem-400') {
+    res.writeHead(400, { 'Content-Type': 'application/problem+json; charset=utf-8' });
+    res.end(
+      JSON.stringify({
+        type: 'https://tools.ietf.org/html/rfc9110#section-15.5.1',
+        title: 'One or more validation errors occurred.',
+        status: 400,
+        errors: {
+          Challenge: ['The Challenge field is required.'],
+        },
+        traceId: '00-test-trace-00',
+      })
+    );
+    return;
+  }
+  if (mockMode === 'html-400') {
+    res.writeHead(400, { 'Content-Type': 'text/html' });
+    res.end('<html><body><h1>400 Bad Request</h1></body></html>');
+    return;
+  }
+  if (mockMode === 'malformed-400') {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end('{broken json');
+    return;
+  }
+  if (mockMode === 'leak-400') {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(
+      JSON.stringify({
+        error: 'Sql exception at 108.61.9.189 using SKEW_LINE_APP_KEY and explicitbackend.com',
+      })
+    );
+    return;
+  }
 
   if (req.url === '/api/castoline/auth/login' && req.method === 'POST') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -252,8 +286,22 @@ try {
 
     assert.equal(recordedBackendRequests.length, 1);
     assert.equal(recordedBackendRequests[0].url, '/api/castoline/auth/login');
+    assert.equal(recordedBackendRequests[0].body.loginMethod, 'password');
+    assert.equal(recordedBackendRequests[0].body.LoginProvider, 'email');
     assert.equal(recordedBackendRequests[0].headers['x-site-key'], 'test website key');
     assert.equal(recordedBackendRequests[0].headers['x-site-domain'], 'https://nurvia-black.vercel.app');
+  });
+
+  await test('5a. POST /api/auth/login rejects unsupported loginMethod', async () => {
+    recordedBackendRequests.length = 0;
+    const res = await fetch(`${WEB_ORIGIN}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: WEB_ORIGIN },
+      body: JSON.stringify({ email: 'nurse@example.com', password: 'Password123!', loginMethod: 'magic' }),
+    });
+    assert.equal(res.status, 400);
+    assert.equal(res.headers.get('cache-control'), 'no-store');
+    assert.equal(recordedBackendRequests.length, 0);
   });
 
   await test('6. GET /api/auth/me with session forwards Casto headers to verified current-user endpoint', async () => {
@@ -271,7 +319,7 @@ try {
     assert.equal(recordedBackendRequests[0].headers['x-casto-badge'], 'mock-casto-badge-token');
   });
 
-  await test('7. POST /api/auth/register forwards Learner registration payload', async () => {
+  await test('7. POST /api/auth/register forwards Learner registration payload and enforces no-store', async () => {
     recordedBackendRequests.length = 0;
     const res = await fetch(`${WEB_ORIGIN}/api/auth/register`, {
       method: 'POST',
@@ -279,13 +327,114 @@ try {
       body: JSON.stringify({
         username: 'New Nurse',
         email: 'newnurse@example.com',
+        phone: '+15550109988',
         password: 'StrongPassword123!',
         passwordConfirmation: 'StrongPassword123!',
+        agree: true,
+        role: 'Superadmin',
       }),
     });
     assert.equal(res.status, 201);
+    assert.equal(res.headers.get('cache-control'), 'no-store');
     assert.equal(recordedBackendRequests[0].url, '/api/castoline/auth/register');
     assert.equal(recordedBackendRequests[0].body.role, 'Learner');
+    assert.equal(recordedBackendRequests[0].body.phone, '+15550109988');
+    assert.equal(recordedBackendRequests[0].body.agree, true);
+    assert.equal(recordedBackendRequests[0].body.provider, 'email');
+    assert.equal(recordedBackendRequests[0].body.challenge, undefined);
+    assert.equal(recordedBackendRequests[0].headers['x-site-key'], 'test website key');
+    assert.equal(recordedBackendRequests[0].headers['x-site-domain'], 'https://nurvia-black.vercel.app');
+  });
+
+  await test('7a. POST /api/auth/register enforces consent, email, password match/length, loginMethod, and required phone', async () => {
+    const cases = [
+      {
+        name: 'consent false',
+        body: { username: 'New Nurse', email: 'nurse@example.com', phone: '+15550109988', password: 'StrongPassword123!', passwordConfirmation: 'StrongPassword123!', agree: false },
+      },
+      {
+        name: 'invalid email',
+        body: { username: 'New Nurse', email: 'not-an-email', phone: '+15550109988', password: 'StrongPassword123!', passwordConfirmation: 'StrongPassword123!', agree: true },
+      },
+      {
+        name: 'password mismatch',
+        body: { username: 'New Nurse', email: 'nurse@example.com', phone: '+15550109988', password: 'StrongPassword123!', passwordConfirmation: 'DifferentPass123!', agree: true },
+      },
+      {
+        name: 'short password',
+        body: { username: 'New Nurse', email: 'nurse@example.com', phone: '+15550109988', password: 'short', passwordConfirmation: 'short', agree: true },
+      },
+      {
+        name: 'missing phone',
+        body: { username: 'New Nurse', email: 'nurse@example.com', password: 'StrongPassword123!', passwordConfirmation: 'StrongPassword123!', agree: true },
+      },
+      {
+        name: 'invalid loginMethod',
+        body: { username: 'New Nurse', email: 'nurse@example.com', phone: '+15550109988', password: 'StrongPassword123!', passwordConfirmation: 'StrongPassword123!', loginMethod: 'biometric', agree: true },
+      },
+      {
+        name: 'both loginMethod missing pin',
+        body: { username: 'New Nurse', email: 'nurse@example.com', phone: '+15550109988', password: 'StrongPassword123!', passwordConfirmation: 'StrongPassword123!', loginMethod: 'both', agree: true },
+      },
+    ];
+    for (const c of cases) {
+      recordedBackendRequests.length = 0;
+      const res = await fetch(`${WEB_ORIGIN}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Origin: WEB_ORIGIN },
+        body: JSON.stringify(c.body),
+      });
+      assert.equal(res.status, 400, `Expected 400 for ${c.name}`);
+      assert.equal(res.headers.get('cache-control'), 'no-store');
+      assert.equal(recordedBackendRequests.length, 0, `Should not call backend for invalid ${c.name}`);
+      assert.equal(res.headers.getSetCookie().length, 0, `Should not set cookies on failure for ${c.name}`);
+    }
+  });
+
+  await test('7b. POST /api/auth/register preserves ValidationProblemDetails and sanitizes HTML/malformed/leaky 400s', async () => {
+    const validPayload = {
+      username: 'New Nurse',
+      email: 'nurse@example.com',
+      phone: '+15550109988',
+      password: 'StrongPassword123!',
+      passwordConfirmation: 'StrongPassword123!',
+      agree: true,
+    };
+
+    mockMode = 'problem-400';
+    let res = await fetch(`${WEB_ORIGIN}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: WEB_ORIGIN },
+      body: JSON.stringify(validPayload),
+    });
+    assert.equal(res.status, 400);
+    assert.equal(res.headers.get('cache-control'), 'no-store');
+    assert.equal(res.headers.getSetCookie().length, 0);
+    let json = await res.json();
+    assert.equal(json.success, false);
+    assert.equal(json.errorCode, 'VALIDATION_ERROR');
+    assert.match(json.message, /Challenge/i);
+    assert.equal(Array.isArray(json.errors), true);
+    assert.match(json.errors[0], /The Challenge field is required/i);
+
+    for (const mode of ['html-400', 'malformed-400', 'leak-400']) {
+      mockMode = mode;
+      res = await fetch(`${WEB_ORIGIN}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Origin: WEB_ORIGIN },
+        body: JSON.stringify(validPayload),
+      });
+      assert.equal(res.status, 400, `Expected 400 for ${mode}`);
+      assert.equal(res.headers.get('cache-control'), 'no-store');
+      assert.equal(res.headers.getSetCookie().length, 0);
+      const text = await res.text();
+      assert.equal(text.includes('108.61.9.189'), false);
+      assert.equal(text.includes('explicitbackend.com'), false);
+      assert.equal(text.includes('SKEW_LINE_APP_KEY'), false);
+      assert.equal(text.includes('StrongPassword123!'), false);
+      assert.equal(text.includes('<html>'), false);
+    }
+    mockMode = 'ok';
   });
 
   await test('8. POST /api/auth/logout calls backend distinct logout with target_dashboard and clears cookies', async () => {

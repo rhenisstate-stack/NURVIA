@@ -9,17 +9,24 @@ import {
 } from '@/lib/lexmacasto/client';
 import { setServerCastoSession, validateSameOriginRequest } from '@/lib/lexmacasto/session';
 
+function noStoreJson(body: Record<string, unknown>, status: number): NextResponse {
+  return NextResponse.json(body, {
+    status,
+    headers: { 'Cache-Control': 'no-store' },
+  });
+}
+
 export async function POST(request: NextRequest) {
   const csrf = validateSameOriginRequest(request);
   if (!csrf.ok) {
-    return NextResponse.json({ success: false, message: csrf.reason }, { status: 403 });
+    return noStoreJson({ success: false, message: csrf.reason }, 403);
   }
 
   let body: Record<string, unknown>;
   try {
     body = (await request.json()) as Record<string, unknown>;
   } catch {
-    return NextResponse.json({ success: false, message: 'Invalid JSON request body.' }, { status: 400 });
+    return noStoreJson({ success: false, message: 'Invalid JSON request body.' }, 400);
   }
 
   const email = typeof body.email === 'string' ? body.email.trim() : '';
@@ -32,22 +39,30 @@ export async function POST(request: NextRequest) {
       : 'password';
 
   if (!email) {
-    return NextResponse.json({ success: false, message: 'Email is required.' }, { status: 400 });
+    return noStoreJson({ success: false, message: 'Email is required.' }, 400);
+  }
+  if (loginMethod !== 'password' && loginMethod !== 'pin') {
+    return noStoreJson({ success: false, message: 'Unsupported login method.' }, 400);
   }
   if (loginMethod === 'password' && !password) {
-    return NextResponse.json({ success: false, message: 'Password is required.' }, { status: 400 });
+    return noStoreJson({ success: false, message: 'Password is required.' }, 400);
   }
   if (loginMethod === 'pin' && !pin) {
-    return NextResponse.json({ success: false, message: 'PIN is required.' }, { status: 400 });
+    return noStoreJson({ success: false, message: 'PIN is required.' }, 400);
   }
+
+  const loginProvider =
+    typeof body.LoginProvider === 'string' && body.LoginProvider.trim()
+      ? body.LoginProvider.trim()
+      : 'email';
 
   const payload: LexmaCastoLoginPayload = {
     email,
     loginMethod,
+    LoginProvider: loginProvider,
     ...(password !== undefined ? { password } : {}),
     ...(pin !== undefined ? { pin } : {}),
-    ...(typeof body.LoginProvider === 'string' && body.LoginProvider ? { LoginProvider: body.LoginProvider } : {}),
-    ...(typeof body.challenge === 'string' && body.challenge ? { challenge: body.challenge } : {}),
+    ...(typeof body.challenge === 'string' && body.challenge.trim() ? { challenge: body.challenge.trim() } : {}),
     ...(typeof body.fingerprint === 'string' && body.fingerprint ? { fingerprint: body.fingerprint } : {}),
     ...(typeof body.dashboardName === 'string' && body.dashboardName ? { dashboardName: body.dashboardName } : {}),
   };
@@ -64,14 +79,14 @@ export async function POST(request: NextRequest) {
   });
 
   if (!result.ok || !result.data) {
-    return NextResponse.json(
+    return noStoreJson(
       {
         success: false,
         message: result.message,
         errorCode: result.errorCode,
         errors: result.errors,
       },
-      { status: result.status }
+      result.status
     );
   }
 
@@ -80,13 +95,13 @@ export async function POST(request: NextRequest) {
   const sanitizedUser = sanitizeAuthUser(rawUser);
 
   if (!credentials || !sanitizedUser) {
-    return NextResponse.json(
+    return noStoreJson(
       {
         success: false,
         message: 'Authentication response was incomplete.',
         errorCode: 'UNEXPECTED_RESPONSE',
       },
-      { status: 502 }
+      502
     );
   }
 
