@@ -97,6 +97,43 @@ const mockBackend = http.createServer(async (req, res) => {
     return;
   }
 
+  if (mockMode === 'login-no-creds') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(
+      JSON.stringify({
+        success: true,
+        message: 'Login successful.',
+        user: {
+          id: 'usr-101',
+          name: 'Test Nurse',
+          email: body?.email || 'nurse@example.com',
+          role: 'Learner',
+        },
+      })
+    );
+    return;
+  }
+
+  if (mockMode === 'register-with-creds') {
+    res.writeHead(201, { 'Content-Type': 'application/json' });
+    res.end(
+      JSON.stringify({
+        success: true,
+        message: 'Registered.',
+        user: {
+          id: 'usr-102',
+          name: body?.username || 'New Nurse',
+          email: body?.email || 'newnurse@example.com',
+          role: 'Learner',
+          dashboardName: body?.dashboardName || 'learner',
+          castoLine: 'reg-casto-line-token',
+          castoBadge: 'reg-casto-badge-token',
+        },
+      })
+    );
+    return;
+  }
+
   if (req.url === '/api/castoline/auth/login' && req.method === 'POST') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(
@@ -292,7 +329,7 @@ try {
     assert.equal(recordedBackendRequests[0].headers['x-site-domain'], 'https://nurvia-black.vercel.app');
   });
 
-  await test('5a. POST /api/auth/login rejects unsupported loginMethod', async () => {
+  await test('5a. POST /api/auth/login rejects unsupported loginMethod and unsupported Content-Type', async () => {
     recordedBackendRequests.length = 0;
     const res = await fetch(`${WEB_ORIGIN}/api/auth/login`, {
       method: 'POST',
@@ -302,6 +339,71 @@ try {
     assert.equal(res.status, 400);
     assert.equal(res.headers.get('cache-control'), 'no-store');
     assert.equal(recordedBackendRequests.length, 0);
+
+    const wrongCt = await fetch(`${WEB_ORIGIN}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain', Origin: WEB_ORIGIN },
+      body: JSON.stringify({ email: 'nurse@example.com', password: 'Password123!' }),
+    });
+    assert.equal(wrongCt.status, 415);
+    assert.equal(wrongCt.headers.get('cache-control'), 'no-store');
+    assert.equal(recordedBackendRequests.length, 0);
+  });
+
+  await test('5b. POST /api/auth/login supports PIN login, server-enforced role/dashboardName, rememberMe, and rejects missing session credentials', async () => {
+    recordedBackendRequests.length = 0;
+    const pinRes = await fetch(`${WEB_ORIGIN}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: WEB_ORIGIN },
+      body: JSON.stringify({
+        email: 'nurse@example.com',
+        pin: '123456',
+        loginMethod: 'pin',
+        LoginProvider: 'email',
+        dashboardName: 'custom',
+        role: 'Superadmin',
+        fingerprint: 'fp-test-1234',
+        rememberMe: false,
+      }),
+    });
+    assert.equal(pinRes.status, 200);
+    assert.equal(pinRes.headers.get('cache-control'), 'no-store');
+    assert.equal(recordedBackendRequests[0].body.loginMethod, 'pin');
+    assert.equal(recordedBackendRequests[0].body.pin, '123456');
+    assert.equal(recordedBackendRequests[0].body.password, undefined);
+    assert.equal(recordedBackendRequests[0].body.role, 'Learner');
+    assert.equal(recordedBackendRequests[0].body.dashboardName, 'web');
+    assert.equal(recordedBackendRequests[0].body.fingerprint, 'fp-test-1234');
+    const pinCookies = pinRes.headers.getSetCookie();
+    assert.equal(pinCookies.some((c) => c.startsWith('nurvia_casto_line=') && /httponly/i.test(c) && /samesite=lax/i.test(c) && !/max-age=/i.test(c)), true);
+
+    mockMode = 'login-no-creds';
+    const noCredsRes = await fetch(`${WEB_ORIGIN}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: WEB_ORIGIN },
+      body: JSON.stringify({ email: 'nurse@example.com', password: 'Password123!' }),
+    });
+    assert.equal(noCredsRes.status, 502);
+    assert.equal(noCredsRes.headers.get('cache-control'), 'no-store');
+    assert.equal(noCredsRes.headers.getSetCookie().length, 0);
+
+    for (const [mode, expectedStatus] of [
+      ['401', 401],
+      ['problem-400', 400],
+      ['invalid-json', 502],
+      ['malformed-400', 400],
+    ]) {
+      mockMode = mode;
+      const errRes = await fetch(`${WEB_ORIGIN}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Origin: WEB_ORIGIN },
+        body: JSON.stringify({ email: 'nurse@example.com', password: 'Password123!' }),
+      });
+      assert.equal(errRes.status, expectedStatus, `Expected ${expectedStatus} for login mode ${mode}`);
+      assert.equal(errRes.headers.get('cache-control'), 'no-store');
+      assert.equal(errRes.headers.getSetCookie().length, 0);
+    }
+    mockMode = 'ok';
   });
 
   await test('6. GET /api/auth/me with session forwards Casto headers to verified current-user endpoint', async () => {
@@ -376,6 +478,14 @@ try {
         name: 'both loginMethod missing pin',
         body: { username: 'New Nurse', email: 'nurse@example.com', phone: '+15550109988', password: 'StrongPassword123!', passwordConfirmation: 'StrongPassword123!', loginMethod: 'both', agree: true },
       },
+      {
+        name: 'pin mismatch',
+        body: { username: 'New Nurse', email: 'nurse@example.com', phone: '+15550109988', pin: '1234', pinConfirmation: '9999', loginMethod: 'pin', agree: true },
+      },
+      {
+        name: 'invalid non-numeric pin',
+        body: { username: 'New Nurse', email: 'nurse@example.com', phone: '+15550109988', pin: 'abcd', pinConfirmation: 'abcd', loginMethod: 'pin', agree: true },
+      },
     ];
     for (const c of cases) {
       recordedBackendRequests.length = 0;
@@ -389,6 +499,73 @@ try {
       assert.equal(recordedBackendRequests.length, 0, `Should not call backend for invalid ${c.name}`);
       assert.equal(res.headers.getSetCookie().length, 0, `Should not set cookies on failure for ${c.name}`);
     }
+
+    // Unsupported Content-Type -> 415
+    const wrongCt = await fetch(`${WEB_ORIGIN}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain', Origin: WEB_ORIGIN },
+      body: JSON.stringify({ username: 'New Nurse', email: 'nurse@example.com', phone: '+15550109988', pin: '1234', pinConfirmation: '1234', loginMethod: 'pin', agree: true }),
+    });
+    assert.equal(wrongCt.status, 415);
+    assert.equal(wrongCt.headers.get('cache-control'), 'no-store');
+  });
+
+  await test('7c. POST /api/auth/register supports PIN and combined (both) registration and sets cookies only when valid credentials returned', async () => {
+    recordedBackendRequests.length = 0;
+    const pinRes = await fetch(`${WEB_ORIGIN}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: WEB_ORIGIN },
+      body: JSON.stringify({
+        username: 'PIN Nurse',
+        email: 'pinnurse@example.com',
+        phone: '+15550109988',
+        pin: '123456',
+        pinConfirmation: '123456',
+        loginMethod: 'pin',
+        dashboardName: 'learner',
+        agree: true,
+      }),
+    });
+    assert.equal(pinRes.status, 201);
+    assert.equal(pinRes.headers.get('cache-control'), 'no-store');
+    assert.equal(pinRes.headers.getSetCookie().length, 0);
+    assert.equal(recordedBackendRequests[0].body.loginMethod, 'pin');
+    assert.equal(recordedBackendRequests[0].body.pin, '123456');
+    assert.equal(recordedBackendRequests[0].body.pinConfirmation, '123456');
+    assert.equal(recordedBackendRequests[0].body.password, undefined);
+    assert.equal(recordedBackendRequests[0].body.role, 'Learner');
+    assert.equal(recordedBackendRequests[0].body.dashboardName, 'web');
+
+    recordedBackendRequests.length = 0;
+    mockMode = 'register-with-creds';
+    const bothRes = await fetch(`${WEB_ORIGIN}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: WEB_ORIGIN },
+      body: JSON.stringify({
+        username: 'Both Nurse',
+        email: 'bothnurse@example.com',
+        phone: '+15550109988',
+        password: 'StrongPassword123!',
+        passwordConfirmation: 'StrongPassword123!',
+        pin: '123456',
+        pinConfirmation: '123456',
+        loginMethod: 'both',
+        provider: 'google',
+        providerPayload: 'oauth-token-123',
+        agree: true,
+      }),
+    });
+    mockMode = 'ok';
+    assert.equal(bothRes.status, 201);
+    assert.equal(bothRes.headers.get('cache-control'), 'no-store');
+    assert.equal(recordedBackendRequests[0].body.loginMethod, 'both');
+    assert.equal(recordedBackendRequests[0].body.provider, 'google');
+    assert.equal(recordedBackendRequests[0].body.providerPayload, 'oauth-token-123');
+    const bothText = await bothRes.text();
+    assert.equal(bothText.includes('reg-casto-line-token'), false);
+    assert.equal(bothText.includes('reg-casto-badge-token'), false);
+    const bothCookies = bothRes.headers.getSetCookie();
+    assert.equal(bothCookies.some((c) => c.startsWith('nurvia_casto_line=') && /httponly/i.test(c)), true);
   });
 
   await test('7b. POST /api/auth/register preserves ValidationProblemDetails and sanitizes HTML/malformed/leaky 400s', async () => {

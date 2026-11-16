@@ -108,4 +108,102 @@ test.describe("NURVIA Phase 3.1 Authentication Route Remediation", () => {
     await page.goto("/learner");
     await page.waitForURL(/\/sign-in/);
   });
+
+  test("sign-up supports Password, PIN, and Both method switching, conditional fields, validation, and payload mapping", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto("/sign-up");
+    await expect(page.getByRole("heading", { name: /create your learner account/i })).toBeVisible();
+
+    // Default Password mode shows password fields and hides PIN fields
+    await expect(page.getByLabel(/^password$/i)).toBeVisible();
+    await expect(page.getByLabel(/^confirm password$/i)).toBeVisible();
+    await expect(page.getByLabel(/^pin$/i)).toHaveCount(0);
+
+    // Password visibility toggle
+    await page.getByRole("button", { name: /show password/i }).click();
+    await expect(page.getByLabel(/^password$/i)).toHaveAttribute("type", "text");
+
+    // Switch to PIN mode
+    await page.getByRole("radio", { name: /^pin$/i }).click();
+    await expect(page.getByLabel(/^pin$/i)).toBeVisible();
+    await expect(page.getByLabel(/^confirm pin$/i)).toBeVisible();
+    await expect(page.getByLabel(/^password$/i)).toHaveCount(0);
+
+    // Switch to Both mode
+    await page.getByRole("radio", { name: /^both$/i }).click();
+    await expect(page.getByLabel(/^password$/i)).toBeVisible();
+    await expect(page.getByLabel(/^pin$/i)).toBeVisible();
+
+    // Switch back to PIN mode and verify submission payload + success state
+    await page.getByRole("radio", { name: /^pin$/i }).click();
+    let capturedRegisterPayload: Record<string, unknown> | null = null;
+    await page.route("**/api/auth/register", async (route) => {
+      capturedRegisterPayload = route.request().postDataJSON() as Record<string, unknown>;
+      await route.fulfill({
+        status: 201,
+        contentType: "application/json",
+        body: JSON.stringify({ success: true, message: "Registration completed.", data: "Registration completed." }),
+      });
+    });
+
+    await page.getByLabel(/full name/i).fill("Nurse Ada");
+    await page.getByLabel(/email address/i).fill("ada@example.com");
+    await page.getByLabel(/phone number/i).fill("+15550109988");
+    await page.getByLabel(/^pin$/i).fill("123456");
+    await page.getByLabel(/^confirm pin$/i).fill("123456");
+    await page.getByLabel(/terms of service/i).check();
+    await page.locator("form").getByRole("button", { name: /create learner account/i }).click();
+
+    await expect(page.getByText(/your registration request is complete/i)).toBeVisible();
+    expect(capturedRegisterPayload).toEqual({
+      username: "Nurse Ada",
+      email: "ada@example.com",
+      phone: "+15550109988",
+      pin: "123456",
+      pinConfirmation: "123456",
+      loginMethod: "pin",
+      provider: "email",
+      agree: true,
+    });
+  });
+
+  test("sign-in supports Password and PIN method switching, rememberMe, and submits exact payload", async ({
+    page,
+  }) => {
+    await page.goto("/sign-in");
+    await expect(page.getByRole("heading", { name: /welcome back/i })).toBeVisible();
+
+    await expect(page.getByLabel(/^password$/i)).toBeVisible();
+    await expect(page.getByLabel(/^pin$/i)).toHaveCount(0);
+
+    await page.getByRole("radio", { name: /^pin$/i }).click();
+    await expect(page.getByLabel(/^pin$/i)).toBeVisible();
+    await expect(page.getByLabel(/^password$/i)).toHaveCount(0);
+
+    let capturedLoginPayload: Record<string, unknown> | null = null;
+    await page.route("**/api/auth/login", async (route) => {
+      capturedLoginPayload = route.request().postDataJSON() as Record<string, unknown>;
+      await route.fulfill({
+        status: 401,
+        contentType: "application/json",
+        body: JSON.stringify({ success: false, message: "Invalid credentials." }),
+      });
+    });
+
+    await page.getByLabel(/email address/i).fill("ada@example.com");
+    await page.getByLabel(/^pin$/i).fill("123456");
+    await page.getByLabel(/keep me signed in/i).uncheck();
+    await page.locator("form").getByRole("button", { name: /^sign in$/i }).click();
+
+    await expect(page.locator("form").getByRole("alert")).toContainText(/invalid credentials/i);
+    expect(capturedLoginPayload).toEqual({
+      email: "ada@example.com",
+      pin: "123456",
+      loginMethod: "pin",
+      LoginProvider: "email",
+      rememberMe: false,
+    });
+  });
 });
