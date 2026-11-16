@@ -21,7 +21,6 @@
   ReviewLectureRequest,
 } from './api-types';
 import { classifyError, isRetryableError, ErrorType } from './utils/error-utils';
-import { resolveBackendBaseUrl } from './api-config.mjs';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_IDEMPOTENT_RETRIES = 2;
@@ -30,18 +29,22 @@ function getApiBase(): string {
   if (typeof window !== 'undefined') {
     return '/api/backend';
   }
-  return resolveBackendBaseUrl(process.env);
+  const serverBase = (process.env.SKEW_LINE_DOTNET_BASE_URL || process.env.NEXT_PUBLIC_API_URL || '').trim().replace(/\/+$/, '');
+  return serverBase || '/api/backend';
 }
 
 function buildApiUrl(endpoint: string): string {
   const apiBase = getApiBase();
   if (apiBase === '/api/backend') {
+    // Route auth & academic strata directly to NURVIA's Next.js Route Handlers
+    if (endpoint.startsWith('/api/auth/') || endpoint.startsWith('/api/strata/')) {
+      return endpoint;
+    }
     return `${apiBase}${endpoint.replace(/^\/api(?=\/)/, '')}`;
   }
 
   return `${apiBase}${endpoint}`;
 }
-let csrfTokenPromise: Promise<string> | null = null;
 
 function buildQuery(params?: Record<string, unknown>) {
   const query = new URLSearchParams();
@@ -51,28 +54,6 @@ function buildQuery(params?: Record<string, unknown>) {
     }
   }
   return query.toString();
-}
-
-async function getCsrfToken(): Promise<string> {
-  if (!csrfTokenPromise) {
-    csrfTokenPromise = fetch(buildApiUrl('/api/auth/csrf'), {
-      credentials: 'include',
-      cache: 'no-store',
-    })
-      .then(async (response) => {
-        const result = await response.json() as ApiResponse<string>;
-        if (!response.ok || !result.success || !result.data) {
-          throw new Error(result.message || 'Unable to start a secure request.');
-        }
-        return result.data;
-      })
-      .catch((error: unknown) => {
-        csrfTokenPromise = null;
-        throw error;
-      });
-  }
-
-  return csrfTokenPromise;
 }
 
 function createRequestSignal(callerSignal?: AbortSignal | null, timeoutMs = DEFAULT_TIMEOUT_MS): {
@@ -122,10 +103,6 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const { signal, cleanup } = createRequestSignal(options.signal);
     try {
-      if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
-        headers.set('X-CSRF-TOKEN', await getCsrfToken());
-      }
-
       const res = await fetch(buildApiUrl(endpoint), {
         ...options,
         headers,
@@ -215,14 +192,37 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
 export const nurviaApi = {
   // Authentication and learner profile
-  async register(payload: { name: string; email: string; password: string }): Promise<ApiResponse<string>> {
+  async register(payload: {
+    name?: string;
+    username?: string;
+    email: string;
+    phone?: string;
+    password?: string;
+    passwordConfirmation?: string;
+    pin?: string;
+    pinConfirmation?: string;
+    loginMethod?: string;
+    agree?: boolean;
+    provider?: string;
+    providerPayload?: Record<string, unknown>;
+    challenge?: string;
+  }): Promise<ApiResponse<string>> {
     return request<string>('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
   },
 
-  async login(payload: { email: string; password: string }): Promise<ApiResponse<AuthUserDto>> {
+  async login(payload: {
+    email: string;
+    password?: string;
+    pin?: string;
+    loginMethod?: string;
+    LoginProvider?: string;
+    challenge?: string;
+    fingerprint?: string;
+    dashboardName?: string;
+  }): Promise<ApiResponse<AuthUserDto>> {
     return request<AuthUserDto>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -231,6 +231,22 @@ export const nurviaApi = {
 
   async getCurrentUser(init: Pick<RequestInit, 'signal'> = {}): Promise<ApiResponse<AuthUserDto>> {
     return request<AuthUserDto>('/api/auth/me', init);
+  },
+
+  async logout(options?: { scope?: 'distinct' | 'relative'; target_dashboard?: string }): Promise<ApiResponse<string>> {
+    return request<string>('/api/auth/logout', {
+      method: 'POST',
+      body: JSON.stringify(options || {}),
+    });
+  },
+
+  // Verified LexmaCasto Academic Strata (with mandatory server-enforced fetchtype)
+  async getStrata<T = import('./lexmacasto/contracts').StrataRecord>(
+    resource: import('./lexmacasto/contracts').StrataResourceKey,
+    params?: Record<string, string | number | boolean | undefined>
+  ): Promise<ApiResponse<import('./lexmacasto/contracts').StrataPagedData<T>>> {
+    const query = buildQuery(params);
+    return request(`/api/strata/${resource}${query ? `?${query}` : ''}`);
   },
 
   async updateProfile(payload: { name: string }): Promise<ApiResponse<AuthUserDto>> {
@@ -269,10 +285,6 @@ export const nurviaApi = {
     return request<string>('/api/avatar', {
       method: 'DELETE',
     });
-  },
-
-  async logout(): Promise<ApiResponse<string>> {
-    return request<string>('/api/auth/logout', { method: 'POST' });
   },
 
   async forgotPassword(payload: { email: string }): Promise<ApiResponse<string>> {

@@ -71,14 +71,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOut = React.useCallback(async () => {
-    const response = await nurviaApi.logout();
-    if (response.success) {
-      setUser(null);
-      setStatus("unauthenticated");
-      setError(null);
-    }
+    const response = await nurviaApi.logout({
+      scope: "distinct",
+      target_dashboard: user?.role?.toLowerCase() === "learner" ? "learner" : "admin",
+    });
+    // Local HttpOnly cookies are always cleared by /api/auth/logout; clear client state too.
+    setUser(null);
+    setStatus("unauthenticated");
+    setError(response.success ? null : (response.message || "Sign-out completed locally, but backend revocation failed."));
     return response;
-  }, []);
+  }, [user]);
 
   const updateProfile = React.useCallback(async (name: string) => {
     const response = await nurviaApi.updateProfile({ name });

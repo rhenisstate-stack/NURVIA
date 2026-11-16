@@ -4,6 +4,7 @@ import * as React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { nurviaApi } from "@/lib/api-client";
+import { fetchStrataFilterOptions } from "@/lib/lexmacasto/strata-filters";
 import type {
   StudyLibraryFiltersDto,
   StudyLibrarySummaryDto,
@@ -113,9 +114,20 @@ export function StudyLibraryView({
     void Promise.all([
       nurviaApi.getStudyLibraryFilters(),
       nurviaApi.getStudyLibrarySummary(),
-    ]).then(([filtersRes, summaryRes]) => {
+      fetchStrataFilterOptions(),
+    ]).then(([filtersRes, summaryRes, strataFilters]) => {
       if (!active) return;
-      if (filtersRes.success && filtersRes.data) setFiltersData(filtersRes.data);
+      if (filtersRes.success && filtersRes.data) {
+        setFiltersData({
+          ...filtersRes.data,
+          schools: filtersRes.data.schools.length > 0 ? filtersRes.data.schools : (strataFilters?.schools ?? []),
+          subjects: filtersRes.data.subjects.length > 0 ? filtersRes.data.subjects : (strataFilters?.subjects ?? []),
+          topics: filtersRes.data.topics.length > 0 ? filtersRes.data.topics : (strataFilters?.topics ?? []),
+          exams: filtersRes.data.exams.length > 0 ? filtersRes.data.exams : (strataFilters?.exams ?? []),
+        });
+      } else if (strataFilters) {
+        setFiltersData(strataFilters);
+      }
       if (summaryRes.success && summaryRes.data) setSummary(summaryRes.data);
     });
     return () => {

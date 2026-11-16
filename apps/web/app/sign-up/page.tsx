@@ -54,7 +54,14 @@ export default function SignUpPage() {
     }
 
     setSubmitting(true);
-    const response = await nurviaApi.register({ name: name.trim(), email: email.trim(), password });
+    const response = await nurviaApi.register({
+      username: name.trim(),
+      email: email.trim(),
+      password,
+      passwordConfirmation: confirmation,
+      loginMethod: "password",
+      agree: true,
+    });
     setSubmitting(false);
     if (!response.success) {
       setError(response.message || "Unable to create your account. Please try again.");

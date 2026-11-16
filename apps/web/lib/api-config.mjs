@@ -1,12 +1,24 @@
 /**
- * Fail-closed environment and backend URL resolution for NURVIA.
+ * Fail-closed environment, backend URL, and application identity resolution for NURVIA.
  * Shared by next.config.mjs, server-side API client, and Node unit tests.
  */
 
 const ALLOWED_PROTOCOLS = new Set(['http:', 'https:']);
 
+export class BackendConfigurationError extends Error {
+  /**
+   * @param {string} message
+   * @param {string} code
+   */
+  constructor(message, code = 'CONFIGURATION_ERROR') {
+    super(message);
+    this.name = 'BackendConfigurationError';
+    this.code = code;
+  }
+}
+
 /**
- * Resolves and validates the remote .NET backend base URL from SKEW_LINE or legacy env vars.
+ * Resolves and validates the remote .NET / LexmaCasto backend base URL from SKEW_LINE or legacy env vars.
  * Throws explicitly if missing, malformed, or using an unsupported protocol/backend.
  *
  * @param {Record<string, string | undefined>} [env]
@@ -19,15 +31,17 @@ export function resolveBackendBaseUrl(env = process.env, options = {}) {
   const skewLineUrl = (env.SKEW_LINE_DOTNET_BASE_URL || '').trim();
 
   if (activeBackend && activeBackend !== 'dotnet' && !legacyUrl) {
-    throw new Error(
-      `Unsupported SKEW_LINE_ACTIVE_BACKEND="${activeBackend}". Expected "dotnet" for remote .NET backend integration.`
+    throw new BackendConfigurationError(
+      `Unsupported SKEW_LINE_ACTIVE_BACKEND="${activeBackend}". Expected "dotnet" for remote .NET backend integration.`,
+      'UNSUPPORTED_BACKEND'
     );
   }
 
   const rawUrl = skewLineUrl || legacyUrl;
   if (!rawUrl || rawUrl.startsWith('<')) {
-    throw new Error(
-      'NURVIA backend URL is not configured. Set SKEW_LINE_DOTNET_BASE_URL in apps/web/.env.local (or deployment environment variables).'
+    throw new BackendConfigurationError(
+      'NURVIA backend URL is not configured. Set SKEW_LINE_DOTNET_BASE_URL in apps/web/.env.local (or deployment environment variables).',
+      'MISSING_BACKEND_URL'
     );
   }
 
@@ -35,20 +49,26 @@ export function resolveBackendBaseUrl(env = process.env, options = {}) {
   try {
     parsed = new URL(rawUrl);
   } catch {
-    throw new Error(
-      `Invalid NURVIA backend URL format: "${rawUrl}". Expected a valid http:// or https:// URL.`
+    throw new BackendConfigurationError(
+      `Invalid NURVIA backend URL format: "${rawUrl}". Expected a valid http:// or https:// URL.`,
+      'INVALID_BACKEND_URL'
     );
   }
 
   if (!ALLOWED_PROTOCOLS.has(parsed.protocol)) {
-    throw new Error(
-      `Unsupported NURVIA backend protocol "${parsed.protocol}". Only http: and https: are permitted.`
+    throw new BackendConfigurationError(
+      `Unsupported NURVIA backend protocol "${parsed.protocol}". Only http: and https: are permitted.`,
+      'INVALID_BACKEND_PROTOCOL'
     );
   }
 
-  if (options.requireHttps && parsed.protocol !== 'https:') {
-    throw new Error(
-      'HTTPS is required for production authentication-bearing traffic. Configure an https:// reverse proxy for SKEW_LINE_DOTNET_BASE_URL.'
+  const isProduction = env.NODE_ENV === 'production';
+  const requireHttps = options.requireHttps ?? isProduction;
+
+  if (requireHttps && parsed.protocol !== 'https:') {
+    throw new BackendConfigurationError(
+      'HTTPS is required for production authentication-bearing traffic. Configure an https:// reverse proxy for SKEW_LINE_DOTNET_BASE_URL.',
+      'INSECURE_PRODUCTION_ORIGIN'
     );
   }
 
@@ -70,18 +90,95 @@ export function isHttpsBackendUrl(baseUrl) {
 }
 
 /**
+ * Resolves and validates NURVIA's dedicated server-side application identity.
+ * Never falls back to another application's key or domain (e.g., Qlex-Nursing / WEBSITE_1).
+ *
+ * @param {Record<string, string | undefined>} [env]
+ * @returns {{ appKey: string; appDomain: string; appName: string; appTitle: string }}
+ */
+export function resolveApplicationIdentity(env = process.env) {
+  const appKey = (env.SKEW_LINE_APP_KEY || '').trim();
+  const appDomain = (env.SKEW_LINE_APP_DOMAIN || '').trim();
+  const appName = (env.SKEW_LINE_APP_NAME || 'Nurvia').trim();
+  const appTitle = (env.SKEW_LINE_APP_TITLE || 'Nurvia').trim();
+
+  if (!appKey || appKey.startsWith('<')) {
+    throw new BackendConfigurationError(
+      'NURVIA application key (SKEW_LINE_APP_KEY) is not provisioned. Configure a dedicated NURVIA application key from the backend owner.',
+      'MISSING_APP_KEY'
+    );
+  }
+
+  if (!appDomain || appDomain.startsWith('<')) {
+    throw new BackendConfigurationError(
+      'NURVIA application domain (SKEW_LINE_APP_DOMAIN) is not configured. Configure the officially provisioned NURVIA domain.',
+      'MISSING_APP_DOMAIN'
+    );
+  }
+
+  // Validate domain is either a valid URL or valid hostname (no whitespace or header injection)
+  if (/[\r\n\s]/.test(appKey) || /[\r\n\s]/.test(appDomain)) {
+    throw new BackendConfigurationError(
+      'Invalid characters in NURVIA application identity configuration.',
+      'INVALID_APP_IDENTITY'
+    );
+  }
+
+  try {
+    if (appDomain.includes('://')) {
+      const parsed = new URL(appDomain);
+      if (!ALLOWED_PROTOCOLS.has(parsed.protocol)) {
+        throw new Error('Invalid protocol');
+      }
+    }
+  } catch {
+    throw new BackendConfigurationError(
+      `Invalid SKEW_LINE_APP_DOMAIN format: "${appDomain}".`,
+      'INVALID_APP_DOMAIN'
+    );
+  }
+
+  return {
+    appKey,
+    appDomain,
+    appName,
+    appTitle,
+  };
+}
+
+/**
+ * Validates complete server-side backend configuration (origin + application identity).
+ *
+ * @param {Record<string, string | undefined>} [env]
+ * @param {{ requireHttps?: boolean }} [options]
+ */
+export function validateServerConfiguration(env = process.env, options = {}) {
+  const backendBaseUrl = resolveBackendBaseUrl(env, options);
+  const identity = resolveApplicationIdentity(env);
+  return {
+    backendBaseUrl,
+    ...identity,
+  };
+}
+
+/**
  * Returns non-secret SKEW_LINE application metadata for server-side diagnostics.
  * Never exposes private keys or credentials to client bundles.
  *
  * @param {Record<string, string | undefined>} [env]
  */
 export function getSkewLineServerConfig(env = process.env) {
+  const backendBaseUrl = resolveBackendBaseUrl(env);
+  const appDomain = (env.SKEW_LINE_APP_DOMAIN || '').trim();
+  const appKey = (env.SKEW_LINE_APP_KEY || '').trim();
   return {
     appName: (env.SKEW_LINE_APP_NAME || 'Nurvia').trim(),
     appTitle: (env.SKEW_LINE_APP_TITLE || 'Nurvia').trim(),
-    appDomain: (env.SKEW_LINE_APP_DOMAIN || '').trim(),
-    appKeyConfigured: Boolean((env.SKEW_LINE_APP_KEY || '').trim()),
+    appDomain,
+    appDomainConfigured: Boolean(appDomain && !appDomain.startsWith('<')),
+    appKeyConfigured: Boolean(appKey && !appKey.startsWith('<')),
     activeBackend: (env.SKEW_LINE_ACTIVE_BACKEND || 'dotnet').trim(),
-    backendBaseUrl: resolveBackendBaseUrl(env),
+    backendBaseUrl,
+    isHttps: isHttpsBackendUrl(backendBaseUrl),
   };
 }

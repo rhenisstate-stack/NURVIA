@@ -110,14 +110,14 @@ export function StudyLibraryAdvancedFilters({
             value={value.school}
             options={filtersData?.schools ?? []}
             placeholder="All schools"
-            onChange={(school) => onChange({ school })}
+            onChange={(school) => onChange({ school, examId: "" })}
           />
           <FilterSelect
             id="filter-year"
             label="Year"
             value={value.academicYear}
             options={(filtersData?.academicYears ?? []).map(String)}
-            placeholder="All years"
+            placeholder={filtersData && filtersData.academicYears.length === 0 ? "Unavailable" : "All years"}
             onChange={(academicYear) => onChange({ academicYear })}
           />
           <FilterSelect
@@ -126,14 +126,14 @@ export function StudyLibraryAdvancedFilters({
             value={value.subject}
             options={filtersData?.subjects ?? []}
             placeholder="All subjects"
-            onChange={(subject) => onChange({ subject })}
+            onChange={(subject) => onChange({ subject, topic: "", examId: "" })}
           />
           <FilterSelect
             id="filter-season"
             label="Season"
             value={value.season}
             options={filtersData?.seasons ?? []}
-            placeholder="All seasons"
+            placeholder={filtersData && filtersData.seasons.length === 0 ? "Unavailable" : "All seasons"}
             onChange={(season) => onChange({ season })}
           />
           <div className="space-y-1">
