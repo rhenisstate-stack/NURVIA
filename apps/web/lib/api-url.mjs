@@ -12,6 +12,13 @@ export const DEDICATED_AUTH_ROUTES = new Set([
   '/api/auth/config-status',
 ]);
 
+export const DEDICATED_APP_ROUTES = new Set([
+  '/api/seek',
+  '/api/exams/diy',
+  '/api/auth/account/destroy',
+  '/api/auth/validate',
+]);
+
 export function getApiBase() {
   if (typeof window !== 'undefined') {
     return '/api/backend';
@@ -26,7 +33,11 @@ export function buildApiUrl(endpoint) {
   const apiBase = getApiBase();
   if (apiBase === '/api/backend') {
     const pathname = endpoint.split('?')[0];
-    if (DEDICATED_AUTH_ROUTES.has(pathname) || endpoint.startsWith('/api/strata/')) {
+    if (
+      DEDICATED_AUTH_ROUTES.has(pathname) ||
+      DEDICATED_APP_ROUTES.has(pathname) ||
+      endpoint.startsWith('/api/strata/')
+    ) {
       return endpoint;
     }
     return `${apiBase}${endpoint.replace(/^\/api(?=\/)/, '')}`;

@@ -40,6 +40,25 @@ function safeReturnTo() {
 
 type SignInMethod = "password" | "pin";
 
+function formatServerLoginError(errorCode?: string, message?: string): string {
+  switch (errorCode) {
+    case "CHALLENGE_REQUIRED":
+      return "Sign-in verification challenge is required by the backend service and is not yet provisioned for this application.";
+    case "CHALLENGE_REJECTED":
+      return "Sign-in verification challenge was rejected by the backend service (Deslizar verification required).";
+    case "CHALLENGE_EXPIRED":
+      return "Your sign-in verification challenge expired. Please try again.";
+    case "INVALID_CREDENTIALS":
+      return message || "Invalid email or credentials. Please verify your details and try again.";
+    case "BACKEND_ERROR":
+    case "NETWORK_ERROR":
+    case "TIMEOUT":
+      return message || "The authentication service is temporarily unavailable. Please try again shortly.";
+    default:
+      return message || "Unable to sign in. Please check your credentials and try again.";
+  }
+}
+
 export default function SignInPage() {
   const router = useRouter();
   const { status, user, signIn } = useAuth();
@@ -117,7 +136,7 @@ export default function SignInPage() {
     setSubmitting(false);
 
     if (!response.success || !response.data) {
-      setError(response.message || "Unable to sign in. Please check your credentials and try again.");
+      setError(formatServerLoginError(response.errorCode, response.message));
       return;
     }
 

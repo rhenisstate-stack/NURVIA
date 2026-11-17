@@ -8,6 +8,7 @@ import {
   sanitizeAuthUser,
 } from '@/lib/lexmacasto/client';
 import { setServerCastoSession, validateSameOriginRequest } from '@/lib/lexmacasto/session';
+import { getTemporaryChallenge } from '@/lib/auth/temporaryChallenge';
 import { DEFAULT_PHONE_COUNTRY, normalizePhoneNumber } from '@/lib/phone';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -144,6 +145,7 @@ export async function POST(request: NextRequest) {
     role: 'Learner',
     dashboardName: 'web',
     provider,
+    challenge: getTemporaryChallenge('register'),
     ...(includePassword && password !== undefined ? { password, passwordConfirmation } : {}),
     ...(includePin && pin !== undefined ? { pin: pin.trim(), pinConfirmation: pinConfirmation?.trim() } : {}),
     ...(providerPayload !== undefined ? { providerPayload } : {}),

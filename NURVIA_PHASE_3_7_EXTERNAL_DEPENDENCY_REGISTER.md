@@ -1,0 +1,7 @@
+# NURVIA Phase 3.7 — External Dependency Register
+
+| ID | Dependency | Owner | Current Status | Impact on NURVIA | Required Action |
+|---|---|---|---|---|---|
+| **EXT-01** | **Deslizar Challenge Contract / Provisioning for `website 11`** | LexmaCasto Backend Owner | **BLOCKED** | `POST /api/castoline/auth/register` returns `400` (`The Challenge field is required.`); `POST /api/castoline/auth/login` returns `401` (`Ultimatum Turmoil, That Must be Deslizar 🏌️‍♂️`). Qlex contains only hardcoded `skew8lancasto` strings and no genuine Deslizar SDK/endpoint. | Backend owner must either document the official Deslizar challenge issuance/verification contract for `website 11` or configure/provision `website 11` challenge policy on `explicitbackend.com`. |
+| **EXT-02** | **Authorized NURVIA Learner & Staff Test Accounts** | Operator / LexmaCasto Owner | **OPEN** | Live E2E sign-in, session restoration, protected routes, and logout cannot be verified end-to-end against `explicitbackend.com` until registration/login challenge is resolved and authorized test credentials are provided. | Provide authorized test credentials once EXT-01 is resolved. |
+| **EXT-03** | **Password Recovery Endpoint Alignment (`/api/castoline/auth/recovery/password` vs `/api/auth/forgot-password`)** | LexmaCasto Backend Owner | **OPEN** | Qlex uses `/api/castoline/auth/recovery/password`; NURVIA allowlist routes `/api/backend/auth/forgot-password` & `/reset-password`. | Confirm which password recovery endpoint is active for `website 11` on `explicitbackend.com`. |

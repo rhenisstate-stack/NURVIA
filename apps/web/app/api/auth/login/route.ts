@@ -8,6 +8,7 @@ import {
   sanitizeAuthUser,
 } from '@/lib/lexmacasto/client';
 import { setServerCastoSession, validateSameOriginRequest } from '@/lib/lexmacasto/session';
+import { getTemporaryChallenge } from '@/lib/auth/temporaryChallenge';
 
 function noStoreJson(body: Record<string, unknown>, status: number): NextResponse {
   return NextResponse.json(body, {
@@ -51,16 +52,16 @@ export async function POST(request: NextRequest) {
       : 'password';
 
   if (!email) {
-    return noStoreJson({ success: false, message: 'Email is required.' }, 400);
+    return noStoreJson({ success: false, message: 'Email is required.', errorCode: 'VALIDATION_ERROR' }, 400);
   }
   if (loginMethod !== 'password' && loginMethod !== 'pin') {
-    return noStoreJson({ success: false, message: 'Unsupported login method.' }, 400);
+    return noStoreJson({ success: false, message: 'Unsupported login method.', errorCode: 'VALIDATION_ERROR' }, 400);
   }
   if (loginMethod === 'password' && !password) {
-    return noStoreJson({ success: false, message: 'Password is required.' }, 400);
+    return noStoreJson({ success: false, message: 'Password is required.', errorCode: 'VALIDATION_ERROR' }, 400);
   }
   if (loginMethod === 'pin' && (!pin || !pin.trim())) {
-    return noStoreJson({ success: false, message: 'PIN is required.' }, 400);
+    return noStoreJson({ success: false, message: 'PIN is required.', errorCode: 'VALIDATION_ERROR' }, 400);
   }
 
   const loginProvider =
@@ -76,6 +77,7 @@ export async function POST(request: NextRequest) {
     LoginProvider: loginProvider,
     dashboardName: 'web',
     role: 'Learner',
+    challenge: getTemporaryChallenge('standard_login'),
     ...(loginMethod === 'password' && password !== undefined ? { password } : {}),
     ...(loginMethod === 'pin' && pin !== undefined ? { pin: pin.trim() } : {}),
     ...(typeof body.fingerprint === 'string' && body.fingerprint.trim()
