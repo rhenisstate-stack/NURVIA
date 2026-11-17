@@ -227,6 +227,8 @@ export interface AuthUserDto {
   name: string;
   email: string;
   role: string;
+  dashboardName?: string;
+  avatarUrl?: string;
 }
 
 export interface ActiveExamOptionDto {

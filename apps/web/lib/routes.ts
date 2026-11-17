@@ -21,6 +21,8 @@ export const ROUTES = {
   // Public Supporting / Experience Routes
   examSession: "/exam-session",
   designSystem: "/design-system",
+  terms: "/terms",
+  privacy: "/privacy",
 
   // Learner Application
   learner: {

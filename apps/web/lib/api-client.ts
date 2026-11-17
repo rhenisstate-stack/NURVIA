@@ -335,6 +335,97 @@ export const nurviaApi = {
 
   // Exams
   async getExams(params?: Record<string, any>): Promise<ApiResponse<PagedResult<ExamDto>>> {
+    if (params?.status === 'Published') {
+      const page = Number(params.pageNumber ?? params.page ?? 1) || 1;
+      const rawPerPage = Number(params.pageSize ?? params.perPage ?? 20) || 20;
+      const perPage = Math.max(1, Math.min(100, rawPerPage));
+      const strataRes = await this.getStrata<Record<string, any>>('exams', {
+        fetchtype: 'absolute',
+        page,
+        perPage,
+        ...(typeof params.search === 'string' && params.search.trim()
+          ? { search: params.search.trim() }
+          : {}),
+      });
+
+      if (!strataRes.success || !strataRes.data) {
+        return {
+          success: false,
+          message: strataRes.message,
+          errorCode: strataRes.errorCode,
+          errors: strataRes.errors,
+          statusCode: strataRes.statusCode,
+        };
+      }
+
+      const requestedPathway =
+        typeof params.pathway === 'string' && params.pathway.trim()
+          ? params.pathway.trim().toLowerCase()
+          : null;
+
+      const mappedItems: ExamDto[] = strataRes.data.items
+        .filter((item) => {
+          const itemStatus = typeof item.status === 'string' ? item.status.trim().toLowerCase() : '';
+          if (itemStatus && itemStatus !== 'published' && itemStatus !== 'active') {
+            return false;
+          }
+          if (requestedPathway) {
+            const itemPathway = String(item.pathway ?? item.target ?? '').trim().toLowerCase();
+            if (itemPathway && !itemPathway.includes(requestedPathway)) {
+              return false;
+            }
+          }
+          return true;
+        })
+        .map((item) => ({
+          id: String(item.guidId ?? item.id ?? ''),
+          code: String(item.code ?? item.guidId ?? item.id ?? ''),
+          title: String(item.title ?? item.name ?? 'Untitled Exam'),
+          description: String(item.description ?? ''),
+          pathway: (typeof item.pathway === 'string' && item.pathway
+            ? item.pathway
+            : typeof item.target === 'string' && item.target
+              ? item.target
+              : 'RN') as ExamDto['pathway'],
+          category: (typeof item.category === 'string' && item.category
+            ? item.category
+            : typeof item.type === 'string' && item.type
+              ? item.type
+              : typeof item.assessmentName === 'string' && item.assessmentName
+                ? item.assessmentName
+                : 'RegularCourse') as ExamDto['category'],
+          modeAllowed: (typeof item.modeAllowed === 'string' && item.modeAllowed
+            ? item.modeAllowed
+            : 'Both') as ExamDto['modeAllowed'],
+          timeLimitMinutes: Number(item.timeLimitMinutes ?? item.duration ?? 60),
+          passingScorePercentage: Number(item.passingScorePercentage ?? item.passMark ?? 75),
+          status: (typeof item.status === 'string' && item.status ? item.status : 'Published') as ExamDto['status'],
+          totalQuestions: Number(item.totalQuestions ?? item.questionsCount ?? 0),
+          concurrencyToken: String(item.concurrencyToken ?? ''),
+          createdAtUtc: String(item.createdAtUtc ?? item.createdAt ?? new Date().toISOString()),
+          createdBy: String(item.createdBy ?? ''),
+        }))
+        .filter((item) => Boolean(item.id));
+
+      const totalCount = strataRes.data.skewTotal ?? mappedItems.length;
+      const totalPages = strataRes.data.skewTotalPages ?? Math.max(1, Math.ceil(totalCount / perPage));
+
+      return {
+        success: true,
+        message: strataRes.message || 'OK',
+        statusCode: strataRes.statusCode,
+        data: {
+          items: mappedItems,
+          totalCount,
+          pageNumber: strataRes.data.skewPage ?? page,
+          pageSize: strataRes.data.skewPerPage ?? perPage,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPreviousPage: page > 1,
+        },
+      };
+    }
+
     const query = buildQuery(params);
     return request<PagedResult<ExamDto>>(`/api/exams${query ? `?${query}` : ''}`);
   },

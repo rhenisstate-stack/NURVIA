@@ -44,7 +44,6 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth/auth-provider";
 import { UserAccountMenu } from "@/components/layout/user-account-menu";
 import { SuperadminSwitcher } from "@/components/layout/superadmin-switcher";
-import { nurviaApi } from "@/lib/api-client";
 interface NavSubItem {
   name: string;
   href: string;
@@ -160,10 +159,10 @@ export function LearnerShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [expandedSections, setExpandedSections] = React.useState<Record<string, boolean>>({});
   const [topSearch, setTopSearch] = React.useState("");
-  const [avatarUrl, setAvatarUrl] = React.useState<string | null>(null);
   const router = useRouter();
   const pathname = usePathname();
   const { status, user, error } = useAuth();
+  const avatarUrl = status === "authenticated" ? (user?.avatarUrl ?? null) : null;
 
   React.useEffect(() => {
     if (status === "unauthenticated") {
@@ -175,43 +174,6 @@ export function LearnerShell({ children }: { children: React.ReactNode }) {
       router.replace("/access-denied");
     }
   }, [status, user, pathname, router]);
-React.useEffect(() => {
-    const userId = user?.id;
-    if (status !== "authenticated" || !userId) {
-      setAvatarUrl(null);
-      return;
-    }
-
-    let active = true;
-
-    const loadAvatar = async () => {
-      try {
-        const response = await nurviaApi.getAvatar();
-
-        if (active) {
-          setAvatarUrl(
-            response.success && response.data?.storageKey
-              ? `/api/avatar/${response.data.storageKey}`
-              : null
-          );
-        }
-      } catch {
-        if (active) setAvatarUrl(null);
-      }
-    };
-
-    const handleAvatarUpdated = () => {
-      void loadAvatar();
-    };
-
-    void loadAvatar();
-    window.addEventListener("nurvia:avatar-updated", handleAvatarUpdated);
-
-    return () => {
-      active = false;
-      window.removeEventListener("nurvia:avatar-updated", handleAvatarUpdated);
-    };
-  }, [status, user?.id]);
 
   const toggleSubmenu = (itemName: string, e: React.MouseEvent) => {
     e.preventDefault();

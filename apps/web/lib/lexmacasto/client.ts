@@ -427,6 +427,24 @@ export function extractCastoCredentialsFromLogin(
   return { castoLine, castoBadge };
 }
 
+function sanitizeAvatarUrl(rawUrl: unknown): string | undefined {
+  if (typeof rawUrl !== 'string') return undefined;
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return undefined;
+  if (trimmed.startsWith('/') && !trimmed.startsWith('//')) {
+    return trimmed;
+  }
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+      return parsed.toString();
+    }
+  } catch {
+    // Reject malformed or unsafe URL schemes (e.g. javascript:, data:)
+  }
+  return undefined;
+}
+
 /**
  * Maps a raw LexmaCasto user object to NURVIA's sanitized `AuthUserDto` (stripping castoLine/castoBadge).
  */
@@ -447,13 +465,18 @@ export function sanitizeAuthUser(rawUser: LexmaCastoAuthUserRaw | undefined | nu
 
   if (!email && !id) return null;
 
+  const profilePicture =
+    rawUser.profile && typeof rawUser.profile === 'object'
+      ? rawUser.profile.profilePicture
+      : undefined;
+
   return {
     id,
     name,
     email,
     role,
     dashboardName: typeof rawUser.dashboardName === 'string' ? rawUser.dashboardName : undefined,
-    avatarUrl: typeof rawUser.avatarUrl === 'string' ? rawUser.avatarUrl : undefined,
+    avatarUrl: sanitizeAvatarUrl(rawUser.avatarUrl ?? profilePicture ?? rawUser.profilePicture),
   };
 }
 

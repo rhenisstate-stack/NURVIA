@@ -15,6 +15,7 @@ export const DEDICATED_AUTH_ROUTES = new Set([
 export const DEDICATED_APP_ROUTES = new Set([
   '/api/seek',
   '/api/exams/diy',
+  '/api/attempts/history',
   '/api/auth/account/destroy',
   '/api/auth/validate',
 ]);

@@ -32,7 +32,6 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth/auth-provider";
 import { UserAccountMenu } from "@/components/layout/user-account-menu";
 import { SuperadminSwitcher } from "@/components/layout/superadmin-switcher";
-import { nurviaApi } from "@/lib/api-client";
 
 interface AdminNavGroup {
   title: string;
@@ -87,39 +86,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { status, user, error } = useAuth();
-  const [avatarUrl, setAvatarUrl] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    if (status !== "authenticated") {
-      setAvatarUrl(null);
-      return;
-    }
-
-    let active = true;
-
-    const loadAvatar = async () => {
-      try {
-        const response = await nurviaApi.getAvatar();
-        if (!active) return;
-        const storageKey = response.data?.storageKey;
-        setAvatarUrl(storageKey ? `/api/avatar/${storageKey}` : null);
-      } catch {
-        if (active) setAvatarUrl(null);
-      }
-    };
-
-    const handleAvatarUpdated = () => {
-      void loadAvatar();
-    };
-
-    void loadAvatar();
-    window.addEventListener("nurvia:avatar-updated", handleAvatarUpdated);
-
-    return () => {
-      active = false;
-      window.removeEventListener("nurvia:avatar-updated", handleAvatarUpdated);
-    };
-  }, [status]);
+  const avatarUrl = status === "authenticated" ? (user?.avatarUrl ?? null) : null;
   const staffRoles = ["Author", "Reviewer", "Publisher", "Administrator", "Superadmin"];
 
   React.useEffect(() => {

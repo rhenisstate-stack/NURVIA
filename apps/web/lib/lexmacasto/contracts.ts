@@ -95,6 +95,11 @@ export const LEXMACASTO_STRATA_ENDPOINTS = {
     fetchtype: 'live',
     requiresAuth: true,
   },
+  examResults: {
+    path: '/api/castoline/strata/assessment/exams/results/list/relative',
+    fetchtype: 'relative',
+    requiresAuth: true,
+  },
   sections: {
     path: '/api/castoline/strata/assessment/sections/list/absolute',
     fetchtype: 'absolute',
@@ -240,6 +245,11 @@ export interface LexmaCastoAuthUserRaw {
   castoLine?: string;
   dashboardName?: string;
   avatarUrl?: string;
+  profilePicture?: string;
+  profile?: {
+    profilePicture?: string;
+    [key: string]: unknown;
+  };
   [key: string]: unknown;
 }
 
