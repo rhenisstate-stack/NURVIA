@@ -37,7 +37,11 @@ export function buildApiUrl(endpoint) {
     if (
       DEDICATED_AUTH_ROUTES.has(pathname) ||
       DEDICATED_APP_ROUTES.has(pathname) ||
-      endpoint.startsWith('/api/strata/')
+      endpoint.startsWith('/api/auth/support/') ||
+      endpoint.startsWith('/api/auth/recovery/') ||
+      endpoint.startsWith('/api/subscriptions/') ||
+      endpoint.startsWith('/api/strata/') ||
+      endpoint.startsWith('/api/lectures')
     ) {
       return endpoint;
     }

@@ -27,6 +27,7 @@ export default function StudyPlannerPage() {
   const [exams, setExams] = React.useState<ExamDto[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [apiState, setApiState] = React.useState<'ready' | 'unauthorized' | 'not_provisioned' | 'unavailable' | 'error'>('ready');
 
   const [title, setTitle] = React.useState("");
   const [scheduledDate, setScheduledDate] = React.useState(() => new Date().toISOString().slice(0, 16));
@@ -43,7 +44,22 @@ export default function StudyPlannerPage() {
     ]);
     if (tasksRes.success && tasksRes.data) {
       setTasks(tasksRes.data);
+      setApiState('ready');
+    } else if (tasksRes.statusCode === 501 || tasksRes.errorCode === 'NOT_PROVISIONED') {
+      setTasks([]);
+      setApiState('not_provisioned');
+      setError(tasksRes.message || "Study Planner persistence is not provisioned on the shared backend.");
+    } else if (tasksRes.statusCode === 401 || tasksRes.errorCode === 'UNAUTHORIZED') {
+      setTasks([]);
+      setApiState('unauthorized');
+      setError("Please sign in to access your study planner.");
+    } else if (tasksRes.statusCode && tasksRes.statusCode >= 502) {
+      setTasks([]);
+      setApiState('unavailable');
+      setError(tasksRes.message || "Study Planner service is temporarily unavailable.");
     } else {
+      setTasks([]);
+      setApiState('error');
       setError(tasksRes.message || "Unable to load study planner tasks.");
     }
     if (examsRes.success && examsRes.data) {
@@ -132,7 +148,14 @@ export default function StudyPlannerPage() {
         </div>
 
         {error && (
-          <div role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-4 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200">
+          <div
+            role="alert"
+            className={
+              apiState === 'not_provisioned'
+                ? "rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200"
+                : "rounded-xl border border-rose-300 bg-rose-50 p-4 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200"
+            }
+          >
             {error}
           </div>
         )}
@@ -152,6 +175,18 @@ export default function StudyPlannerPage() {
                 <p className="py-6 text-center text-xs text-foreground-secondary" aria-live="polite">
                   Loading your study tasks…
                 </p>
+              ) : apiState === 'not_provisioned' ? (
+                <div className="p-6 rounded-xl border border-dashed border-border text-center space-y-2">
+                  <p className="text-sm font-semibold text-foreground">Study Planner Backend Not Provisioned</p>
+                  <p className="text-xs text-foreground-secondary">
+                    Personal study planner persistence is awaiting backend provisioning on the shared API.
+                  </p>
+                </div>
+              ) : apiState !== 'ready' ? (
+                <div className="p-6 rounded-xl border border-dashed border-border text-center space-y-2">
+                  <p className="text-sm font-semibold text-foreground">Unable to load study tasks</p>
+                  <p className="text-xs text-foreground-secondary">{error}</p>
+                </div>
               ) : tasks.length === 0 ? (
                 <div className="p-6 rounded-xl border border-dashed border-border text-center space-y-2">
                   <p className="text-sm font-semibold text-foreground">No study tasks scheduled yet</p>

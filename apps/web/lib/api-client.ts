@@ -146,6 +146,44 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   };
 }
 
+function isWebsiteTargetList(value: unknown): boolean {
+  return typeof value === 'string' && /WEBSITE_\d+/i.test(value);
+}
+
+function inferExamPathway(item: Record<string, any>): string {
+  if (typeof item.pathway === 'string' && item.pathway.trim() && !isWebsiteTargetList(item.pathway)) {
+    return item.pathway.trim();
+  }
+  if (typeof item.target === 'string' && item.target.trim() && !isWebsiteTargetList(item.target)) {
+    return item.target.trim();
+  }
+  const haystack = [item.assessmentName, item.programName, item.title, item.code]
+    .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+    .join(' ')
+    .toLowerCase();
+  if (/\b(pn|lpn)\s*exit\b|pn_exit/.test(haystack)) return 'PN_Exit';
+  if (/\brn\s*exit\b|rn_exit/.test(haystack)) return 'RN_Exit';
+  if (/\b(pn|lpn|practical)\b|pn_lpn/.test(haystack)) return 'PN_LPN';
+  return 'RN';
+}
+
+function matchesRequestedPathway(item: Record<string, any>, requestedPathway: string): boolean {
+  const req = requestedPathway.trim().toLowerCase();
+  const normalizedReq = req.replace(/[\s_-]+/g, '');
+  const inferred = inferExamPathway(item).toLowerCase();
+  const normalizedInferred = inferred.replace(/[\s_-]+/g, '');
+  if (normalizedInferred === normalizedReq || normalizedInferred.includes(normalizedReq)) {
+    return true;
+  }
+  const metaText = [item.pathway, item.assessmentName, item.programName, item.title]
+    .filter((v): v is string => typeof v === 'string' && !isWebsiteTargetList(v))
+    .join(' ')
+    .toLowerCase();
+  if (metaText.includes(req)) return true;
+  if (normalizedReq === 'pnlpn' && /\b(pn|lpn|practical)\b/.test(metaText)) return true;
+  return false;
+}
+
 export const nurviaApi = {
   // Authentication and learner profile
   async register(payload: {
@@ -245,7 +283,7 @@ export const nurviaApi = {
   },
 
   async forgotPassword(payload: { email: string }): Promise<ApiResponse<string>> {
-    return request<string>('/api/auth/forgot-password', {
+    return request<string>('/api/auth/recovery/password', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
@@ -369,7 +407,7 @@ export const nurviaApi = {
 
       const requestedPathway =
         typeof params.pathway === 'string' && params.pathway.trim()
-          ? params.pathway.trim().toLowerCase()
+          ? params.pathway.trim()
           : null;
 
       const mappedItems: ExamDto[] = strataRes.data.items
@@ -378,11 +416,8 @@ export const nurviaApi = {
           if (itemStatus && itemStatus !== 'published' && itemStatus !== 'active') {
             return false;
           }
-          if (requestedPathway) {
-            const itemPathway = String(item.pathway ?? item.target ?? '').trim().toLowerCase();
-            if (itemPathway && !itemPathway.includes(requestedPathway)) {
-              return false;
-            }
+          if (requestedPathway && !matchesRequestedPathway(item, requestedPathway)) {
+            return false;
           }
           return true;
         })
@@ -391,11 +426,7 @@ export const nurviaApi = {
           code: String(item.code ?? item.guidId ?? item.id ?? ''),
           title: String(item.title ?? item.name ?? 'Untitled Exam'),
           description: String(item.description ?? ''),
-          pathway: (typeof item.pathway === 'string' && item.pathway
-            ? item.pathway
-            : typeof item.target === 'string' && item.target
-              ? item.target
-              : 'RN') as ExamDto['pathway'],
+          pathway: inferExamPathway(item) as ExamDto['pathway'],
           category: (typeof item.category === 'string' && item.category
             ? item.category
             : typeof item.type === 'string' && item.type
@@ -656,9 +687,8 @@ export const nurviaApi = {
         if (itemStatus && itemStatus !== 'published' && itemStatus !== 'active') {
           return false;
         }
-        if (reqPathway) {
-          const itemPathway = String(item.pathway ?? item.target ?? '').trim().toLowerCase();
-          if (itemPathway && !itemPathway.includes(reqPathway)) return false;
+        if (reqPathway && !matchesRequestedPathway(item, reqPathway)) {
+          return false;
         }
         if (reqCategory) {
           const itemCat = String(item.category ?? item.type ?? item.assessmentName ?? '').trim().toLowerCase();
@@ -695,11 +725,7 @@ export const nurviaApi = {
         code: String(item.code ?? item.guidId ?? item.id ?? ''),
         title: String(item.title ?? item.name ?? 'Untitled Study Set'),
         description: String(item.description ?? ''),
-        pathway: (typeof item.pathway === 'string' && item.pathway
-          ? item.pathway
-          : typeof item.target === 'string' && item.target
-            ? item.target
-            : 'RN') as import('./api-types').NursingPathway,
+        pathway: inferExamPathway(item) as import('./api-types').NursingPathway,
         category: (typeof item.category === 'string' && item.category
           ? item.category
           : typeof item.type === 'string' && item.type
@@ -1031,7 +1057,7 @@ export const nurviaApi = {
     return unprovisionedResponse('Saved Questions');
   },
 
-  // Learner Study Planner
+  // Learner Study Planner (not yet provisioned on LexmaCasto)
   async getPlannerTasks(): Promise<ApiResponse<{
     id: string;
     title: string;
@@ -1043,10 +1069,10 @@ export const nurviaApi = {
     completedAtUtc: string | null;
     createdAtUtc: string;
   }[]>> {
-    return request('/api/learner/planner');
+    return unprovisionedResponse('Study Planner');
   },
 
-  async createPlannerTask(payload: {
+  async createPlannerTask(_payload: {
     title: string;
     scheduledForUtc: string;
     durationMinutes: number;
@@ -1062,13 +1088,10 @@ export const nurviaApi = {
     completedAtUtc: string | null;
     createdAtUtc: string;
   }>> {
-    return request('/api/learner/planner', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
+    return unprovisionedResponse('Study Planner');
   },
 
-  async updatePlannerTask(taskId: string, payload: {
+  async updatePlannerTask(_taskId: string, _payload: {
     title?: string;
     scheduledForUtc?: string;
     durationMinutes?: number;
@@ -1085,16 +1108,11 @@ export const nurviaApi = {
     completedAtUtc: string | null;
     createdAtUtc: string;
   }>> {
-    return request(`/api/learner/planner/${taskId}`, {
-      method: 'PUT',
-      body: JSON.stringify(payload),
-    });
+    return unprovisionedResponse('Study Planner');
   },
 
-  async deletePlannerTask(taskId: string): Promise<ApiResponse<string>> {
-    return request(`/api/learner/planner/${taskId}`, {
-      method: 'DELETE',
-    });
+  async deletePlannerTask(_taskId: string): Promise<ApiResponse<string>> {
+    return unprovisionedResponse('Study Planner');
   },
 
   // Flashcards & Spaced Repetition (not yet provisioned on LexmaCasto)
@@ -1378,6 +1396,109 @@ export const nurviaApi = {
       method: 'DELETE',
       body: JSON.stringify(payload),
     });
+  },
+
+  // LexmaCasto Support, Security, Notifications (Heed) & Subscriptions
+  async updateSupportAccount(payload: Record<string, unknown>): Promise<ApiResponse<Record<string, unknown>>> {
+    return request('/api/auth/support/account', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async changeSupportPassword(payload: {
+    currentPassword: string;
+    newPassword: string;
+    confirmPassword: string;
+  }): Promise<ApiResponse<Record<string, unknown>>> {
+    return request('/api/auth/support/account', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async getTwoFactorStatus(): Promise<ApiResponse<Record<string, unknown>>> {
+    return request('/api/auth/support/2fa?fetchtype=current');
+  },
+
+  async setupTwoFactor(): Promise<ApiResponse<Record<string, unknown>>> {
+    return request('/api/auth/support/2fa', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+  },
+
+  async confirmTwoFactor(code: string): Promise<ApiResponse<Record<string, unknown>>> {
+    return request('/api/auth/support/2fa', {
+      method: 'PUT',
+      body: JSON.stringify({ code }),
+    });
+  },
+
+  async disableTwoFactor(code?: string): Promise<ApiResponse<Record<string, unknown>>> {
+    return request('/api/auth/support/2fa', {
+      method: 'DELETE',
+      body: JSON.stringify(code ? { code } : {}),
+    });
+  },
+
+  async sendEmailVerification(): Promise<ApiResponse<Record<string, unknown>>> {
+    return request('/api/auth/support/email', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+  },
+
+  async confirmEmailVerification(code: string): Promise<ApiResponse<Record<string, unknown>>> {
+    return request('/api/auth/support/email', {
+      method: 'PUT',
+      body: JSON.stringify({ code }),
+    });
+  },
+
+  async getSupportMessages(params?: {
+    fetchtype?: 'relative' | 'current';
+    status?: string;
+    search?: string;
+    page?: number;
+    perPage?: number;
+  }): Promise<ApiResponse<Record<string, unknown>>> {
+    const qs = new URLSearchParams();
+    qs.set('fetchtype', params?.fetchtype ?? 'relative');
+    if (params?.status) qs.set('clientStatus', params.status);
+    if (params?.search) qs.set('search', params.search);
+    if (params?.page) qs.set('page', String(params.page));
+    if (params?.perPage) qs.set('perPage', String(params.perPage));
+    return request(`/api/auth/support/message?${qs.toString()}`);
+  },
+
+  async sendSupportMessage(payload: {
+    subject: string;
+    message: string;
+    category?: string;
+  }): Promise<ApiResponse<Record<string, unknown>>> {
+    return request('/api/auth/support/message', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async updateSupportMessageStatus(payload: {
+    id: string | number;
+    clientReadStatus: 'Unread' | 'Read' | 'Later' | 'Bookmarked' | 'Flagged' | 'Pinned' | 'Starred';
+  }): Promise<ApiResponse<Record<string, unknown>>> {
+    return request('/api/auth/support/message', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async getLexmaCastoSubscriptionPackages(): Promise<ApiResponse<Record<string, unknown>>> {
+    return request('/api/subscriptions/packages?fetchtype=discrete');
+  },
+
+  async getLexmaCastoSubscriptionItems(): Promise<ApiResponse<Record<string, unknown>>> {
+    return request('/api/subscriptions/items?fetchtype=relative');
   },
 };
 

@@ -17,7 +17,62 @@ export const LEXMACASTO_AUTH_ENDPOINTS = {
 export const LEXMACASTO_EXTRA_ENDPOINTS = {
   SEEK_BASE: '/api/castoline/strata/seek',
   DIY_EXAM_STORE: '/api/castoline/strata/assessment/exams/diy/learning/store',
+  RECOVERY_PASSWORD: '/api/castoline/auth/recovery/password',
+  RECOVERY_SOCIAL: '/api/castoline/auth/recovery/social',
+  SUPPORT_BASE: '/api/castoline/strata/support',
+  SUBSCRIPTION_PACKAGES_BASE: '/api/castoline/nexus/subscription/packages',
+  SUBSCRIPTION_ITEMS_BASE: '/api/castoline/nexus/subscription/items',
 } as const;
+
+export const LEXMACASTO_SUPPORT_RESOURCES = [
+  '2fa',
+  'account',
+  'email',
+  'message',
+  'password',
+  'phone',
+  'social',
+] as const;
+
+export type SupportResourceKey = (typeof LEXMACASTO_SUPPORT_RESOURCES)[number];
+
+export function isSupportResourceKey(value: string): value is SupportResourceKey {
+  return (LEXMACASTO_SUPPORT_RESOURCES as readonly string[]).includes(value);
+}
+
+export function buildSupportEndpointPath(
+  resource: SupportResourceKey,
+  action: 'list' | 'store' | 'update' | 'delete',
+  fetchtype: StrataFetchType | 'discrete' | 'nominal' = 'relative',
+  queryParams?: Record<string, string | number | boolean | undefined | null>
+): string {
+  const base = `${LEXMACASTO_EXTRA_ENDPOINTS.SUPPORT_BASE}/${resource}`;
+  if (action !== 'list') {
+    return `${base}/${action}`;
+  }
+  const params = new URLSearchParams();
+  if (queryParams) {
+    for (const [k, v] of Object.entries(queryParams)) {
+      if (k === 'fetchtype') continue;
+      if (v !== undefined && v !== null && v !== '') {
+        params.set(k, String(v));
+      }
+    }
+  }
+  params.set('fetchtype', fetchtype);
+  return `${base}/list/${fetchtype}?${params.toString()}`;
+}
+
+export function buildSubscriptionEndpointPath(
+  resource: 'packages' | 'items',
+  fetchtype: 'absolute' | 'distinct' | 'relative' | 'discrete' = 'discrete'
+): string {
+  const base =
+    resource === 'packages'
+      ? LEXMACASTO_EXTRA_ENDPOINTS.SUBSCRIPTION_PACKAGES_BASE
+      : LEXMACASTO_EXTRA_ENDPOINTS.SUBSCRIPTION_ITEMS_BASE;
+  return `${base}/list/${fetchtype}?fetchtype=${fetchtype}`;
+}
 
 export const LEXMACASTO_STRATA_ENDPOINTS = {
   // Main strata
