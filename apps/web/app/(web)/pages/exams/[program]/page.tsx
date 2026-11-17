@@ -3,12 +3,7 @@ import { ProgramLandingView } from '@/components/programs/ProgramLandingView';
 import {
   isNursingProgramSlug,
   NURSING_PROGRAMS,
-  NURSING_PROGRAM_SLUGS,
 } from '@/lib/programs/programRegistry';
-
-export function generateStaticParams() {
-  return NURSING_PROGRAM_SLUGS.map((program) => ({ program }));
-}
 
 export default async function ProgramExamLandingPage({
   params,

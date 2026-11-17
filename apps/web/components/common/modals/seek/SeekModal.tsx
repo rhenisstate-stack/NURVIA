@@ -14,12 +14,14 @@ export interface SeekItem {
 }
 
 interface SeekModalProps {
-  isOpen: boolean;
+  isOpen?: boolean;
+  open?: boolean;
   onClose: () => void;
   defaultScope?: string;
 }
 
-export function SeekModal({ isOpen, onClose, defaultScope = 'exam' }: SeekModalProps) {
+export function SeekModal({ isOpen: isOpenProp, open, onClose, defaultScope = 'exam' }: SeekModalProps) {
+  const isOpen = Boolean(isOpenProp ?? open);
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [scope, setScope] = useState(defaultScope);

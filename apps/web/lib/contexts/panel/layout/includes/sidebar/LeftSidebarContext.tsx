@@ -1,68 +1,90 @@
-'use client';
+"use client";
 
-import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect } from "react";
 
-interface LeftSidebarContextType {
-  isLeftOpen: boolean;
-  isExpanded: boolean;
+export type SidebarState = "opened" | "collapsed" | "closed";
+
+interface LeftSidebarContextProps {
+  isMobile: boolean;
   isMobileOpen: boolean;
-  isHovered: boolean;
-  activeItem: string | null;
-  openSubmenu: string | null;
-  toggleLeftSidebar: () => void;
+  state: SidebarState;
+  isOpened: boolean;
+  isOpen: boolean;
+  isCollapsed: boolean;
+  isClosed: boolean;
+  open: () => void;
+  collapse: () => void;
+  close: () => void;
+  toggle: () => void;
+  toggleSidebar: () => void;
   toggleMobileSidebar: () => void;
-  setIsHovered: (isHovered: boolean) => void;
-  setActiveItem: (item: string | null) => void;
-  toggleSubmenu: (item: string) => void;
-  openLeftSidebar: () => void;
-  closeLeftSidebar: () => void;
 }
 
-const LeftSidebarContext = createContext<LeftSidebarContextType | undefined>(undefined);
+const LeftSidebarContext = createContext<LeftSidebarContextProps | null>(null);
 
-export const LeftSidebarProvider = ({ children }: { children: ReactNode }) => {
-  const [isExpanded, setIsExpanded] = useState(true);
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
+export const LeftSidebarProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const [state, setState] = useState<SidebarState>("opened");
   const [isMobile, setIsMobile] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
-  const [activeItem, setActiveItem] = useState<string | null>(null);
-  const [openSubmenu, setOpenSubmenu] = useState<string | null>(null);
 
+  // Load state from localStorage on mount
   useEffect(() => {
-    const handleResize = () => {
-      const mobile = window.innerWidth < 768;
-      setIsMobile(mobile);
-      if (!mobile) {
-        setIsMobileOpen(false);
-      }
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    const saved = localStorage.getItem("leftSidebarState") as SidebarState;
+    if (saved === "opened" || saved === "collapsed" || saved === "closed") {
+      setState(saved);
+    }
   }, []);
 
-  const toggleLeftSidebar = () => setIsExpanded((prev) => !prev);
-  const toggleMobileSidebar = () => setIsMobileOpen((prev) => !prev);
-  const toggleSubmenu = (item: string) => setOpenSubmenu((prev) => (prev === item ? null : item));
-  const openLeftSidebar = () => (isMobile ? setIsMobileOpen(true) : setIsExpanded(true));
-  const closeLeftSidebar = () => (isMobile ? setIsMobileOpen(false) : setIsExpanded(false));
+  // Save state whenever it changes
+  useEffect(() => {
+    // don't let phone state overwrite the saved desktop state
+    if (window.matchMedia("(max-width: 767px)").matches) return;
+    localStorage.setItem("leftSidebarState", state);
+  }, [state]);
+
+  // Phone: always start closed, never collapsed
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const apply = () => {
+      setIsMobile(mq.matches);
+      if (mq.matches) setState("closed");
+    };
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+
+  const open = () => setState("opened");
+  const collapse = () => setState("collapsed");
+  const close = () => setState("closed");
+
+  // 3-step toggle: opened → collapsed → closed → opened
+  const toggle = () => {
+    setState(prev => {
+      if (isMobile) return prev === "opened" ? "closed" : "opened";
+      if (prev === "opened") return "collapsed";
+      if (prev === "collapsed") return "closed";
+      return "opened"; // closed
+    });
+  };
 
   return (
     <LeftSidebarContext.Provider
       value={{
-        isLeftOpen: isMobile ? isMobileOpen : isExpanded,
-        isExpanded: isMobile ? false : isExpanded,
-        isMobileOpen,
-        isHovered,
-        activeItem,
-        openSubmenu,
-        toggleLeftSidebar,
-        toggleMobileSidebar,
-        setIsHovered,
-        setActiveItem,
-        toggleSubmenu,
-        openLeftSidebar,
-        closeLeftSidebar,
+        isMobile,
+        isMobileOpen: isMobile && state === "opened",
+        state,
+        isOpened: state === "opened",
+        isOpen: state === "opened",
+        isCollapsed: state === "collapsed",
+        isClosed: state === "closed",
+        open,
+        collapse,
+        close,
+        toggle,
+        toggleSidebar: toggle,
+        toggleMobileSidebar: toggle,
       }}
     >
       {children}
@@ -72,8 +94,6 @@ export const LeftSidebarProvider = ({ children }: { children: ReactNode }) => {
 
 export const useLeftSidebar = () => {
   const context = useContext(LeftSidebarContext);
-  if (!context) {
-    throw new Error('useLeftSidebar must be used within LeftSidebarProvider');
-  }
+  if (!context) throw new Error("useLeftSidebar must be used inside LeftSidebarProvider");
   return context;
 };

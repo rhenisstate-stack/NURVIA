@@ -6,8 +6,13 @@ import { X, PlusCircle, Loader2 } from 'lucide-react';
 interface DiyExamModalProps {
   isOpen: boolean;
   onClose: () => void;
-  programName: string;
+  programName?: string;
   onCreated?: (examId: string) => void;
+  programs?: unknown[];
+  targetName?: string;
+  targetPanel?: string;
+  targetSegment?: string;
+  initialCourseGuid?: string | null;
 }
 
 export function DiyExamCreationModal({
@@ -15,8 +20,11 @@ export function DiyExamCreationModal({
   onClose,
   programName,
   onCreated,
+  targetName,
+  targetSegment,
 }: DiyExamModalProps) {
-  const [title, setTitle] = useState(`${programName} Custom Practice`);
+  const resolvedProgramName = programName ?? targetName ?? targetSegment ?? 'Nursing';
+  const [title, setTitle] = useState(`${resolvedProgramName} Custom Practice`);
   const [questionCount, setQuestionCount] = useState(25);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -134,3 +142,5 @@ export function DiyExamCreationModal({
     </div>
   );
 }
+
+export default DiyExamCreationModal;

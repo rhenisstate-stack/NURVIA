@@ -5,12 +5,9 @@ import { notFound, useParams, useRouter, useSearchParams } from 'next/navigation
 import Link from 'next/link';
 import { AlertTriangle, Clock, ArrowLeft } from 'lucide-react';
 import { isNursingProgramSlug, NURSING_PROGRAMS } from '@/lib/programs/programRegistry';
-import { useLiveExamActions } from '@/lib/contexts/web/assessment/live/useLiveExamActionContext';
 import { examService, type ExamSubmissionType } from '@/lib/services/nexus/strata/examService';
 import type { RendererQuestion } from '@/components/exam/renderers/types';
-import { QuestionToolbar } from '@/app/web/(livexams)/partials/components/QuestionToolbar';
-import { QuestionActionNavigator } from '@/app/web/(livexams)/partials/components/QuestionActionNavigator';
-import { QuestionTypesDispatcher } from '@/app/web/(livexams)/partials/dispatcher/QuestionTypes';
+import { QuestionRendererRegistry } from '@/components/exam/renderers/QuestionRendererRegistry';
 
 const THEME_STYLES = {
   atlas: 'bg-slate-50 text-slate-900',
@@ -110,15 +107,50 @@ export default function LiveExamRunnerPage() {
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [flaggedQuestions, setFlaggedQuestions] = useState<Record<string, boolean>>({});
+  const [bookmarkedQuestions, setBookmarkedQuestions] = useState<Record<string, boolean>>({});
 
-  const {
-    answers,
-    flaggedQuestions,
-    bookmarkedQuestions,
-    toggleFlag,
-    toggleBookmark,
-    submitQuestionAnswer,
-  } = useLiveExamActions();
+  const toggleFlag = async (eId: number, eGuid: string, qId: string) => {
+    const next = !flaggedQuestions[qId];
+    setFlaggedQuestions((prev) => ({ ...prev, [qId]: next }));
+    await examService.submitTool('ActionQuestionFlag', {
+      examId: eId,
+      examGuidId: eGuid,
+      questionGuidId: qId,
+      value: next,
+    });
+  };
+
+  const toggleBookmark = async (eId: number, eGuid: string, qId: string) => {
+    const next = !bookmarkedQuestions[qId];
+    setBookmarkedQuestions((prev) => ({ ...prev, [qId]: next }));
+    await examService.submitTool('ActionQuestionBookmark', {
+      examId: eId,
+      examGuidId: eGuid,
+      questionGuidId: qId,
+      value: next,
+    });
+  };
+
+  const submitQuestionAnswer = async (
+    submissionType: ExamSubmissionType,
+    eId: number,
+    eGuid: string,
+    qId: string,
+    val: string
+  ) => {
+    setAnswers((prev) => ({ ...prev, [qId]: val }));
+    await examService.submitAnswer(submissionType, {
+      examId: eId,
+      examGuidId: eGuid,
+      sectionId: 0,
+      sectionGuidId: '',
+      questionId: 0,
+      questionGuidId: qId,
+      answer: val,
+    });
+  };
 
   useEffect(() => {
     if (!isValidRoute) return;
@@ -236,22 +268,42 @@ export default function LiveExamRunnerPage() {
 
         {!loading && !error && currentQuestion && (
           <>
-            <QuestionToolbar
-              flagged={!!flaggedQuestions[currentQuestion.id]}
-              bookmarked={!!bookmarkedQuestions[currentQuestion.id]}
-              onToggleFlag={() => void toggleFlag(examId, examGuidId, 0, currentQuestion.id)}
-              onToggleBookmark={() =>
-                void toggleBookmark(examId, examGuidId, 0, currentQuestion.id)
-              }
-              currentTheme={theme}
-              onSelectTheme={(nextTheme) =>
-                router.push(
-                  `/web/${program.slug}/vista/exam/${nextTheme}?identifier=${encodeURIComponent(
-                    identifier
-                  )}`
-                )
-              }
-            />
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void toggleFlag(examId, examGuidId, currentQuestion.id)}
+                  className={`rounded-lg px-3 py-1 font-semibold border ${flaggedQuestions[currentQuestion.id] ? 'border-red-500 bg-red-50 text-red-700' : 'border-slate-200 text-slate-700'}`}
+                >
+                  {flaggedQuestions[currentQuestion.id] ? 'Flagged' : 'Flag'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void toggleBookmark(examId, examGuidId, currentQuestion.id)}
+                  className={`rounded-lg px-3 py-1 font-semibold border ${bookmarkedQuestions[currentQuestion.id] ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-700'}`}
+                >
+                  {bookmarkedQuestions[currentQuestion.id] ? 'Bookmarked' : 'Bookmark'}
+                </button>
+              </div>
+              <select
+                aria-label="Exam theme"
+                value={theme}
+                onChange={(e) =>
+                  router.push(
+                    `/web/${program.slug}/vista/exam/${e.target.value}?identifier=${encodeURIComponent(
+                      identifier
+                    )}`
+                  )
+                }
+                className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700"
+              >
+                {Object.keys(THEME_STYLES).map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <p className="mb-4 text-base font-medium leading-relaxed text-[#142B4A]">
@@ -259,21 +311,14 @@ export default function LiveExamRunnerPage() {
               </p>
 
               {currentSubmissionType ? (
-                <QuestionTypesDispatcher
+                <QuestionRendererRegistry
                   question={currentQuestion}
-                  value={
-                    typeof answers[currentQuestion.id] === 'string'
-                      ? (answers[currentQuestion.id] as string)
-                      : null
-                  }
-                  onChange={(val) =>
+                  value={answers[currentQuestion.id] ?? null}
+                  onChange={(val: string) =>
                     void submitQuestionAnswer(
                       currentSubmissionType,
                       examId,
                       examGuidId,
-                      0,
-                      '',
-                      0,
                       currentQuestion.id,
                       val
                     )
@@ -293,15 +338,37 @@ export default function LiveExamRunnerPage() {
               )}
             </div>
 
-            <QuestionActionNavigator
-              currentIndex={currentIndex}
-              total={questions.length}
-              onPrev={() => setCurrentIndex((i) => Math.max(0, i - 1))}
-              onNext={() => setCurrentIndex((i) => Math.min(questions.length - 1, i + 1))}
-              onJump={setCurrentIndex}
-              onSubmit={() => void handleSubmitExam()}
-              submitting={submitting}
-            />
+            <div className="mt-6 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                disabled={currentIndex === 0}
+                onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <span className="text-xs font-medium text-slate-500">
+                Question {currentIndex + 1} of {questions.length}
+              </span>
+              {currentIndex < questions.length - 1 ? (
+                <button
+                  type="button"
+                  onClick={() => setCurrentIndex((i) => Math.min(questions.length - 1, i + 1))}
+                  className="rounded-xl bg-[#142B4A] px-4 py-2 text-xs font-semibold text-white"
+                >
+                  Next
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={submitting}
+                  onClick={() => void handleSubmitExam()}
+                  className="rounded-xl bg-[#0D9488] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                >
+                  {submitting ? 'Submitting...' : 'Submit Exam'}
+                </button>
+              )}
+            </div>
           </>
         )}
       </main>

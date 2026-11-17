@@ -11,7 +11,20 @@ interface SubjectRecord {
   description?: string;
 }
 
-export function DistinctSubjects({ programSlug }: { programSlug: string }) {
+interface DistinctSubjectsProps {
+  programSlug?: string;
+  courses?: { guid: string; name: string }[];
+  selectedCourseGuid?: string | null;
+  targetPanel?: string;
+  targetName?: string;
+  targetSegment?: string;
+}
+
+export function DistinctSubjects({
+  programSlug,
+  targetSegment,
+}: DistinctSubjectsProps) {
+  const slug = programSlug ?? targetSegment?.toLowerCase().replace(/_/g, '-') ?? 'nclex-rn';
   const { items, loading, error } = useStrataResource<SubjectRecord>('subjects', 'absolute', {
     perPage: 12,
   });
@@ -24,7 +37,7 @@ export function DistinctSubjects({ programSlug }: { programSlug: string }) {
           <h2 className="text-lg font-bold text-[#142B4A]">Nursing Subjects</h2>
         </div>
         <Link
-          href={`/dashboards/${programSlug}/vista/learning/subjects/absolute/overview`}
+          href={`/dashboards/${slug}/vista/learning/subjects/absolute/overview`}
           className="text-xs font-semibold text-[#0D9488] hover:underline"
         >
           View All
@@ -57,3 +70,5 @@ export function DistinctSubjects({ programSlug }: { programSlug: string }) {
     </section>
   );
 }
+
+export default DistinctSubjects;

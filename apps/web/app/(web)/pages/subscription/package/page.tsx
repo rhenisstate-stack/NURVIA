@@ -1,91 +1,124 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { PublicShell } from '@/components/layout/public-shell';
+import { Suspense } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { APP_NAME } from "@/lib/config/config";
 
-interface PackageDto {
-  guidId?: string;
-  id?: string | number;
-  name?: string;
-  description?: string;
-  price?: number;
-}
+function SubscriptionPackageCallbackContent() {
+  const searchParams = useSearchParams();
 
-export default function SubscriptionPackagesPage() {
-  const [packages, setPackages] = useState<PackageDto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const provider = (searchParams.get("provider") ?? "").toLowerCase();
+  const subscriptionId = searchParams.get("subscriptionId") ?? undefined;
+  const status = searchParams.get("status");
+  const sessionId = searchParams.get("session_id") ?? undefined;
+  const dashboard = searchParams.get("dashboard") || "ati-teas";
 
-  useEffect(() => {
-    let active = true;
-    async function load() {
-      try {
-        const res = await fetch('/api/subscriptions/packages?fetchtype=discrete&perPage=50', {
-          credentials: 'include',
-        });
-        const json = await res.json();
-        if (!active) return;
-        if (!res.ok) {
-          setError(json?.message || 'Subscription packages are not currently provisioned.');
-        } else {
-          const items = json?.data?.items ?? json?.items ?? [];
-          setPackages(Array.isArray(items) ? items : []);
-        }
-      } catch {
-        if (active) setError('Unable to load subscription packages.');
-      } finally {
-        if (active) setLoading(false);
-      }
-    }
-    void load();
-    return () => {
-      active = false;
-    };
-  }, []);
+  const isCancel = status === "cancel";
+
+  const completedAt = new Date().toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
 
   return (
-    <PublicShell>
-      <section className="mx-auto max-w-5xl px-4 py-16 sm:px-6 lg:px-8">
-        <span className="text-xs font-bold uppercase tracking-wider text-[#0D9488]">
-          Plans &amp; Access
-        </span>
-        <h1 className="mt-2 text-3xl font-bold text-[#142B4A]">Subscription Packages</h1>
+    <main className="mt-3 flex items-center justify-center px-6 py-16 bg-gradient-to-b from-indigo-100 via-amber-100 to-green-100">
+      <div className="w-full max-w-lg rounded-2xl border border-blue-800 bg-gradient-to-b from-green-100 via-blue-100 to-indigo-100 shadow-sm p-8 text-center">
+        {isCancel ? (
+          <>
+            <div className="text-5xl mb-4">⚠️</div>
+            <h1 className="text-2xl font-bold text-slate-900 mb-2">Checkout Cancelled</h1>
+            <p className="text-slate-600 mb-6">Your subscription was not completed. No charge was made.</p>
+          </>
+        ) : (
+          <>
+            <div className="text-5xl mb-4">🎉</div>
+            <h1 className="text-2xl font-bold text-slate-900 mb-2">You&apos;re Almost There!</h1>
+            <p className="text-slate-600 mb-6">
+              Thanks for subscribing to {APP_NAME}. Your subscription is being processed — this
+              usually takes less than a minute, then you&apos;ll have full access.
+            </p>
+          </>
+        )}
 
-        {loading && <p className="mt-6 text-sm text-slate-500">Loading packages...</p>}
-        {!loading && error && (
-          <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-            {error}
+        <div className="text-xs text-slate-400 mb-6 space-y-0.5">
+          {provider && <p>Provider : {provider}</p>}
+          {subscriptionId && <p>Subscription ID : {subscriptionId}</p>}
+          {sessionId && <p>Session: {sessionId}</p>}
+          {!isCancel && <p>Completed : {completedAt}</p>}
+        </div>
+
+        {!isCancel && (
+          <div className="mb-6 rounded-xl border border-blue-200 bg-white/70 p-4 text-left text-sm text-slate-600">
+            <p className="font-semibold text-slate-800 mb-1">What happens next</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>A receipt has been sent to your registered email.</li>
+              <li>Your plan activates automatically — no action needed from you.</li>
+              <li>
+                If your access hasn&apos;t updated in a few minutes, refresh your dashboard or{" "}
+                <Link href="/pages/contact-us" className="text-blue-600 font-medium hover:underline">
+                  contact support
+                </Link>{" "}
+                with the Subscription ID above.
+              </li>
+            </ul>
           </div>
         )}
-        {!loading && !error && packages.length === 0 && (
-          <p className="mt-6 text-sm text-slate-500">No subscription packages available yet.</p>
-        )}
 
-        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {packages.map((pkg, idx) => (
-            <div
-              key={pkg.guidId ?? pkg.id ?? idx}
-              className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+        <div className="flex flex-wrap justify-center gap-3">
+          <Link
+            href={`/dashboards/${dashboard}/vista/subscriptions/items`}
+            className="rounded-lg bg-indigo-600 text-white px-5 py-2 text-sm font-semibold hover:bg-indigo-500 transition"
+          >
+            View Subscriptions
+          </Link>
+
+          <Link
+            href={`/dashboards/${dashboard}`}
+            className="rounded-lg bg-blue-600 text-white px-5 py-2 text-sm font-semibold hover:bg-blue-500 transition"
+          >
+            Go To Dashboard
+          </Link>
+
+          <Link
+            href="/"
+            className="rounded-lg bg-slate-800 text-white px-5 py-2 text-sm font-semibold hover:bg-slate-700 transition"
+          >
+            Back Home
+          </Link>
+
+          {isCancel && (
+            <button
+              onClick={() => history.back()}
+              className="rounded-lg border border-slate-300 px-5 py-2 text-sm font-semibold hover:bg-slate-50 transition"
             >
-              <div>
-                <h2 className="text-lg font-bold text-[#142B4A]">{pkg.name || 'Nursing Plan'}</h2>
-                {pkg.description && (
-                  <p className="mt-2 text-sm text-slate-600">{pkg.description}</p>
-                )}
-              </div>
-              <div className="mt-6">
-                <Link
-                  href="/learner/subscription"
-                  className="block rounded-xl bg-[#0D9488] px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-teal-700"
-                >
-                  Manage Subscription
-                </Link>
-              </div>
-            </div>
-          ))}
+              Try Again
+            </button>
+          )}
         </div>
-      </section>
-    </PublicShell>
+      </div>
+    </main>
   );
 }
+
+function SubscriptionPackageCallbackFallback() {
+  return (
+    <main className="mt-3 flex items-center justify-center px-6 py-16 bg-gradient-to-b from-indigo-100 via-amber-100 to-green-100">
+      <div className="w-full max-w-lg rounded-2xl border border-blue-800 bg-gradient-to-b from-green-100 via-blue-100 to-indigo-100 shadow-sm p-8 text-center">
+        <p className="text-slate-500 text-sm">Loading your subscription status…</p>
+      </div>
+    </main>
+  );
+}
+
+export default function SubscriptionPackageCallbackPage() {
+  return (
+    <Suspense fallback={<SubscriptionPackageCallbackFallback />}>
+      <SubscriptionPackageCallbackContent />
+    </Suspense>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+// The End By : B.L.S.M.C ;  Skewblanc - The Winds Chase Us ⚓
+// ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────

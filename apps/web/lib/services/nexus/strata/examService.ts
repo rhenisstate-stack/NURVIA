@@ -164,10 +164,18 @@ export interface ExamActionPayload {
   value?: string | boolean | number;
 }
 
+export interface ExamServiceResponse<T = unknown> {
+  success: boolean;
+  message?: string;
+  error?: string;
+  data?: T;
+  [key: string]: unknown;
+}
+
 export async function examServiceCall<T = unknown>(
   submissionType: ExamSubmissionType,
   payload?: object
-): Promise<{ success: boolean; message?: string; error?: string; data?: T }> {
+): Promise<ExamServiceResponse<T>> {
   const actionGroup = SUBMISSION_TO_GROUP[submissionType];
   if (!actionGroup) {
     return { success: false, error: `Unknown submissionType: ${submissionType}` };

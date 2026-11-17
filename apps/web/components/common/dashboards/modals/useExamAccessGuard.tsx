@@ -33,7 +33,18 @@ export function useExamAccessGuard(slug: string, panelName: string) {
   const close = useCallback(() => setReason(null), []);
 
   const guard = useCallback(
-    (needsSubscription: boolean, hasActiveSub: boolean, onPass: () => void) => {
+    (
+      needsSubscription: boolean,
+      hasActiveSubOrOnPass: boolean | (() => void),
+      maybeOnPass?: () => void
+    ) => {
+      const hasActiveSub =
+        typeof hasActiveSubOrOnPass === 'boolean' ? hasActiveSubOrOnPass : false;
+      const onPass =
+        typeof hasActiveSubOrOnPass === 'function'
+          ? hasActiveSubOrOnPass
+          : maybeOnPass;
+      if (!onPass) return;
       if (loading) return;
       if (!user) return setReason('login');
       if (!isEmailVerified) return setReason('verify');

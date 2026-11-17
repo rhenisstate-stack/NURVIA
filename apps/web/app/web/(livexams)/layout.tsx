@@ -1,17 +1,15 @@
-import type { ReactNode } from 'react';
-import { ExamThemeProvider } from '@/lib/contexts/web/assessment/theme/ExamThemeContext';
-import { ExamFontSizeProvider } from '@/lib/contexts/web/assessment/theme/ExamFontSizeContext';
-import { LiveStrataExamProvider } from '@/lib/contexts/panel/assessment/LiveStrataExamContext';
-import { LiveExamActionProvider } from '@/lib/contexts/web/assessment/live/useLiveExamActionContext';
+import type { Metadata } from 'next';
+import { APP_NAME } from '@/lib/config/config';
 
-export default function LiveExamsLayout({ children }: { children: ReactNode }) {
+export const metadata: Metadata = {
+  title: APP_NAME,
+  description: `${APP_NAME} Systems`,
+};
+
+export default function WebLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ExamThemeProvider>
-      <ExamFontSizeProvider>
-        <LiveStrataExamProvider>
-          <LiveExamActionProvider>{children}</LiveExamActionProvider>
-        </LiveStrataExamProvider>
-      </ExamFontSizeProvider>
-    </ExamThemeProvider>
+    <>
+      <main className="flex-grow mt-0 px-0 sm:px-0 lg:px-0">{children}</main>
+    </>
   );
 }

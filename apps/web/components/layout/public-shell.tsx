@@ -12,10 +12,12 @@ import {
   ArrowRight,
   ShieldCheck,
   Sparkles,
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ROUTES } from "@/lib/routes";
 import { useAuth } from "@/components/auth/auth-provider";
+import { SeekModal } from "@/components/common/modals/seek/SeekModal";
 
 interface PublicNavItem {
   name: string;
@@ -41,11 +43,23 @@ interface PublicShellProps {
 
 export function PublicShell({ children }: PublicShellProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+  const [seekOpen, setSeekOpen] = React.useState(false);
   const [scrolled, setScrolled] = React.useState(false);
   const [authError, setAuthError] = React.useState<string | null>(null);
   const pathname = usePathname();
   const router = useRouter();
   const { status, user, signOut } = useAuth();
+
+  React.useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSeekOpen((prev) => !prev);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   async function handleSignOut() {
     setAuthError(null);
@@ -141,6 +155,15 @@ export function PublicShell({ children }: PublicShellProps) {
 
           {/* Right Header Controls */}
           <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={() => setSeekOpen(true)}
+              aria-label="Search exams and study resources (Ctrl+K)"
+              title="Search (Ctrl+K)"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-surface text-foreground-secondary transition-colors hover:bg-surface-muted hover:text-foreground"
+            >
+              <Search className="h-4 w-4" />
+            </button>
             <ThemeToggle />
             {status === "authenticated" && user ? (
               <>
@@ -349,6 +372,7 @@ export function PublicShell({ children }: PublicShellProps) {
           </div>
         </div>
       </footer>
+      <SeekModal open={seekOpen} onClose={() => setSeekOpen(false)} />
     </div>
   );
 }
