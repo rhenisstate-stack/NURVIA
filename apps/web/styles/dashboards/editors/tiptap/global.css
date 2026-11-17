@@ -1,0 +1,6 @@
+/* NURVIA Rich Text Editor Styling */
+.nurvia-editor-prose {
+  min-height: 160px;
+  line-height: 1.65;
+  color: #0f172a;
+}

@@ -1,0 +1,9 @@
+/* NURVIA Academic Strata Hierarchy Tree */
+.nurvia-strata-tree-node {
+  border-left: 2px solid #cbd5e1;
+  padding-left: 0.75rem;
+}
+
+.nurvia-strata-tree-node[data-active='true'] {
+  border-left-color: #0d9488;
+}

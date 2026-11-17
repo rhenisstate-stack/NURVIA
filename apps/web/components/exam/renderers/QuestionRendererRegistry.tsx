@@ -19,6 +19,9 @@ import { DragAndDropRenderer } from "./DragAndDropRenderer";
 import { ExtendedResponseRenderer } from "./ExtendedResponseRenderer";
 import { TabularResponseRenderer } from "./TabularResponseRenderer";
 import { ShortAnswerRenderer } from "./ShortAnswerRenderer";
+import { AudioBasedRenderer } from "./AudioBasedRenderer";
+import { VideoBasedRenderer } from "./VideoBasedRenderer";
+import { HighlightTextRenderer } from "./HighlightTextRenderer";
 
 export const QuestionRendererRegistry: React.FC<QuestionRendererProps> = (props) => {
   const { question } = props;
@@ -119,7 +122,23 @@ export const QuestionRendererRegistry: React.FC<QuestionRendererProps> = (props)
     // 17. Short Answer
     case "17":
     case "shortanswer":
+    case "openended":
       return <ShortAnswerRenderer {...props} />;
+
+    // 18. Audio-Based
+    case "19":
+    case "audiobased":
+      return <AudioBasedRenderer {...props} />;
+
+    // 19. Video-Based
+    case "20":
+    case "videobased":
+      return <VideoBasedRenderer {...props} />;
+
+    // 20. Highlight Text
+    case "21":
+    case "highlight":
+      return <HighlightTextRenderer {...props} />;
 
     default:
       // Fallback to SingleChoiceRenderer
