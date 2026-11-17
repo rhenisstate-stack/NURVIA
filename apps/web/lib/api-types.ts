@@ -495,6 +495,8 @@ export interface StudyLibraryExamOptionDto {
   id: string;
   code: string;
   title: string;
+  pathway?: string;
+  category?: string;
 }
 
 export interface StudyLibraryFiltersDto {

@@ -24,6 +24,15 @@ import { classifyError, isRetryableError, ErrorType } from './utils/error-utils'
 import { parseApiResponse } from './api-response';
 import { buildApiUrl, DEDICATED_AUTH_ROUTES } from './api-url.mjs';
 
+function unprovisionedResponse<T>(featureName: string): ApiResponse<T> {
+  return {
+    success: false,
+    statusCode: 501,
+    errorCode: 'NOT_PROVISIONED',
+    message: `${featureName} is not yet provisioned on the LexmaCasto backend for NURVIA.`,
+  };
+}
+
 export { parseApiResponse, buildApiUrl, DEDICATED_AUTH_ROUTES };
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -600,45 +609,274 @@ export const nurviaApi = {
     });
   },
 
-  // Study Library & Personal Library
+  // Study Library & Personal Library (backed by verified LexmaCasto Strata endpoints)
   async getStudyLibrary(params?: Record<string, string | number | boolean | undefined>): Promise<ApiResponse<PagedResult<import('./api-types').StudySetCardDto>>> {
-    const query = buildQuery(params);
-    return request(`/api/study-library${query ? `?${query}` : ''}`);
+    if (params?.savedOnly === true || params?.savedOnly === 'true') {
+      return unprovisionedResponse('Personal Saved Study Library');
+    }
+
+    const pageNumber = Math.max(1, Number(params?.pageNumber ?? params?.page ?? 1) || 1);
+    const pageSize = Math.max(1, Math.min(100, Number(params?.pageSize ?? params?.perPage ?? 12) || 12));
+    const search = typeof params?.searchTerm === 'string' && params.searchTerm.trim()
+      ? params.searchTerm.trim()
+      : typeof params?.search === 'string' && params.search.trim()
+        ? params.search.trim()
+        : undefined;
+
+    const strataRes = await this.getStrata<Record<string, any>>('exams', {
+      fetchtype: 'absolute',
+      page: pageNumber,
+      perPage: pageSize,
+      ...(search ? { search } : {}),
+      ...(typeof params?.examId === 'string' && params.examId.trim() ? { examId: params.examId.trim() } : {}),
+    });
+
+    if (!strataRes.success || !strataRes.data) {
+      return {
+        success: false,
+        message: strataRes.message || 'Unable to load published study sets.',
+        errorCode: strataRes.errorCode,
+        errors: strataRes.errors,
+        statusCode: strataRes.statusCode,
+      };
+    }
+
+    const reqPathway = typeof params?.pathway === 'string' && params.pathway.trim() ? params.pathway.trim().toLowerCase() : null;
+    const reqCategory = typeof params?.category === 'string' && params.category.trim() ? params.category.trim().toLowerCase() : null;
+    const reqSchool = typeof params?.school === 'string' && params.school.trim() ? params.school.trim().toLowerCase() : null;
+    const reqSubject = typeof params?.subject === 'string' && params.subject.trim() ? params.subject.trim().toLowerCase() : null;
+    const reqTopic = typeof params?.topic === 'string' && params.topic.trim() ? params.topic.trim().toLowerCase() : null;
+    const reqDifficulty = typeof params?.difficulty === 'string' && params.difficulty.trim() ? params.difficulty.trim().toLowerCase() : null;
+    const reqSeason = typeof params?.season === 'string' && params.season.trim() ? params.season.trim().toLowerCase() : null;
+    const reqYear = params?.academicYear ? Number(params.academicYear) : null;
+
+    const mappedItems: import('./api-types').StudySetCardDto[] = strataRes.data.items
+      .filter((item) => {
+        const itemStatus = typeof item.status === 'string' ? item.status.trim().toLowerCase() : '';
+        if (itemStatus && itemStatus !== 'published' && itemStatus !== 'active') {
+          return false;
+        }
+        if (reqPathway) {
+          const itemPathway = String(item.pathway ?? item.target ?? '').trim().toLowerCase();
+          if (itemPathway && !itemPathway.includes(reqPathway)) return false;
+        }
+        if (reqCategory) {
+          const itemCat = String(item.category ?? item.type ?? item.assessmentName ?? '').trim().toLowerCase();
+          if (itemCat && !itemCat.includes(reqCategory)) return false;
+        }
+        if (reqSchool) {
+          const itemSchool = String(item.school ?? item.schoolName ?? '').trim().toLowerCase();
+          if (itemSchool !== reqSchool) return false;
+        }
+        if (reqSubject) {
+          const itemSubject = String(item.subject ?? item.subjectName ?? '').trim().toLowerCase();
+          if (itemSubject !== reqSubject) return false;
+        }
+        if (reqTopic) {
+          const itemTopic = String(item.topic ?? item.topicName ?? '').trim().toLowerCase();
+          if (itemTopic !== reqTopic) return false;
+        }
+        if (reqDifficulty) {
+          const itemDiff = String(item.difficulty ?? '').trim().toLowerCase();
+          if (itemDiff !== reqDifficulty) return false;
+        }
+        if (reqSeason) {
+          const itemSeason = String(item.season ?? item.term ?? '').trim().toLowerCase();
+          if (itemSeason !== reqSeason) return false;
+        }
+        if (reqYear) {
+          const itemYear = Number(item.academicYear ?? item.year ?? 0);
+          if (itemYear !== reqYear) return false;
+        }
+        return true;
+      })
+      .map((item) => ({
+        id: String(item.guidId ?? item.id ?? ''),
+        code: String(item.code ?? item.guidId ?? item.id ?? ''),
+        title: String(item.title ?? item.name ?? 'Untitled Study Set'),
+        description: String(item.description ?? ''),
+        pathway: (typeof item.pathway === 'string' && item.pathway
+          ? item.pathway
+          : typeof item.target === 'string' && item.target
+            ? item.target
+            : 'RN') as import('./api-types').NursingPathway,
+        category: (typeof item.category === 'string' && item.category
+          ? item.category
+          : typeof item.type === 'string' && item.type
+            ? item.type
+            : typeof item.assessmentName === 'string' && item.assessmentName
+              ? item.assessmentName
+              : 'RegularCourse') as import('./api-types').ExamCategory,
+        totalQuestions: Number(item.totalQuestions ?? item.questionsCount ?? 0),
+        timeLimitMinutes: Number(item.timeLimitMinutes ?? item.duration ?? 60),
+        modeAllowed: (typeof item.modeAllowed === 'string' && item.modeAllowed
+          ? item.modeAllowed
+          : 'Both') as ExamDto['modeAllowed'],
+        passingScorePercentage: Number(item.passingScorePercentage ?? item.passMark ?? 75),
+        allowedLayouts: (typeof item.allowedLayouts === 'string' && item.allowedLayouts
+          ? item.allowedLayouts
+          : 'Any') as import('./api-types').ExamLayoutPolicy,
+        defaultLayout: (typeof item.defaultLayout === 'string' && item.defaultLayout
+          ? item.defaultLayout
+          : 'Classic') as ExamLayout,
+        school: typeof item.school === 'string' ? item.school : typeof item.schoolName === 'string' ? item.schoolName : null,
+        academicYear: typeof item.academicYear === 'number' ? item.academicYear : typeof item.year === 'number' ? item.year : null,
+        subject: typeof item.subject === 'string' ? item.subject : typeof item.subjectName === 'string' ? item.subjectName : null,
+        season: typeof item.season === 'string' ? item.season : null,
+        topic: typeof item.topic === 'string' ? item.topic : null,
+        difficulty: (typeof item.difficulty === 'string' ? item.difficulty : null) as import('./api-types').DifficultyLevel | null,
+        averageRating: typeof item.averageRating === 'number' ? item.averageRating : typeof item.rating === 'number' ? item.rating : null,
+        reviewCount: Number(item.reviewCount ?? 0),
+        featuredTestimonial: typeof item.featuredTestimonial === 'string' ? item.featuredTestimonial : null,
+        isSaved: false,
+      }))
+      .filter((item) => Boolean(item.id));
+
+    const hasLocalFilter = Boolean(
+      reqPathway ||
+      reqCategory ||
+      reqSchool ||
+      reqSubject ||
+      reqTopic ||
+      reqDifficulty ||
+      reqSeason ||
+      reqYear
+    );
+    const totalCount = hasLocalFilter
+      ? mappedItems.length
+      : (strataRes.data.skewTotal ?? mappedItems.length);
+    const totalPages = hasLocalFilter
+      ? Math.max(1, Math.ceil(totalCount / pageSize))
+      : Math.max(1, strataRes.data.skewTotalPages ?? Math.ceil(totalCount / pageSize));
+
+    return {
+      success: true,
+      message: strataRes.message || 'OK',
+      statusCode: strataRes.statusCode,
+      data: {
+        items: mappedItems,
+        totalCount,
+        pageNumber: strataRes.data.skewPage ?? pageNumber,
+        pageSize: strataRes.data.skewPerPage ?? pageSize,
+        totalPages,
+        hasNextPage: pageNumber < totalPages,
+        hasPreviousPage: pageNumber > 1,
+      },
+    };
   },
 
   async getStudyLibraryFilters(): Promise<ApiResponse<import('./api-types').StudyLibraryFiltersDto>> {
-    return request('/api/study-library/filters');
+    const [schoolsRes, subjectsRes, topicsRes, examsRes, sectionsRes] = await Promise.all([
+      this.getStrata<Record<string, any>>('schools', { fetchtype: 'absolute', page: 1, perPage: 100 }),
+      this.getStrata<Record<string, any>>('subjects', { fetchtype: 'absolute', page: 1, perPage: 100 }),
+      this.getStrata<Record<string, any>>('topics', { fetchtype: 'absolute', page: 1, perPage: 100 }),
+      this.getStrata<Record<string, any>>('exams', { fetchtype: 'absolute', page: 1, perPage: 100 }),
+      this.getStrata<Record<string, any>>('sections', { fetchtype: 'absolute', page: 1, perPage: 100 }),
+    ]);
+
+    if (!schoolsRes.success && !subjectsRes.success && !topicsRes.success && !examsRes.success && !sectionsRes.success) {
+      return {
+        success: false,
+        message: examsRes.message || 'Unable to load study library filters.',
+        errorCode: examsRes.errorCode,
+      };
+    }
+
+    const pickName = (r: Record<string, any>) =>
+      String(r.name ?? r.title ?? r.slug ?? r.code ?? r.id ?? '').trim();
+    const pickId = (r: Record<string, any>) =>
+      String(r.guidId ?? r.id ?? r._id ?? r.slug ?? '').trim();
+
+    const examItems = examsRes.success && examsRes.data ? examsRes.data.items : [];
+    const sectionItems = sectionsRes.success && sectionsRes.data ? sectionsRes.data.items : [];
+
+    const yearSet = new Set<number>();
+    const seasonSet = new Set<string>();
+    const difficultySet = new Set<string>();
+    for (const rec of [...examItems, ...sectionItems]) {
+      const y = rec.academicYear ?? rec.year;
+      if (typeof y === 'number' && Number.isFinite(y)) yearSet.add(y);
+      else if (typeof y === 'string' && /^\d{4}$/.test(y.trim())) yearSet.add(Number(y.trim()));
+      const s = rec.season ?? rec.term;
+      if (typeof s === 'string' && s.trim()) seasonSet.add(s.trim());
+      if (typeof rec.difficulty === 'string' && rec.difficulty.trim()) difficultySet.add(rec.difficulty.trim());
+    }
+
+    return {
+      success: true,
+      message: 'OK',
+      data: {
+        pathways: [],
+        categories: [],
+        schools: (schoolsRes.data?.items ?? []).map(pickName).filter(Boolean),
+        academicYears: Array.from(yearSet).sort((a, b) => b - a),
+        subjects: (subjectsRes.data?.items ?? []).map(pickName).filter(Boolean),
+        seasons: Array.from(seasonSet),
+        exams: examItems
+          .map((ex) => ({
+            id: pickId(ex),
+            code: typeof ex.code === 'string' && ex.code.trim() ? ex.code.trim() : pickId(ex),
+            title: pickName(ex),
+            pathway: typeof ex.pathway === 'string' ? ex.pathway : 'RN',
+            category: typeof ex.category === 'string' ? ex.category : 'RegularCourse',
+          }))
+          .filter((ex) => ex.id && ex.title),
+        topics: (topicsRes.data?.items ?? []).map(pickName).filter(Boolean),
+        difficulties: Array.from(difficultySet) as import('./api-types').DifficultyLevel[],
+        questionTypes: [],
+      },
+    };
   },
 
   async getStudyLibrarySummary(): Promise<ApiResponse<import('./api-types').StudyLibrarySummaryDto>> {
-    return request('/api/study-library/summary');
+    const [examsRes, categoriesRes, questionsRes] = await Promise.all([
+      this.getStrata<Record<string, any>>('exams', { fetchtype: 'absolute', page: 1, perPage: 1 }),
+      this.getStrata<Record<string, any>>('categories', { fetchtype: 'absolute', page: 1, perPage: 1 }),
+      this.getStrata<Record<string, any>>('questions', { fetchtype: 'absolute', page: 1, perPage: 1 }),
+    ]);
+
+    if (!examsRes.success && !categoriesRes.success && !questionsRes.success) {
+      return {
+        success: false,
+        message: examsRes.message || 'Unable to load study library summary.',
+        errorCode: examsRes.errorCode,
+      };
+    }
+
+    return {
+      success: true,
+      message: 'OK',
+      data: {
+        totalPublishedStudySets: examsRes.data?.skewTotal ?? examsRes.data?.items.length ?? 0,
+        totalAvailableQuestions: questionsRes.data?.skewTotal ?? questionsRes.data?.items.length ?? 0,
+        totalCategories: categoriesRes.data?.skewTotal ?? categoriesRes.data?.items.length ?? 0,
+        totalPathways: 0,
+      },
+    };
   },
 
   async getStudySetDetail(examId: string): Promise<ApiResponse<import('./api-types').StudySetDetailDto>> {
-    return request(`/api/study-library/${examId}`);
+    return unprovisionedResponse(`Study set detail (${examId})`);
   },
 
   async getSavedStudySets(): Promise<ApiResponse<import('./api-types').StudySetCardDto[]>> {
-    return request('/api/study-library/saved');
+    return unprovisionedResponse('Personal Saved Study Library');
   },
 
-  async saveStudySet(examId: string): Promise<ApiResponse<string>> {
-    return request(`/api/study-library/saved/${examId}`, { method: 'POST' });
+  async saveStudySet(_examId: string): Promise<ApiResponse<string>> {
+    return unprovisionedResponse('Personal Saved Study Library');
   },
 
-  async removeSavedStudySet(examId: string): Promise<ApiResponse<string>> {
-    return request(`/api/study-library/saved/${examId}`, { method: 'DELETE' });
+  async removeSavedStudySet(_examId: string): Promise<ApiResponse<string>> {
+    return unprovisionedResponse('Personal Saved Study Library');
   },
 
-  async getStudySetReviews(examId: string, pageNumber = 1, pageSize = 10): Promise<ApiResponse<PagedResult<import('./api-types').ExamReviewDto>>> {
-    return request(`/api/study-library/${examId}/reviews?pageNumber=${pageNumber}&pageSize=${pageSize}`);
+  async getStudySetReviews(_examId: string, _pageNumber = 1, _pageSize = 10): Promise<ApiResponse<PagedResult<import('./api-types').ExamReviewDto>>> {
+    return unprovisionedResponse('Study Set Reviews');
   },
 
-  async submitStudySetReview(examId: string, payload: import('./api-types').SubmitExamReviewRequest): Promise<ApiResponse<import('./api-types').ExamReviewDto>> {
-    return request(`/api/study-library/${examId}/reviews`, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
+  async submitStudySetReview(_examId: string, _payload: import('./api-types').SubmitExamReviewRequest): Promise<ApiResponse<import('./api-types').ExamReviewDto>> {
+    return unprovisionedResponse('Study Set Reviews');
   },
 
   // Tutor Mode Progressive Guidance
@@ -760,7 +998,7 @@ export const nurviaApi = {
     return request('/api/admin/system-status');
   },
 
-  // Learner Saved Questions
+  // Learner Saved Questions (not yet provisioned on LexmaCasto)
   async getSavedQuestions(): Promise<ApiResponse<{
     id: string;
     questionId: string;
@@ -772,10 +1010,10 @@ export const nurviaApi = {
     notes: string | null;
     savedAtUtc: string;
   }[]>> {
-    return request('/api/learner/saved-questions');
+    return unprovisionedResponse('Saved Questions');
   },
 
-  async saveQuestion(questionId: string, payload?: { examId?: string | null; notes?: string | null }): Promise<ApiResponse<{
+  async saveQuestion(_questionId: string, _payload?: { examId?: string | null; notes?: string | null }): Promise<ApiResponse<{
     id: string;
     questionId: string;
     examId: string | null;
@@ -786,16 +1024,11 @@ export const nurviaApi = {
     notes: string | null;
     savedAtUtc: string;
   }>> {
-    return request(`/api/learner/saved-questions/${questionId}`, {
-      method: 'POST',
-      body: JSON.stringify(payload || {}),
-    });
+    return unprovisionedResponse('Saved Questions');
   },
 
-  async removeSavedQuestion(questionId: string): Promise<ApiResponse<string>> {
-    return request(`/api/learner/saved-questions/${questionId}`, {
-      method: 'DELETE',
-    });
+  async removeSavedQuestion(_questionId: string): Promise<ApiResponse<string>> {
+    return unprovisionedResponse('Saved Questions');
   },
 
   // Learner Study Planner
@@ -864,43 +1097,35 @@ export const nurviaApi = {
     });
   },
 
-  // Flashcards & Spaced Repetition
-  async getFlashcards(params?: { category?: string; dueOnly?: boolean }): Promise<ApiResponse<import('./api-types').FlashcardDto[]>> {
-    const query = buildQuery(params);
-    return request(`/api/flashcards${query ? `?${query}` : ''}`);
+  // Flashcards & Spaced Repetition (not yet provisioned on LexmaCasto)
+  async getFlashcards(_params?: { category?: string; dueOnly?: boolean }): Promise<ApiResponse<import('./api-types').FlashcardDto[]>> {
+    return unprovisionedResponse('Spaced Repetition Flashcards');
   },
 
-  async createFlashcard(payload: {
+  async createFlashcard(_payload: {
     category: string;
     pathway: string;
     front: string;
     back: string;
     hint?: string;
   }): Promise<ApiResponse<import('./api-types').FlashcardDto>> {
-    return request('/api/flashcards', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
+    return unprovisionedResponse('Spaced Repetition Flashcards');
   },
 
-  async deleteFlashcard(id: string): Promise<ApiResponse<string>> {
-    return request(`/api/flashcards/${id}`, { method: 'DELETE' });
+  async deleteFlashcard(_id: string): Promise<ApiResponse<string>> {
+    return unprovisionedResponse('Spaced Repetition Flashcards');
   },
 
-  async reviewFlashcard(id: string, rating: 'Again' | 'Hard' | 'Good' | 'Easy'): Promise<ApiResponse<import('./api-types').FlashcardDto>> {
-    return request(`/api/flashcards/${id}/review`, {
-      method: 'POST',
-      body: JSON.stringify({ rating }),
-    });
+  async reviewFlashcard(_id: string, _rating: 'Again' | 'Hard' | 'Good' | 'Easy'): Promise<ApiResponse<import('./api-types').FlashcardDto>> {
+    return unprovisionedResponse('Spaced Repetition Flashcards');
   },
 
-  // Care Plans
-  async getCarePlans(params?: { specialty?: string; search?: string }): Promise<ApiResponse<import('./api-types').CarePlanDto[]>> {
-    const query = buildQuery(params);
-    return request(`/api/care-plans${query ? `?${query}` : ''}`);
+  // Care Plans (not yet provisioned on LexmaCasto)
+  async getCarePlans(_params?: { specialty?: string; search?: string }): Promise<ApiResponse<import('./api-types').CarePlanDto[]>> {
+    return unprovisionedResponse('Clinical Nursing Care Plans');
   },
 
-  async createCarePlan(payload: {
+  async createCarePlan(_payload: {
     title: string;
     specialty: string;
     diagnosis: string;
@@ -909,27 +1134,23 @@ export const nurviaApi = {
     interventions: string[];
     rationale: string;
   }): Promise<ApiResponse<import('./api-types').CarePlanDto>> {
-    return request('/api/care-plans', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
+    return unprovisionedResponse('Clinical Nursing Care Plans');
   },
 
-  async deleteCarePlan(id: string): Promise<ApiResponse<string>> {
-    return request(`/api/care-plans/${id}`, { method: 'DELETE' });
+  async deleteCarePlan(_id: string): Promise<ApiResponse<string>> {
+    return unprovisionedResponse('Clinical Nursing Care Plans');
   },
 
-  // Study Guides
-  async getStudyGuides(params?: { category?: string; pathway?: string; search?: string }): Promise<ApiResponse<import('./api-types').StudyGuideSummaryDto[]>> {
-    const query = buildQuery(params);
-    return request(`/api/study-guides${query ? `?${query}` : ''}`);
+  // Study Guides (not yet provisioned on LexmaCasto)
+  async getStudyGuides(_params?: { category?: string; pathway?: string; search?: string }): Promise<ApiResponse<import('./api-types').StudyGuideSummaryDto[]>> {
+    return unprovisionedResponse('Study Guides');
   },
 
-  async getStudyGuideById(id: string): Promise<ApiResponse<import('./api-types').StudyGuideDetailDto>> {
-    return request(`/api/study-guides/${id}`);
+  async getStudyGuideById(_id: string): Promise<ApiResponse<import('./api-types').StudyGuideDetailDto>> {
+    return unprovisionedResponse('Study Guides');
   },
 
-  async createStudyGuide(payload: {
+  async createStudyGuide(_payload: {
     title: string;
     category: string;
     pathway: string;
@@ -938,79 +1159,63 @@ export const nurviaApi = {
     readingMinutes?: number;
     isPublished?: boolean;
   }): Promise<ApiResponse<import('./api-types').StudyGuideDetailDto>> {
-    return request('/api/study-guides', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
+    return unprovisionedResponse('Study Guides');
   },
 
-  // Community
-  async getCommunityPosts(params?: { channelId?: string; search?: string }): Promise<ApiResponse<import('./api-types').CommunityPostDto[]>> {
-    const query = buildQuery(params);
-    return request(`/api/community/posts${query ? `?${query}` : ''}`);
+  // Community (not yet provisioned on LexmaCasto)
+  async getCommunityPosts(_params?: { channelId?: string; search?: string }): Promise<ApiResponse<import('./api-types').CommunityPostDto[]>> {
+    return unprovisionedResponse('Community Discussions');
   },
 
-  async getCommunityPost(id: string): Promise<ApiResponse<import('./api-types').CommunityPostDto>> {
-    return request(`/api/community/posts/${id}`);
+  async getCommunityPost(_id: string): Promise<ApiResponse<import('./api-types').CommunityPostDto>> {
+    return unprovisionedResponse('Community Discussions');
   },
 
-  async createCommunityPost(payload: {
+  async createCommunityPost(_payload: {
     channelId: string;
     cohortLabel: string;
     title: string;
     content: string;
   }): Promise<ApiResponse<import('./api-types').CommunityPostDto>> {
-    return request('/api/community/posts', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
+    return unprovisionedResponse('Community Discussions');
   },
 
-  async addCommunityReply(postId: string, content: string): Promise<ApiResponse<import('./api-types').CommunityReplyDto>> {
-    return request(`/api/community/posts/${postId}/replies`, {
-      method: 'POST',
-      body: JSON.stringify({ content }),
-    });
+  async addCommunityReply(_postId: string, _content: string): Promise<ApiResponse<import('./api-types').CommunityReplyDto>> {
+    return unprovisionedResponse('Community Discussions');
   },
 
-  async toggleCommunityLike(postId: string): Promise<ApiResponse<{ liked: boolean; likeCount: number }>> {
-    return request(`/api/community/posts/${postId}/like`, { method: 'POST' });
+  async toggleCommunityLike(_postId: string): Promise<ApiResponse<{ liked: boolean; likeCount: number }>> {
+    return unprovisionedResponse('Community Discussions');
   },
 
-  async deleteCommunityPost(postId: string): Promise<ApiResponse<string>> {
-    return request(`/api/community/posts/${postId}`, { method: 'DELETE' });
+  async deleteCommunityPost(_postId: string): Promise<ApiResponse<string>> {
+    return unprovisionedResponse('Community Discussions');
   },
 
-  // AI Tutor Chat Sessions
+  // AI Tutor Chat Sessions (not yet provisioned on LexmaCasto)
   async getTutorSessions(): Promise<ApiResponse<import('./api-types').TutorChatSessionDto[]>> {
-    return request('/api/tutor/sessions');
+    return unprovisionedResponse('AI Tutor Sessions');
   },
 
-  async createTutorSession(payload: { title?: string; pathway?: string; topic?: string }): Promise<ApiResponse<import('./api-types').TutorChatSessionDto>> {
-    return request('/api/tutor/sessions', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
+  async createTutorSession(_payload: { title?: string; pathway?: string; topic?: string }): Promise<ApiResponse<import('./api-types').TutorChatSessionDto>> {
+    return unprovisionedResponse('AI Tutor Sessions');
   },
 
-  async getTutorSession(id: string): Promise<ApiResponse<import('./api-types').TutorChatSessionDto>> {
-    return request(`/api/tutor/sessions/${id}`);
+  async getTutorSession(_id: string): Promise<ApiResponse<import('./api-types').TutorChatSessionDto>> {
+    return unprovisionedResponse('AI Tutor Sessions');
   },
 
-  async sendTutorMessage(id: string, message: string): Promise<ApiResponse<import('./api-types').TutorChatSessionDto>> {
-    return request(`/api/tutor/sessions/${id}/messages`, {
-      method: 'POST',
-      body: JSON.stringify({ message }),
-    });
+  async sendTutorMessage(_id: string, _message: string): Promise<ApiResponse<import('./api-types').TutorChatSessionDto>> {
+    return unprovisionedResponse('AI Tutor Sessions');
   },
 
-  async deleteTutorSession(id: string): Promise<ApiResponse<string>> {
-    return request(`/api/tutor/sessions/${id}`, { method: 'DELETE' });
+  async deleteTutorSession(_id: string): Promise<ApiResponse<string>> {
+    return unprovisionedResponse('AI Tutor Sessions');
   },
 
-  // Subscriptions & Entitlements
+  // Subscriptions & Entitlements (not yet provisioned on LexmaCasto for NURVIA)
   async getSubscriptionPlans(): Promise<ApiResponse<import('./api-types').SubscriptionPlanDto[]>> {
-    return request('/api/subscriptions/plans');
+    return unprovisionedResponse('Subscription Plans');
   },
 
   async getMySubscription(): Promise<ApiResponse<{
@@ -1018,18 +1223,15 @@ export const nurviaApi = {
     plans: import('./api-types').SubscriptionPlanDto[];
     paymentProviderConfigured: boolean;
   }>> {
-    return request('/api/subscriptions/me');
+    return unprovisionedResponse('Subscriptions');
   },
 
   async activateFreeTier(): Promise<ApiResponse<import('./api-types').UserSubscriptionDto>> {
-    return request('/api/subscriptions/activate-free', { method: 'POST' });
+    return unprovisionedResponse('Subscriptions');
   },
 
-  async requestCheckout(planId: string): Promise<ApiResponse<string>> {
-    return request('/api/subscriptions/checkout', {
-      method: 'POST',
-      body: JSON.stringify({ planId }),
-    });
+  async requestCheckout(_planId: string): Promise<ApiResponse<string>> {
+    return unprovisionedResponse('Subscriptions');
   },
 
   async getAdminSubscriptions(): Promise<ApiResponse<import('./api-types').UserSubscriptionDto[]>> {

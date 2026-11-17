@@ -4,7 +4,6 @@ import * as React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { nurviaApi } from "@/lib/api-client";
-import { fetchStrataFilterOptions } from "@/lib/lexmacasto/strata-filters";
 import type {
   StudyLibraryFiltersDto,
   StudyLibrarySummaryDto,
@@ -80,6 +79,7 @@ export function StudyLibraryView({
   const [totalCount, setTotalCount] = React.useState(0);
   const [totalPages, setTotalPages] = React.useState(1);
   const [filtersData, setFiltersData] = React.useState<StudyLibraryFiltersDto | null>(null);
+  const [filtersLoading, setFiltersLoading] = React.useState(true);
   const [summary, setSummary] = React.useState<StudyLibrarySummaryDto | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -111,24 +111,17 @@ export function StudyLibraryView({
   // Fetch data-driven filters & live catalog summary once
   React.useEffect(() => {
     let active = true;
+    setFiltersLoading(true);
     void Promise.all([
       nurviaApi.getStudyLibraryFilters(),
       nurviaApi.getStudyLibrarySummary(),
-      fetchStrataFilterOptions(),
-    ]).then(([filtersRes, summaryRes, strataFilters]) => {
+    ]).then(([filtersRes, summaryRes]) => {
       if (!active) return;
       if (filtersRes.success && filtersRes.data) {
-        setFiltersData({
-          ...filtersRes.data,
-          schools: filtersRes.data.schools.length > 0 ? filtersRes.data.schools : (strataFilters?.schools ?? []),
-          subjects: filtersRes.data.subjects.length > 0 ? filtersRes.data.subjects : (strataFilters?.subjects ?? []),
-          topics: filtersRes.data.topics.length > 0 ? filtersRes.data.topics : (strataFilters?.topics ?? []),
-          exams: filtersRes.data.exams.length > 0 ? filtersRes.data.exams : (strataFilters?.exams ?? []),
-        });
-      } else if (strataFilters) {
-        setFiltersData(strataFilters);
+        setFiltersData(filtersRes.data);
       }
       if (summaryRes.success && summaryRes.data) setSummary(summaryRes.data);
+      setFiltersLoading(false);
     });
     return () => {
       active = false;
@@ -260,16 +253,34 @@ export function StudyLibraryView({
         availableCategories={filtersData?.categories ?? []}
         onSelectPathway={(next) => {
           setPathway(next);
+          if (category === "ExitPredictor" && next !== "All" && next !== "RN_Exit" && next !== "PN_Exit") {
+            setCategory("All");
+          }
+          if (advanced.examId) {
+            const selectedExam = filtersData?.exams.find((e) => e.id === advanced.examId);
+            if (!selectedExam || (next !== "All" && String(selectedExam.pathway ?? "").toLowerCase() !== next.toLowerCase())) {
+              setAdvanced((prev) => ({ ...prev, examId: "" }));
+            }
+          }
           setPageNumber(1);
         }}
         onSelectCategory={(next) => {
           setCategory(next);
+          if (advanced.examId) {
+            const selectedExam = filtersData?.exams.find((e) => e.id === advanced.examId);
+            if (!selectedExam || (next !== "All" && String(selectedExam.category ?? "").toLowerCase() !== next.toLowerCase())) {
+              setAdvanced((prev) => ({ ...prev, examId: "" }));
+            }
+          }
           setPageNumber(1);
         }}
       />
 
       <StudyLibraryAdvancedFilters
         filtersData={filtersData}
+        filtersLoading={filtersLoading}
+        selectedPathway={pathway}
+        selectedCategory={category}
         value={advanced}
         isPublic={isPublic}
         onChange={(patch) => {

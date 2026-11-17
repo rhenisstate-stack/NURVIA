@@ -61,12 +61,17 @@ const communityCategories: CommunityCategory[] = [
 export default function CommunityPage() {
   const [search, setSearch] = React.useState("");
   const [posts, setPosts] = React.useState<CommunityPostDto[]>([]);
+  const [unavailableError, setUnavailableError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     let active = true;
     void nurviaApi.getCommunityPosts().then((res) => {
-      if (active && res.success && res.data) {
+      if (!active) return;
+      if (res.success && res.data) {
         setPosts(res.data);
+        setUnavailableError(null);
+      } else {
+        setUnavailableError(res.message || "Community Discussions are currently unavailable.");
       }
     });
     return () => {
@@ -124,6 +129,12 @@ export default function CommunityPage() {
                 Authenticated Participation Only
               </span>
             </div>
+
+            {unavailableError && (
+              <div role="alert" className="rounded-xl border border-amber-300/70 bg-amber-50/70 p-4 text-xs text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+                {unavailableError}
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {filteredCategories.map((cat) => {

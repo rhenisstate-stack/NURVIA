@@ -27,6 +27,7 @@ export function UserAccountMenu({ avatarUrl }: UserAccountMenuProps) {
   const [open, setOpen] = React.useState(false);
   const [signingOut, setSigningOut] = React.useState(false);
   const [signOutError, setSignOutError] = React.useState<string | null>(null);
+  const menuId = React.useId();
 
   const rootRef = React.useRef<HTMLDivElement>(null);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
@@ -64,6 +65,33 @@ export function UserAccountMenu({ avatarUrl }: UserAccountMenuProps) {
       if (event.key === "Escape") {
         setOpen(false);
         triggerRef.current?.focus();
+        return;
+      }
+
+      if (
+        event.key === "ArrowDown" ||
+        event.key === "ArrowUp" ||
+        event.key === "Home" ||
+        event.key === "End"
+      ) {
+        const items = Array.from(
+          rootRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]:not([disabled])') ?? []
+        );
+        if (items.length === 0) return;
+        event.preventDefault();
+
+        const currentIndex = items.indexOf(document.activeElement as HTMLElement);
+        if (event.key === "Home") {
+          items[0]?.focus();
+        } else if (event.key === "End") {
+          items[items.length - 1]?.focus();
+        } else if (event.key === "ArrowDown") {
+          const next = currentIndex >= 0 ? (currentIndex + 1) % items.length : 0;
+          items[next]?.focus();
+        } else {
+          const prev = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
+          items[prev]?.focus();
+        }
       }
     };
 
@@ -71,7 +99,12 @@ export function UserAccountMenu({ avatarUrl }: UserAccountMenuProps) {
     document.addEventListener("keydown", handleKeyDown);
 
     const frame = requestAnimationFrame(() => {
-      firstLinkRef.current?.focus();
+      if (firstLinkRef.current) {
+        firstLinkRef.current.focus();
+      } else {
+        const firstItem = rootRef.current?.querySelector<HTMLElement>('[role="menuitem"]');
+        firstItem?.focus();
+      }
     });
 
     return () => {
@@ -103,6 +136,7 @@ export function UserAccountMenu({ avatarUrl }: UserAccountMenuProps) {
         return;
       }
 
+      setOpen(false);
       router.replace("/");
     } catch {
       setSignOutError("Unable to sign out. Please try again.");
@@ -119,7 +153,8 @@ export function UserAccountMenu({ avatarUrl }: UserAccountMenuProps) {
         ref={triggerRef}
         type="button"
         aria-label="Open account menu"
-        aria-haspopup="true"
+        aria-haspopup="menu"
+        aria-controls={open ? menuId : undefined}
         aria-expanded={open}
         onClick={() => {
           setOpen((current) => !current);
@@ -141,6 +176,8 @@ export function UserAccountMenu({ avatarUrl }: UserAccountMenuProps) {
 
       {open && (
         <div
+          id={menuId}
+          role="menu"
           aria-label="Account options"
           className="absolute right-0 z-50 mt-3 w-[min(19rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-xl"
         >
@@ -166,6 +203,7 @@ export function UserAccountMenu({ avatarUrl }: UserAccountMenuProps) {
               <>
                 <Link
                   ref={firstLinkRef}
+                  role="menuitem"
                   href="/learner/account"
                   onClick={closeMenu}
                   className={linkClass}
@@ -175,6 +213,7 @@ export function UserAccountMenu({ avatarUrl }: UserAccountMenuProps) {
                 </Link>
 
                 <Link
+                  role="menuitem"
                   href="/learner/profile"
                   onClick={closeMenu}
                   className={linkClass}
@@ -184,6 +223,7 @@ export function UserAccountMenu({ avatarUrl }: UserAccountMenuProps) {
                 </Link>
 
                 <Link
+                  role="menuitem"
                   href="/learner/settings"
                   onClick={closeMenu}
                   className={linkClass}
@@ -193,6 +233,7 @@ export function UserAccountMenu({ avatarUrl }: UserAccountMenuProps) {
                 </Link>
 
                 <Link
+                  role="menuitem"
                   href="/learner/settings/security"
                   onClick={closeMenu}
                   className={linkClass}
@@ -206,6 +247,7 @@ export function UserAccountMenu({ avatarUrl }: UserAccountMenuProps) {
             {canAccessAdmin && (
               <Link
                 ref={!canUseLearnerAccount ? firstLinkRef : undefined}
+                role="menuitem"
                 href="/admin"
                 onClick={closeMenu}
                 className={linkClass}
@@ -217,6 +259,7 @@ export function UserAccountMenu({ avatarUrl }: UserAccountMenuProps) {
 
             {isSuperadmin && (
               <Link
+                role="menuitem"
                 href="/learner"
                 onClick={closeMenu}
                 className={linkClass}
@@ -236,6 +279,7 @@ export function UserAccountMenu({ avatarUrl }: UserAccountMenuProps) {
 
             <button
               type="button"
+              role="menuitem"
               disabled={signingOut}
               onClick={handleSignOut}
               className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-60"

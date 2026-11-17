@@ -68,9 +68,10 @@ export async function fetchStrataFilterOptions(): Promise<StrataHierarchyFilters
   const cohortItems = cohortsRes.success && cohortsRes.data ? cohortsRes.data.items : [];
   const classItems = classesRes.success && classesRes.data ? classesRes.data.items : [];
 
-  // Extract academicYears and seasons ONLY if present on actual returned records
+  // Extract academicYears, seasons, and difficulties ONLY if present on actual returned records
   const yearSet = new Set<number>();
   const seasonSet = new Set<string>();
+  const difficultySet = new Set<string>();
   for (const rec of [...examItems, ...sectionItems, ...cohortItems, ...classItems]) {
     const rawYear = rec.academicYear ?? rec.year;
     if (typeof rawYear === 'number' && Number.isFinite(rawYear)) {
@@ -81,6 +82,10 @@ export async function fetchStrataFilterOptions(): Promise<StrataHierarchyFilters
     const rawSeason = rec.season ?? rec.term;
     if (typeof rawSeason === 'string' && rawSeason.trim()) {
       seasonSet.add(rawSeason.trim());
+    }
+    const rawDifficulty = rec.difficulty;
+    if (typeof rawDifficulty === 'string' && rawDifficulty.trim()) {
+      difficultySet.add(rawDifficulty.trim());
     }
   }
 
@@ -101,7 +106,7 @@ export async function fetchStrataFilterOptions(): Promise<StrataHierarchyFilters
       }))
       .filter((ex) => ex.id && ex.title),
     topics: topicItems.map(extractDisplayName).filter(Boolean),
-    difficulties: [],
+    difficulties: Array.from(difficultySet) as StudyLibraryFiltersDto['difficulties'],
     questionTypes: [],
     institutions: institutionItems
       .map((item) => ({ id: extractId(item), name: extractDisplayName(item) }))

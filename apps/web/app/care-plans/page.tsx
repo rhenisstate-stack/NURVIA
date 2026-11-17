@@ -18,6 +18,7 @@ import {
 export default function CarePlansPage() {
   const [plans, setPlans] = React.useState<CarePlanDto[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [unavailableError, setUnavailableError] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState("");
   const [selectedSpecialty, setSelectedSpecialty] = React.useState<string>("All");
   const [selectedPlan, setSelectedPlan] = React.useState<CarePlanDto | null>(null);
@@ -36,6 +37,10 @@ export default function CarePlansPage() {
           if (!active) return;
           if (res.success && res.data) {
             setPlans(res.data);
+            setUnavailableError(null);
+          } else {
+            setPlans([]);
+            setUnavailableError(res.message || "Clinical Nursing Care Plans are currently unavailable.");
           }
           setLoading(false);
         });
@@ -149,7 +154,15 @@ export default function CarePlansPage() {
               ))}
             </div>
 
-            {filteredPlans.length === 0 && (
+            {!loading && unavailableError && (
+              <div role="alert" className="text-center py-12 space-y-3 bg-surface rounded-2xl border border-amber-300/70 p-6">
+                <AlertCircle className="w-8 h-8 text-amber-600 mx-auto" />
+                <p className="text-sm font-semibold text-foreground">Clinical Care Plans Not Yet Provisioned</p>
+                <p className="text-xs text-foreground-secondary max-w-lg mx-auto">{unavailableError}</p>
+              </div>
+            )}
+
+            {!loading && !unavailableError && filteredPlans.length === 0 && (
               <div className="text-center py-12 space-y-3 bg-surface rounded-2xl border border-border">
                 <AlertCircle className="w-8 h-8 text-foreground-muted mx-auto" />
                 <p className="text-sm font-semibold text-foreground">No clinical care plans found</p>

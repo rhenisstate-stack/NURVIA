@@ -19,6 +19,9 @@ export interface AdvancedFilterState {
 
 interface StudyLibraryAdvancedFiltersProps {
   filtersData: StudyLibraryFiltersDto | null;
+  filtersLoading?: boolean;
+  selectedPathway?: string;
+  selectedCategory?: string;
   value: AdvancedFilterState;
   isPublic?: boolean;
   onChange: (patch: Partial<AdvancedFilterState>) => void;
@@ -27,12 +30,30 @@ interface StudyLibraryAdvancedFiltersProps {
 
 export function StudyLibraryAdvancedFilters({
   filtersData,
+  filtersLoading = false,
+  selectedPathway = "All",
+  selectedCategory = "All",
   value,
   isPublic = false,
   onChange,
   onClearAll,
 }: StudyLibraryAdvancedFiltersProps) {
   const [expanded, setExpanded] = React.useState(false);
+
+  const filteredExams = React.useMemo(() => {
+    const list = filtersData?.exams ?? [];
+    return list.filter((ex) => {
+      if (selectedPathway && selectedPathway !== "All") {
+        const p = String(ex.pathway ?? "").trim().toLowerCase();
+        if (p && !p.includes(selectedPathway.toLowerCase())) return false;
+      }
+      if (selectedCategory && selectedCategory !== "All") {
+        const c = String(ex.category ?? "").trim().toLowerCase();
+        if (c && !c.includes(selectedCategory.toLowerCase())) return false;
+      }
+      return true;
+    });
+  }, [filtersData?.exams, selectedPathway, selectedCategory]);
 
   const activeEntries: Array<{ key: keyof AdvancedFilterState; label: string; display: string }> = [];
   if (value.school) activeEntries.push({ key: "school", label: "School", display: value.school });
@@ -109,6 +130,7 @@ export function StudyLibraryAdvancedFilters({
             label="School"
             value={value.school}
             options={filtersData?.schools ?? []}
+            loading={filtersLoading}
             placeholder="All schools"
             onChange={(school) => onChange({ school, examId: "" })}
           />
@@ -117,6 +139,7 @@ export function StudyLibraryAdvancedFilters({
             label="Year"
             value={value.academicYear}
             options={(filtersData?.academicYears ?? []).map(String)}
+            loading={filtersLoading}
             placeholder={filtersData && filtersData.academicYears.length === 0 ? "Unavailable" : "All years"}
             onChange={(academicYear) => onChange({ academicYear })}
           />
@@ -125,6 +148,7 @@ export function StudyLibraryAdvancedFilters({
             label="Subject"
             value={value.subject}
             options={filtersData?.subjects ?? []}
+            loading={filtersLoading}
             placeholder="All subjects"
             onChange={(subject) => onChange({ subject, topic: "", examId: "" })}
           />
@@ -133,6 +157,7 @@ export function StudyLibraryAdvancedFilters({
             label="Season"
             value={value.season}
             options={filtersData?.seasons ?? []}
+            loading={filtersLoading}
             placeholder={filtersData && filtersData.seasons.length === 0 ? "Unavailable" : "All seasons"}
             onChange={(season) => onChange({ season })}
           />
@@ -143,11 +168,18 @@ export function StudyLibraryAdvancedFilters({
             <select
               id="filter-exam"
               value={value.examId}
+              disabled={filtersLoading || filteredExams.length === 0}
               onChange={(e) => onChange({ examId: e.target.value })}
-              className="h-9 w-full rounded-lg border border-border bg-background px-3 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
+              className="h-9 w-full rounded-lg border border-border bg-background px-3 text-xs text-foreground disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
             >
-              <option value="">All examinations</option>
-              {(filtersData?.exams ?? []).map((ex) => (
+              <option value="">
+                {filtersLoading
+                  ? "Loading..."
+                  : filteredExams.length === 0
+                    ? "No data available"
+                    : "All examinations"}
+              </option>
+              {filteredExams.map((ex) => (
                 <option key={ex.id} value={ex.id}>
                   {ex.title}
                 </option>
@@ -159,6 +191,7 @@ export function StudyLibraryAdvancedFilters({
             label="Topic"
             value={value.topic}
             options={filtersData?.topics ?? []}
+            loading={filtersLoading}
             placeholder="All topics"
             onChange={(topic) => onChange({ topic })}
           />
@@ -167,6 +200,7 @@ export function StudyLibraryAdvancedFilters({
             label="Difficulty"
             value={value.difficulty}
             options={filtersData?.difficulties ?? []}
+            loading={filtersLoading}
             placeholder="All difficulties"
             onChange={(difficulty) => onChange({ difficulty })}
           />
@@ -175,6 +209,7 @@ export function StudyLibraryAdvancedFilters({
             label="Question Type"
             value={value.questionType}
             options={(filtersData?.questionTypes ?? []).map(String)}
+            loading={filtersLoading}
             formatOption={(v) => v.replace(/([a-z])([A-Z])/g, "$1 $2")}
             placeholder="All question types"
             onChange={(questionType) => onChange({ questionType })}
@@ -203,6 +238,7 @@ function FilterSelect({
   label,
   value,
   options,
+  loading = false,
   placeholder,
   formatOption,
   onChange,
@@ -211,6 +247,7 @@ function FilterSelect({
   label: string;
   value: string;
   options: string[];
+  loading?: boolean;
   placeholder: string;
   formatOption?: (v: string) => string;
   onChange: (next: string) => void;
@@ -224,10 +261,12 @@ function FilterSelect({
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        disabled={options.length === 0}
+        disabled={loading || options.length === 0}
         className="h-9 w-full rounded-lg border border-border bg-background px-3 text-xs text-foreground disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
       >
-        <option value="">{options.length === 0 ? "No data available" : placeholder}</option>
+        <option value="">
+          {loading ? "Loading..." : options.length === 0 ? "No data available" : placeholder}
+        </option>
         {options.map((opt) => (
           <option key={opt} value={opt}>
             {formatOption ? formatOption(opt) : opt}
