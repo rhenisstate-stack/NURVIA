@@ -10,6 +10,13 @@ export const LEXMACASTO_AUTH_ENDPOINTS = {
   CURRENT_USER: '/api/castoline/system/user/list/current',
   LOGOUT_DISTINCT: '/api/castoline/auth/logout/sessions/distinct',
   LOGOUT_RELATIVE: '/api/castoline/auth/logout/sessions/relative',
+  ACCOUNT_DESTROY: '/api/castoline/auth/account/destroy',
+  SUPPORT_VALIDATE: '/api/castoline/strata/support/validate',
+} as const;
+
+export const LEXMACASTO_EXTRA_ENDPOINTS = {
+  SEEK_BASE: '/api/castoline/strata/seek',
+  DIY_EXAM_STORE: '/api/castoline/strata/assessment/exams/diy/learning/store',
 } as const;
 
 export const LEXMACASTO_STRATA_ENDPOINTS = {
@@ -138,15 +145,20 @@ export function isStrataResourceKey(value: string): value is StrataResourceKey {
   return Object.prototype.hasOwnProperty.call(LEXMACASTO_STRATA_ENDPOINTS, value);
 }
 
+export type StrataFetchType = 'absolute' | 'distinct' | 'relative' | 'current' | 'live';
+export type StrataMutationAction = 'store' | 'update' | 'delete';
+
 /**
- * Builds a LexmaCasto strata path with the mandatory `fetchtype` query parameter.
- * Prevents callers from omitting `fetchtype`.
+ * Builds a LexmaCasto strata list path with the requested (or default) `fetchtype`.
  */
 export function buildStrataEndpointPath(
   resource: StrataResourceKey,
-  queryParams?: Record<string, string | number | boolean | undefined | null>
+  queryParams?: Record<string, string | number | boolean | undefined | null>,
+  fetchtypeOverride?: StrataFetchType
 ): string {
   const def = LEXMACASTO_STRATA_ENDPOINTS[resource];
+  const resolvedFetchType = fetchtypeOverride ?? def.fetchtype;
+  const basePath = def.path.replace(/\/list\/[^/]+$/, `/list/${resolvedFetchType}`);
   const params = new URLSearchParams();
   if (queryParams) {
     for (const [key, value] of Object.entries(queryParams)) {
@@ -156,9 +168,23 @@ export function buildStrataEndpointPath(
       }
     }
   }
-  // Always enforce the verified fetchtype for the endpoint
-  params.set('fetchtype', def.fetchtype);
-  return `${def.path}?${params.toString()}`;
+  if (fetchtypeOverride) {
+    params.set('fetchtype', fetchtypeOverride);
+  } else {
+    params.set('fetchtype', def.fetchtype);
+  }
+  return `${basePath}?${params.toString()}`;
+}
+
+/**
+ * Builds a LexmaCasto strata mutation path (`/store`, `/update`, `/delete`).
+ */
+export function buildStrataMutationPath(
+  resource: StrataResourceKey,
+  action: StrataMutationAction
+): string {
+  const def = LEXMACASTO_STRATA_ENDPOINTS[resource];
+  return def.path.replace(/\/list\/[^/]+$/, `/${action}`);
 }
 
 export function buildCurrentUserEndpointPath(): string {

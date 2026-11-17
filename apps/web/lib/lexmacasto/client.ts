@@ -30,6 +30,11 @@ export type NormalizedBackendErrorCode =
   | 'NETWORK_ERROR'
   | 'TIMEOUT'
   | 'UNAUTHORIZED'
+  | 'SESSION_EXPIRED'
+  | 'INVALID_CREDENTIALS'
+  | 'CHALLENGE_REQUIRED'
+  | 'CHALLENGE_REJECTED'
+  | 'CHALLENGE_EXPIRED'
   | 'FORBIDDEN'
   | 'VALIDATION_ERROR'
   | 'NOT_FOUND'
@@ -80,6 +85,33 @@ function mapStatusToErrorCode(status: number): NormalizedBackendErrorCode {
   if (status === 429) return 'RATE_LIMITED';
   if (status >= 500) return 'BACKEND_ERROR';
   return 'BACKEND_ERROR';
+}
+
+export function classifyBackendErrorCode(
+  status: number,
+  message: string,
+  errors?: string[],
+  path?: string
+): NormalizedBackendErrorCode {
+  const combined = [message, ...(errors ?? [])].filter(Boolean).join(' ');
+  if (/challenge.*expir/i.test(combined)) {
+    return 'CHALLENGE_EXPIRED';
+  }
+  if (/the challenge field is required|challenge.*required/i.test(combined)) {
+    return 'CHALLENGE_REQUIRED';
+  }
+  if (/deslizar|ultimatum\s+turmoil|challenge.*(reject|invalid|fail|mismatch|unverified)/i.test(combined)) {
+    return 'CHALLENGE_REJECTED';
+  }
+  if (status === 401) {
+    if (path && /\/auth\/login(?:$|\?)/i.test(path)) {
+      return 'INVALID_CREDENTIALS';
+    }
+    if (/missing\s+casto|session.*expir|expired/i.test(combined)) {
+      return 'SESSION_EXPIRED';
+    }
+  }
+  return mapStatusToErrorCode(status);
 }
 
 const SENSITIVE_BACKEND_MESSAGE_PATTERN =
@@ -150,12 +182,28 @@ export function extractSiteMetadataFromRequestHeaders(
   const userAgent = incomingHeaders.get('user-agent')?.trim();
   const referer = incomingHeaders.get('referer')?.trim();
   const requestId = incomingHeaders.get('x-request-id')?.trim() || crypto.randomUUID();
+  const country = (incomingHeaders.get('cf-ipcountry') || incomingHeaders.get('x-vercel-ip-country'))?.trim();
+  const rawCity = incomingHeaders.get('x-vercel-ip-city')?.trim();
+  let city = rawCity;
+  if (rawCity) {
+    try {
+      city = decodeURIComponent(rawCity);
+    } catch {
+      city = rawCity;
+    }
+  }
+  const location = [city, country].filter(Boolean).join(', ');
+  const mobileRaw = incomingHeaders.get('sec-ch-ua-mobile')?.trim();
+  const mobile = mobileRaw === '?1' ? 'true' : mobileRaw === '?0' ? 'false' : undefined;
 
   return {
     sitePath: sanitizeHeaderValue(pathname, 256),
     siteIpAddress: sanitizeHeaderValue(forwardedFor || realIp, 64),
+    siteLocation: sanitizeHeaderValue(location || undefined, 128),
+    siteCountry: sanitizeHeaderValue(country, 16),
     siteBrowser: sanitizeHeaderValue(userAgent, 256),
     siteReferrer: sanitizeHeaderValue(referer, 256),
+    siteMobile: mobile,
     siteTime: new Date().toISOString(),
     siteRequestId: sanitizeHeaderValue(requestId, 64),
   };
@@ -318,11 +366,12 @@ export async function lexmaCastoRequest<T = unknown>(
           ? errors[0]
           : sanitizeBackendMessage(rawMsg, response.status);
 
+      const resolvedStatus = response.ok ? 400 : response.status;
       return {
         ok: false,
-        status: response.ok ? 400 : response.status,
+        status: resolvedStatus,
         message: resolvedMessage,
-        errorCode: mapStatusToErrorCode(response.ok ? 400 : response.status),
+        errorCode: classifyBackendErrorCode(resolvedStatus, resolvedMessage, errors, safePath),
         errors,
       };
     }

@@ -26,10 +26,16 @@ type FieldKey =
   | "pinConfirmation"
   | "agree";
 
-function formatServerRegisterError(message?: string, errors?: string[]): string {
+function formatServerRegisterError(message?: string, errors?: string[], errorCode?: string): string {
   const combined = [message, ...(errors || [])].filter(Boolean).join(" ");
-  if (/challenge/i.test(combined)) {
-    return "Account registration is temporarily unavailable while backend verification is being finalized. Please try again later.";
+  if (errorCode === "CHALLENGE_REQUIRED" || /the challenge field is required|challenge.*required/i.test(combined)) {
+    return "Account registration requires backend Deslizar challenge verification, which is not yet provisioned for this application.";
+  }
+  if (errorCode === "CHALLENGE_REJECTED" || /deslizar|ultimatum\s+turmoil/i.test(combined)) {
+    return "Registration verification challenge was rejected by the backend service.";
+  }
+  if (errorCode === "CHALLENGE_EXPIRED") {
+    return "Registration verification challenge expired. Please refresh and try again.";
   }
   if (Array.isArray(errors) && errors.length > 0 && errors[0] !== message) {
     return `${message || "Unable to create your account."} (${errors[0]})`;
@@ -172,7 +178,7 @@ export default function SignUpPage() {
     setSubmitting(false);
 
     if (!response.success) {
-      setServerError(formatServerRegisterError(response.message, response.errors));
+      setServerError(formatServerRegisterError(response.message, response.errors, response.errorCode));
       return;
     }
 

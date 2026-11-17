@@ -1001,5 +1001,90 @@ export const nurviaApi = {
       body: JSON.stringify(payload),
     });
   },
+
+  // Qlex-Compatible Search (Seek)
+  async seek(params: {
+    query: string;
+    fetchtype?: 'absolute' | 'distinct';
+    scope?: string;
+    mode?: string;
+    sort?: string;
+    page?: number;
+    perPage?: number;
+  }): Promise<ApiResponse<Record<string, unknown>>> {
+    const qs = new URLSearchParams();
+    qs.set('fetchtype', params.fetchtype || 'absolute');
+    qs.set('query', params.query);
+    if (params.scope) qs.set('scope', params.scope);
+    if (params.mode) qs.set('mode', params.mode);
+    if (params.sort) qs.set('sort', params.sort);
+    if (params.page) qs.set('page', String(params.page));
+    if (params.perPage) qs.set('perPage', String(params.perPage));
+    return request(`/api/seek?${qs.toString()}`);
+  },
+
+  async seekSuggest(query: string): Promise<ApiResponse<unknown[]>> {
+    const qs = new URLSearchParams({ fetchtype: 'suggest', query });
+    return request(`/api/seek?${qs.toString()}`);
+  },
+
+  async getSeekHistory(): Promise<ApiResponse<unknown[]>> {
+    return request('/api/seek?fetchtype=history');
+  },
+
+  async clearSeekHistory(): Promise<ApiResponse<string>> {
+    return request('/api/seek?fetchtype=history', { method: 'DELETE' });
+  },
+
+  // DIY Custom Learning Exam
+  async createDiyExam(payload: {
+    title: string;
+    totalQuestions: number;
+    description?: string;
+    courseId?: string;
+    subjectId?: string;
+    timeLimitMinutes?: number;
+    [key: string]: unknown;
+  }): Promise<ApiResponse<Record<string, unknown>>> {
+    return request('/api/exams/diy', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  // Authenticated Account Deletion & Support Token Validation
+  async destroyAccount(reason: string): Promise<ApiResponse<string>> {
+    return request('/api/auth/account/destroy', {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  },
+
+  async validateSupportToken(token: string, context: string): Promise<ApiResponse<Record<string, unknown>>> {
+    const qs = new URLSearchParams({ token, context });
+    return request(`/api/auth/validate?${qs.toString()}`);
+  },
+
+  // Staff Academic Strata CRUD
+  async createStrataRecord(resource: string, payload: Record<string, unknown>): Promise<ApiResponse<Record<string, unknown>>> {
+    return request(`/api/strata/${resource}`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async updateStrataRecord(resource: string, payload: Record<string, unknown>): Promise<ApiResponse<Record<string, unknown>>> {
+    return request(`/api/strata/${resource}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async deleteStrataRecord(resource: string, payload: Record<string, unknown>): Promise<ApiResponse<Record<string, unknown>>> {
+    return request(`/api/strata/${resource}`, {
+      method: 'DELETE',
+      body: JSON.stringify(payload),
+    });
+  },
 };
 
