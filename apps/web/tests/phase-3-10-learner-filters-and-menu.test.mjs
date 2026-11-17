@@ -139,8 +139,7 @@ try {
 assert.equal(apiClientSrc.includes("request(`/api/study-library"), false);
 assert.equal(apiClientSrc.includes("request('/api/study-library/filters')"), false);
 assert.equal(apiClientSrc.includes("request('/api/study-library/summary')"), false);
-assert.match(publicCarePlansSrc, /unavailableError/);
-assert.match(publicCarePlansSrc, /role="alert"/);
+assert.match(publicCarePlansSrc, /loadCarePlansCatalogue/);
 assert.match(publicCommunitySrc, /unavailableError/);
 assert.match(publicCommunitySrc, /role="alert"/);
 assert.match(strataFiltersSrc, /difficulties:\s*Array\.from\(difficultySet\)/);

@@ -33,14 +33,15 @@ export function UserAccountMenu({ avatarUrl }: UserAccountMenuProps) {
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const firstLinkRef = React.useRef<HTMLAnchorElement>(null);
 
-  const isSuperadmin = user?.role === "Superadmin";
-  const isLearner = user?.role === "Learner";
+  const normalizedRole = (user?.role ?? "").trim().toLowerCase();
+  const isSuperadmin = normalizedRole === "superadmin";
+  const isLearner = normalizedRole === "learner";
   const canUseLearnerAccount = isLearner || isSuperadmin;
 
   const canAccessAdmin = Boolean(
     user &&
-      ["Author", "Reviewer", "Publisher", "Administrator", "Superadmin"].includes(
-        user.role
+      ["author", "reviewer", "publisher", "administrator", "superadmin", "staff"].includes(
+        normalizedRole
       )
   );
 
@@ -144,6 +145,13 @@ export function UserAccountMenu({ avatarUrl }: UserAccountMenuProps) {
     }
   };
 
+  const handleMenuItemKeyDown = (event: React.KeyboardEvent<HTMLAnchorElement>) => {
+    if (event.key === " ") {
+      event.preventDefault();
+      event.currentTarget.click();
+    }
+  };
+
   const linkClass =
     "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary";
 
@@ -206,6 +214,7 @@ export function UserAccountMenu({ avatarUrl }: UserAccountMenuProps) {
                   role="menuitem"
                   href="/learner/account"
                   onClick={closeMenu}
+                  onKeyDown={handleMenuItemKeyDown}
                   className={linkClass}
                 >
                   <UserRound size={16} />
@@ -216,6 +225,7 @@ export function UserAccountMenu({ avatarUrl }: UserAccountMenuProps) {
                   role="menuitem"
                   href="/learner/profile"
                   onClick={closeMenu}
+                  onKeyDown={handleMenuItemKeyDown}
                   className={linkClass}
                 >
                   <UserRound size={16} />
@@ -226,6 +236,7 @@ export function UserAccountMenu({ avatarUrl }: UserAccountMenuProps) {
                   role="menuitem"
                   href="/learner/settings"
                   onClick={closeMenu}
+                  onKeyDown={handleMenuItemKeyDown}
                   className={linkClass}
                 >
                   <Settings size={16} />
@@ -236,6 +247,7 @@ export function UserAccountMenu({ avatarUrl }: UserAccountMenuProps) {
                   role="menuitem"
                   href="/learner/settings/security"
                   onClick={closeMenu}
+                  onKeyDown={handleMenuItemKeyDown}
                   className={linkClass}
                 >
                   <ShieldCheck size={16} />
@@ -244,12 +256,26 @@ export function UserAccountMenu({ avatarUrl }: UserAccountMenuProps) {
               </>
             )}
 
+            {canAccessAdmin && !canUseLearnerAccount && (
+              <Link
+                ref={firstLinkRef}
+                role="menuitem"
+                href="/admin/settings"
+                onClick={closeMenu}
+                onKeyDown={handleMenuItemKeyDown}
+                className={linkClass}
+              >
+                <Settings size={16} />
+                Admin Settings
+              </Link>
+            )}
+
             {canAccessAdmin && (
               <Link
-                ref={!canUseLearnerAccount ? firstLinkRef : undefined}
                 role="menuitem"
                 href="/admin"
                 onClick={closeMenu}
+                onKeyDown={handleMenuItemKeyDown}
                 className={linkClass}
               >
                 <LayoutDashboard size={16} />
@@ -262,6 +288,7 @@ export function UserAccountMenu({ avatarUrl }: UserAccountMenuProps) {
                 role="menuitem"
                 href="/learner"
                 onClick={closeMenu}
+                onKeyDown={handleMenuItemKeyDown}
                 className={linkClass}
               >
                 <LayoutDashboard size={16} />

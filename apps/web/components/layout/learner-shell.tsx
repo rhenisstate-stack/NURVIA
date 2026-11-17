@@ -148,6 +148,7 @@ export const learnerNavigation: NavSection[] = [
     title: "ACCOUNT",
     items: [
       { name: "My Account", href: "/learner/account", icon: User },
+      { name: "Notifications", href: "/learner/notifications", icon: Bell },
       { name: "Settings", href: "/learner/settings", icon: Settings },
       { name: "Subscription", href: "/learner/subscription", icon: CreditCard },
     ],
@@ -170,7 +171,12 @@ export function LearnerShell({ children }: { children: React.ReactNode }) {
         ? pathname
         : `${pathname}${window.location.search}`;
       router.replace(`/sign-in?returnTo=${encodeURIComponent(returnTo)}`);
-    } else if (status === "authenticated" && user && user.role !== "Learner" && user.role !== "Superadmin") {
+    } else if (
+      status === "authenticated" &&
+      user &&
+      user.role.trim().toLowerCase() !== "learner" &&
+      user.role.trim().toLowerCase() !== "superadmin"
+    ) {
       router.replace("/access-denied");
     }
   }, [status, user, pathname, router]);
@@ -195,7 +201,8 @@ export function LearnerShell({ children }: { children: React.ReactNode }) {
   // authenticated identity; other staff roles are redirected to access-denied.
   if (status === "loading" || status === "unauthenticated" ||
       (status === "authenticated" &&
-        user?.role !== "Learner" && user?.role !== "Superadmin")) {
+        user?.role?.trim().toLowerCase() !== "learner" &&
+        user?.role?.trim().toLowerCase() !== "superadmin")) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-background px-6 text-sm text-foreground-secondary" aria-live="polite">
         {status === "loading" ? "Checking your sessionâ€¦" : "Redirecting to the appropriate pageâ€¦"}

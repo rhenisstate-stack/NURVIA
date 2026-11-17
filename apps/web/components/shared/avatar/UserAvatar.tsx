@@ -14,6 +14,13 @@ export function UserAvatar({
   size = "md",
   className = ""
 }: UserAvatarProps) {
+  const normalizedAvatarUrl = React.useMemo(() => {
+    if (typeof avatarUrl !== "string") return null;
+    const trimmed = avatarUrl.trim();
+    if (!trimmed || trimmed === "null" || trimmed === "undefined") return null;
+    return trimmed;
+  }, [avatarUrl]);
+
   const [failedAvatarUrl, setFailedAvatarUrl] = React.useState<string | null>(null);
 
   const sizeClasses = {
@@ -23,30 +30,30 @@ export function UserAvatar({
   };
 
   const initials = name
-    ? name.split(/\s+/).slice(0, 2).map(part => part[0]).join("").toUpperCase()
+    ? name.trim().split(/\s+/).slice(0, 2).map(part => part[0] ?? "").join("").toUpperCase() || "?"
     : "?";
 
   const shouldShowImage = Boolean(
-    avatarUrl && failedAvatarUrl !== avatarUrl
+    normalizedAvatarUrl && failedAvatarUrl !== normalizedAvatarUrl
   );
 
   return (
     <div
       className={cn(
-        "flex items-center justify-center rounded-full bg-brand-teal text-white font-bold",
+        "flex items-center justify-center rounded-full bg-brand-teal text-white font-bold overflow-hidden shrink-0",
         sizeClasses[size],
         className
       )}
     >
       {shouldShowImage ? (
         <img
-          src={avatarUrl!}
+          src={normalizedAvatarUrl!}
           alt={`${name || "User"}'s avatar`}
           className="w-full h-full rounded-full object-cover"
-          onError={() => setFailedAvatarUrl(avatarUrl ?? null)}
+          onError={() => setFailedAvatarUrl(normalizedAvatarUrl)}
         />
       ) : (
-        initials
+        <span>{initials}</span>
       )}
     </div>
   );

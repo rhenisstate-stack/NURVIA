@@ -55,10 +55,10 @@ const adminNavigation: AdminNavGroup[] = [
   {
     title: "CONTENT MANAGEMENT",
     items: [
-      { name: "Question Bank", href: "/admin/questions", icon: FileQuestion, badge: "12,450" },
-      { name: "Review Queue", href: "/admin/reviews", icon: BookCheck, badge: "Review" },
+      { name: "Question Bank", href: "/admin/questions", icon: FileQuestion },
+      { name: "Review Queue", href: "/admin/reviews", icon: BookCheck },
       { name: "Question Type Registry", href: "/admin/question-types", icon: Database },
-      { name: "Exam Builder & Studio", href: "/admin/exams", icon: BookCheck, badge: "84" },
+      { name: "Exam Builder & Studio", href: "/admin/exams", icon: BookCheck },
       { name: "Mark K. Lectures", href: "/admin/lectures", icon: FileText },
       { name: "Curriculum Taxonomy", href: "/admin/taxonomy", icon: FolderTree },
       { name: "Clinical Case Studies", href: "/admin/cases", icon: Sparkles },
@@ -101,7 +101,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       (status === "authenticated" && (!user || !staffRoles.includes(user.role)))) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-background px-6 text-sm text-foreground-secondary" aria-live="polite">
-        {status === "loading" ? "Checking your sessionâ€¦" : "Redirecting to the appropriate pageâ€¦"}
+        {status === "loading" ? "Checking your session..." : "Redirecting to the appropriate page..."}
       </main>
     );
   }
@@ -228,7 +228,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <span className="font-semibold text-foreground">Management Console</span>
               <span className="text-border">â€¢</span>
               <Badge variant="teal" className="text-[10px]">
-                SUPERADMIN ACCESS
+                {(user?.role || "STAFF").toUpperCase()} ACCESS
               </Badge>
               <Badge variant="outline" className="hidden sm:inline-flex text-[10px]">
                 API: HEALTHY

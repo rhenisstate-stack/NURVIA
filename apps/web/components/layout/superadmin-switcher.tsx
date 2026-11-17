@@ -9,7 +9,7 @@ export function SuperadminSwitcher() {
   // Only an authenticated Superadmin may see the cross-dashboard switcher.
   // AuthUserDto has no isAuthenticated field — authentication state comes from
   // the AuthProvider status, and the role is authoritative from the backend.
-  if (status !== "authenticated" || !user || user.role !== "Superadmin") {
+  if (status !== "authenticated" || !user || user.role?.trim().toLowerCase() !== "superadmin") {
     return null;
   }
 
