@@ -95,4 +95,40 @@ for (const methodName of [
 }
 console.log('[PASS] 8. nurviaApi exposes all Phase 3.8 typed client methods');
 
-console.log('\nAll 8 Phase 3.8 API parity tests PASSED (8/8)!');
+// 9. Temporary challenge compatibility module is server-only and wired to login & register routes
+const tempChallengeSrc = readText('lib/auth/temporaryChallenge.ts');
+assert.match(tempChallengeSrc, /TEMPORARY — REMOVE WHEN OFFICIAL DESLIZAR INTEGRATION IS AVAILABLE/);
+assert.match(tempChallengeSrc, /register:\s*'register-skew8@lancasto'/);
+assert.match(tempChallengeSrc, /standard_login:\s*'learner\.login\.skew8lancasto'/);
+assert.match(tempChallengeSrc, /custom_login:\s*'custom\.login\.skew8lancasto'/);
+
+const loginRouteSrc = readText('app/api/auth/login/route.ts');
+const registerRouteSrc = readText('app/api/auth/register/route.ts');
+assert.match(loginRouteSrc, /getTemporaryChallenge\('standard_login'\)/);
+assert.match(registerRouteSrc, /getTemporaryChallenge\('register'\)/);
+
+// Verify no client component or browser-side lib imports temporaryChallenge
+for (const dir of ['app', 'components', 'lib']) {
+  const stack = [path.join(WEB_ROOT, dir)];
+  while (stack.length > 0) {
+    const cur = stack.pop();
+    for (const entry of fs.readdirSync(cur, { withFileTypes: true })) {
+      const full = path.join(cur, entry.name);
+      if (entry.isDirectory()) {
+        stack.push(full);
+      } else if (/\.(ts|tsx|js|mjs)$/.test(entry.name)) {
+        const content = fs.readFileSync(full, 'utf8');
+        if (/['"]use client['"]/.test(content)) {
+          assert.equal(
+            content.includes('temporaryChallenge'),
+            false,
+            `Client file ${path.relative(WEB_ROOT, full)} must never import temporaryChallenge`
+          );
+        }
+      }
+    }
+  }
+}
+console.log('[PASS] 9. Temporary challenge module is centralized server-side, wired to login/register, and never imported by client code');
+
+console.log('\nAll 9 Phase 3.8 API parity tests PASSED (9/9)!');

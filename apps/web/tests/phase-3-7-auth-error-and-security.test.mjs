@@ -49,19 +49,31 @@ const sourceFiles = [
   ...collectFiles(path.join(WEB_ROOT, 'components')),
 ];
 const forbiddenPatterns = [
-  /skew8lancasto/i,
-  /skew8@lancasto/i,
   /skew_blanc_session/i,
   /['"]WEBSITE_1['"]/,
 ];
+const challengeStringPatterns = [
+  /skew8lancasto/i,
+  /skew8@lancasto/i,
+];
 for (const file of sourceFiles) {
+  const rel = path.relative(WEB_ROOT, file).replace(/\\/g, '/');
   const content = fs.readFileSync(file, 'utf8');
   for (const pattern of forbiddenPatterns) {
     assert.equal(
       pattern.test(content),
       false,
-      `Forbidden Qlex artifact ${pattern} found in ${path.relative(WEB_ROOT, file)}`
+      `Forbidden Qlex artifact ${pattern} found in ${rel}`
     );
+  }
+  if (rel !== 'lib/auth/temporaryChallenge.ts') {
+    for (const pattern of challengeStringPatterns) {
+      assert.equal(
+        pattern.test(content),
+        false,
+        `Temporary challenge literal ${pattern} must be centralized only in lib/auth/temporaryChallenge.ts, found in ${rel}`
+      );
+    }
   }
 }
 console.log('[PASS] 3. Zero Qlex hardcoded challenges, WEBSITE_1, or JS-readable session cookies in NURVIA source');

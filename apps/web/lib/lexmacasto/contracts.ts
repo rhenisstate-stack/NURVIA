@@ -203,6 +203,7 @@ export interface LexmaCastoLoginPayload {
   ipAddress?: string;
   dashboardName?: string;
   role?: string;
+  challenge?: string;
 }
 
 export interface LexmaCastoRegisterPayload {
@@ -219,6 +220,7 @@ export interface LexmaCastoRegisterPayload {
   dashboardName?: string;
   provider?: string;
   providerPayload?: string | Record<string, unknown>;
+  challenge?: string;
 }
 
 export interface LexmaCastoLogoutPayload {
